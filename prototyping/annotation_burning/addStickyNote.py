@@ -1,40 +1,54 @@
 # https://pymupdf.readthedocs.io/en/latest/recipes-annotations.html
 
-import pymupdf
+import fitz  # PyMuPDF
 import json
 
-red = (1, 0, 0)
-blue = (0, 0, 1)
-gold = (1, 1, 0)
-green = (0, 1, 0)
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip("#")
+    return tuple(int(hex_color[i:i+2], 16)/255 for i in (0, 2, 4))
 
-displ = pymupdf.Rect(0, 50, 0, 50)
-r = pymupdf.Rect(72, 72, 220, 100)
+def flip_y(y, page_height):
+    return page_height - y
 
-doc = pymupdf.open("algos-assignment-02.pdf")
-page = doc.new_page()
+def burn_annotations(pdf_path, output_path, annotation_json):
+    # Load PDF
+    doc = fitz.open(pdf_path)
 
-doc.delete_page(5)  # delete the first page
+    data = json.loads(annotation_json)
+    page = doc[data["pageNumber"] - 1]
+    page_height = page.rect.height
 
-# page.set_rotation(0)
+    # Draw freehand lines (burned in)
+    for line in data.get("lines", []):
+        points = line["points"]
+        stroke = hex_to_rgb(line["stroke"])
+        stroke_width = line["strokeWidth"]
 
-# Add text box anotation
-r = r + displ
-annot = page.add_freetext_annot(
-    r,
-    "this is my free text box",
-    fontsize=10,
-    rotate=90,
-    text_color=blue,
-    fill_color=gold,
-    align=pymupdf.TEXT_ALIGN_CENTER,
-)
-annot.set_border(width=0.3, dashes=[2])
-annot.update(text_color=blue, fill_color=gold)
+        for i in range(0, len(points) - 2, 2):
+            p1 = fitz.Point(points[i], flip_y(points[i + 1], page_height))
+            p2 = fitz.Point(points[i + 2], flip_y(points[i + 3], page_height))
+            page.draw_line(p1, p2, color=stroke, width=stroke_width)
+            page.draw_circle(p1, stroke_width / 4, color=stroke)
 
-# add stickynote annotation
-r = annot.rect + displ
-annot = page.add_text_annot(r.tl, "this is my sticky note with some words of wisdom")
+    # Burn in text annotations
+    for text in data.get("textAnnotations", []):
+        pos = fitz.Point(text["x"], flip_y(text["y"], page_height))
+        color = hex_to_rgb(text["fill"])
+        font_size = text["fontSize"]
+        content = text["text"]
+        page.insert_text(pos, content, fontsize=font_size, color=color)
 
-doc.save(__file__.replace(".py", "-%i.pdf" % page.rotation), deflate=True)
+    # Add sticky notes (not burned in)
+    for sticky in data.get("stickyNotes", []):
+        x = sticky["x"]
+        y = flip_y(sticky["y"], page_height)
+        content = sticky["text"]
+        page.add_text_annot(fitz.Point(x, y), content)
 
+    doc.save(output_path)
+
+
+with open("annotations_page_1-4.json") as f:
+    annotation_json = f.read()
+
+burn_annotations("input.pdf", "output.pdf", annotation_json)
