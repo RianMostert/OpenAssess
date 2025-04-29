@@ -29,6 +29,7 @@ export default function TopBar({
             <div className="absolute right-4">
                 <Button
                     variant="outline"
+                    size={"icon"}
                     onClick={toggleRightSidebar}
                     title={rightSidebarCollapsed ? "Show Right Sidebar" : "Hide Right Sidebar"}>
                     <PanelRight className={`h-5 w-5 ${rightSidebarCollapsed ? "rotate-180" : ""}`} />

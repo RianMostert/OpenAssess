@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import dynamic from "next/dynamic";
+// import dynamic from "next/dynamic";
 import { Document, Page, pdfjs } from 'react-pdf';
 import { GlobalWorkerOptions } from 'pdfjs-dist';
+// import { Button } from './ui/button';
+import ToolBar from './pdf-annotator-bar';
 
 GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -24,8 +26,9 @@ export default function PdfAnnotator() {
     }, []);
 
     return (
-        <div className="flex flex-col h-full overflow-hidden items-center-justify-center">
-            <div className="flex-1 items-center-justify-center" ref={pdfRef}>
+        <div className="flex-1 flex-col overflow-hidden items-center justify-center">
+            <ToolBar />
+            <div className="flex items-center justify-center" ref={pdfRef}>
                 <Document
                     file="rw244.pdf"
                     onLoadSuccess={onDocumentLoadSuccess}

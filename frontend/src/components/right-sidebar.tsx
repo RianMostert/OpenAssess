@@ -7,14 +7,14 @@ interface RightSidebarProps {
 export default function RightSidebar(width: RightSidebarProps) {
     return (
         <div className="border-l border-zinc-800 flex flex-col overflow-hidden">
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="multiple" className="w-full">
                 <AccordionItem value="item-1">
-                    <AccordionTrigger>Item 1</AccordionTrigger>
-                    <AccordionContent>Content 1</AccordionContent>
+                    <AccordionTrigger className="pl-2">Item 1</AccordionTrigger>
+                    <AccordionContent className="pl-2">Content 1</AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="item-2">
-                    <AccordionTrigger>Item 2</AccordionTrigger>
-                    <AccordionContent>Content 2</AccordionContent>
+                    <AccordionTrigger className="pl-2">Item 2</AccordionTrigger>
+                    <AccordionContent className="pl-2">Content 2</AccordionContent>
                 </AccordionItem>
             </Accordion>
         </div>
