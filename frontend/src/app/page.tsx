@@ -4,8 +4,13 @@ import { useState } from 'react';
 import TopBar from '@/components/top-bar';
 import LeftSideBar from '@components/left-sidebar';
 import RightSidebar from '@components/right-sidebar';
-import PdfAnnotator from '@/components/pdf-annotator';
+// import PdfAnnotator from '@/components/pdf-annotator';
 import NavBar from '@/components/nav-bar';
+import dynamic from 'next/dynamic';
+
+const PdfAnnotator = dynamic(() => import('../components/pdf-annotator'), {
+  ssr: false,
+});
 
 export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
@@ -39,7 +44,7 @@ export default function Home() {
           <LeftSideBar activeNavItem="document" width={300} />
         </div>
 
-        <div className="overflow-auto">
+        <div className="overflow-hidden">
           <PdfAnnotator />
         </div>
 

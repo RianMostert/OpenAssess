@@ -7,12 +7,19 @@ import { TooltipProvider } from './ui/tooltip';
 type Tool = 'highlighter' | 'pencil' | 'sticky-note' | 'eraser' | 'undo' | 'redo';
 type annotationColour = 'red' | 'green' | 'blue' | 'yellow' | 'purple' | 'black';
 
+type Props = ({
+    tool: Tool | null;
+    setTool: (tool: Tool | null) => void;
+});
 
-export default function PdfAnnotatorBar() {
+
+export default function PdfAnnotatorBar({ tool, setTool }: Props) {
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
 
     const handleToolChange = (tool: Tool) => {
+        alert(`Selected tool: ${tool}`);
         setSelectedTool(selectedTool === tool ? null : tool);
+        setTool(tool);
     }
     return (
         <TooltipProvider>
