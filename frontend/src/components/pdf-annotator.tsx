@@ -11,13 +11,16 @@ GlobalWorkerOptions.workerSrc = new URL(
 ).toString();
 
 interface LineElement {
+    id: string;
+    tool: 'pencil' | 'eraser';
     points: number[];
     stroke: string;
     strokeWidth: number;
-    id: string;
+    compositeOperation?: string;
+    page?: number;
 }
 
-type Tool = 'highlighter' | 'pencil' | 'sticky-note' | 'eraser' | 'undo' | 'redo';
+type Tool = 'highlighter' | 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
 const PdfAnnotator: React.FC = () => {
     const pdfRef = useRef<HTMLDivElement>(null);
@@ -37,13 +40,12 @@ const PdfAnnotator: React.FC = () => {
     //     height: 0
     // });
 
-    // Drawing logic
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-        if (tool !== 'pencil') return;
-
-        setIsDrawing(true);
         const pos = e.target.getStage()?.getPointerPosition();
-        if (pos) {
+        if (!pos) return;
+
+        if (tool === 'pencil' || tool === 'eraser') {
+            setIsDrawing(true);
             setCurrentPoints([pos.x, pos.y]);
         }
     };
@@ -54,25 +56,27 @@ const PdfAnnotator: React.FC = () => {
         const stage = e.target.getStage();
         const point = stage?.getPointerPosition();
         if (point) {
-            setCurrentPoints([...currentPoints, point.x, point.y]);
+            setCurrentPoints(prev => [...prev, point.x, point.y]);
         }
     };
 
     const handleMouseUp = () => {
-        if (!isDrawing || tool !== 'pencil') return;
+        if (!isDrawing) return;
 
         setIsDrawing(false);
-        if (currentPoints.length >= 4) { // Ensure we have at least 2 points
-            setLines([
-                ...lines,
-                {
-                    points: currentPoints,
-                    stroke: currentColor,
-                    strokeWidth: 2,
-                    id: `line_${Date.now()}`
-                }
-            ]);
+
+        if (currentPoints.length >= 4) {
+            const newLine: LineElement = {
+                points: currentPoints,
+                stroke: tool === 'eraser' ? 'white' : currentColor,
+                strokeWidth: tool === 'eraser' ? 20 : 2,
+                id: `line_${Date.now()}`,
+                compositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over'
+            };
+
+            setLines(prev => [...prev, newLine]);
         }
+
         setCurrentPoints([]);
     };
 
@@ -106,29 +110,56 @@ const PdfAnnotator: React.FC = () => {
                             renderAnnotationLayer={false}
                             renderTextLayer={false} />
                     </Document>
-
                     <Stage
                         width={pdfRef.current?.clientWidth || 0}
                         height={pdfRef.current?.clientHeight || 0}
                         onMouseDown={handleMouseDown}
                         onMousemove={handleMouseMove}
                         onMouseup={handleMouseUp}
-                        className='border border-red-500 absolute top-0 left-0'
+                        className='absolute top-0 left-0'
                     >
                         <Layer>
+                            {/* Render saved lines */}
                             {lines.map((line, index) => (
                                 <Line
-                                    key={index}
+                                    key={line.id}
+                                    id={line.id}
                                     points={line.points}
-                                    stroke="black"
+                                    stroke={line.stroke}
+                                    strokeWidth={line.strokeWidth}
+                                    tension={0.5}
+                                    lineCap="round"
+                                    globalCompositeOperation={line.compositeOperation || 'source-over'}
+                                />
+                            ))}
+
+
+                            {/* Render the in-progress line */}
+                            {/* {isDrawing && currentPoints.length > 0 && (
+                                <Line
+                                    points={currentPoints}
+                                    stroke="black" // or use `currentColor` if you support color changes
                                     strokeWidth={2}
                                     tension={0.5}
                                     lineCap="round"
                                     globalCompositeOperation="source-over"
                                 />
-                            ))}
+                            )} */}
+                            {/* Render the in-progress line */}
+                            {isDrawing && currentPoints.length > 0 && (
+                                <Line
+                                    points={currentPoints}
+                                    stroke={tool === 'eraser' ? 'white' : currentColor}
+                                    strokeWidth={tool === 'eraser' ? 20 : 2}
+                                    tension={0.5}
+                                    lineCap="round"
+                                    globalCompositeOperation={tool === 'eraser' ? 'destination-out' : 'source-over'}
+                                />
+                            )}
+
                         </Layer>
                     </Stage>
+
                 </div>
             ) : (
                 <div className="flex items-center justify-center h-full">
