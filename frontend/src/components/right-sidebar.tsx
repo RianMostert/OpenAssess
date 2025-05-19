@@ -6,7 +6,7 @@ interface RightSidebarProps {
 
 export default function RightSidebar(width: RightSidebarProps) {
     return (
-        <div className="border-l border-zinc-800 flex flex-col overflow-hidden">
+        <div className="flex flex-col overflow-hidden">
             <Accordion type="multiple" className="w-full">
                 <AccordionItem value="item-1">
                     <AccordionTrigger className="pl-2">Item 1</AccordionTrigger>

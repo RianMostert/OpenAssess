@@ -16,10 +16,11 @@ export default function PdfAnnotatorBar({ tool, setTool }: Props) {
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
 
     const handleToolChange = (tool: Tool) => {
-        // alert(`Selected tool: ${tool}`);
-        setSelectedTool(selectedTool === tool ? null : tool);
-        setTool(tool);
-    }
+        const newTool = selectedTool === tool ? null : tool;
+        setSelectedTool(newTool);
+        setTool(newTool);
+    };
+
     return (
         <TooltipProvider>
             <div className="flex items-center justify-center p-4 border-b border-zinc-800">

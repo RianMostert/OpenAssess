@@ -20,6 +20,17 @@ interface LineElement {
     page?: number;
 }
 
+interface TextElement {
+    id: string;
+    tool: 'text-note';
+    x: number;
+    y: number;
+    text: string;
+    fontSize: number;
+    fill: string;
+    page?: number;
+}
+
 type Tool = 'highlighter' | 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
 const PdfAnnotator: React.FC = () => {
@@ -34,6 +45,7 @@ const PdfAnnotator: React.FC = () => {
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const [currentPoints, setCurrentPoints] = useState<number[]>([]);
     const [currentColor, setCurrentColor] = useState<string>('#ff0000');
+    const [texts, setTexts] = useState<TextElement[]>([]);
 
     // const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     //     width: 0,
@@ -47,6 +59,18 @@ const PdfAnnotator: React.FC = () => {
         if (tool === 'pencil' || tool === 'eraser') {
             setIsDrawing(true);
             setCurrentPoints([pos.x, pos.y]);
+        } else if (tool === 'text-note') {
+            const newText: TextElement = {
+                id: `text_${Date.now()}`,
+                tool: 'text-note',
+                x: pos.x,
+                y: pos.y,
+                text: 'New note',
+                fontSize: 16,
+                fill: currentColor
+            };
+
+            setTexts(prev => [...prev, newText]);
         }
     };
 
@@ -132,19 +156,6 @@ const PdfAnnotator: React.FC = () => {
                                     globalCompositeOperation={line.compositeOperation || 'source-over'}
                                 />
                             ))}
-
-
-                            {/* Render the in-progress line */}
-                            {/* {isDrawing && currentPoints.length > 0 && (
-                                <Line
-                                    points={currentPoints}
-                                    stroke="black" // or use `currentColor` if you support color changes
-                                    strokeWidth={2}
-                                    tension={0.5}
-                                    lineCap="round"
-                                    globalCompositeOperation="source-over"
-                                />
-                            )} */}
                             {/* Render the in-progress line */}
                             {isDrawing && currentPoints.length > 0 && (
                                 <Line
@@ -156,6 +167,54 @@ const PdfAnnotator: React.FC = () => {
                                     globalCompositeOperation={tool === 'eraser' ? 'destination-out' : 'source-over'}
                                 />
                             )}
+                            {texts.map((textNote) => (
+                                <Text
+                                    key={textNote.id}
+                                    x={textNote.x}
+                                    y={textNote.y}
+                                    text={textNote.text}
+                                    fontSize={textNote.fontSize}
+                                    fill={textNote.fill}
+                                    draggable
+                                    onDblClick={(e) => {
+                                        const stage = e.target.getStage();
+                                        const absPos = e.target.getAbsolutePosition();
+                                        const id = textNote.id;
+
+                                        // Show a textarea for editing
+                                        const textArea = document.createElement('textarea');
+                                        if (textNote.text === 'New note') {
+                                            textArea.value = '';
+                                        } else {
+                                            textArea.value = textNote.text;
+                                        }
+                                        document.body.appendChild(textArea);
+
+                                        textArea.style.position = 'absolute';
+                                        textArea.style.top = `${stage?.container().offsetTop! + absPos.y}px`;
+                                        textArea.style.left = `${stage?.container().offsetLeft! + absPos.x}px`;
+                                        textArea.style.fontSize = `${textNote.fontSize}px`;
+                                        textArea.focus();
+
+                                        textArea.onblur = () => {
+                                            const updatedText = textArea.value;
+                                            setTexts((prev) =>
+                                                prev.map((t) =>
+                                                    t.id === id ? { ...t, text: updatedText } : t
+                                                )
+                                            );
+                                            document.body.removeChild(textArea);
+                                        };
+
+                                        textArea.onkeydown = (e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                textArea.blur();
+                                            }
+                                        }
+                                    }}
+                                />
+                            ))}
 
                         </Layer>
                     </Stage>
