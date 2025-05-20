@@ -31,6 +31,16 @@ interface TextElement {
     page?: number;
 }
 
+interface StickyNote {
+    id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text: string;
+    color: string;
+}
+
 type Tool = 'highlighter' | 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
 const PdfAnnotator: React.FC = () => {
@@ -40,17 +50,36 @@ const PdfAnnotator: React.FC = () => {
     const [pageNumber, setPageNumber] = React.useState<number>(1);
     const [scale, setScale] = React.useState<number>(1.0);
     const [tool, setTool] = React.useState<Tool | null>(null);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [history, setHistory] = useState<any[]>([]);
+    const [redoStack, setRedoStack] = useState<any[]>([]);
 
     const [lines, setLines] = useState<LineElement[]>([]);
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const [currentPoints, setCurrentPoints] = useState<number[]>([]);
     const [currentColor, setCurrentColor] = useState<string>('#ff0000');
     const [texts, setTexts] = useState<TextElement[]>([]);
+    const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
 
     // const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     //     width: 0,
     //     height: 0
     // });
+
+    useEffect(() => {
+        // maybe delete on backspace as well but will need to check if the text is selected
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Delete') {
+                setTexts(prev => prev.filter(t => t.id !== selectedId));
+                setStickyNotes(prev => prev.filter(s => s.id !== selectedId));
+                setSelectedId(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedId]);
+
 
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
         const pos = e.target.getStage()?.getPointerPosition();
@@ -59,6 +88,7 @@ const PdfAnnotator: React.FC = () => {
         if (tool === 'pencil' || tool === 'eraser') {
             setIsDrawing(true);
             setCurrentPoints([pos.x, pos.y]);
+            pushToHistory();
         } else if (tool === 'text-note') {
             const newText: TextElement = {
                 id: `text_${Date.now()}`,
@@ -70,6 +100,7 @@ const PdfAnnotator: React.FC = () => {
                 fill: currentColor
             };
 
+            pushToHistory();
             setTexts(prev => [...prev, newText]);
         }
     };
@@ -104,6 +135,31 @@ const PdfAnnotator: React.FC = () => {
         setCurrentPoints([]);
     };
 
+    const handleUndo = () => {
+        if (history.length === 0) return;
+        const prev = history[history.length - 1];
+        setRedoStack(rs => [...rs, { lines, texts, stickyNotes }]);
+        setLines(prev.lines);
+        setTexts(prev.texts);
+        setStickyNotes(prev.stickyNotes);
+        setHistory(h => h.slice(0, h.length - 1));
+    };
+
+    const handleRedo = () => {
+        if (redoStack.length === 0) return;
+        const next = redoStack[redoStack.length - 1];
+        setHistory(h => [...h, { lines, texts, stickyNotes }]);
+        setLines(next.lines);
+        setTexts(next.texts);
+        setStickyNotes(next.stickyNotes);
+        setRedoStack(rs => rs.slice(0, rs.length - 1));
+    };
+
+    const pushToHistory = () => {
+        setHistory(prev => [...prev, { lines, texts, stickyNotes }]);
+        setRedoStack([]); // Clear redo on new action
+    };
+
     const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
         setNumPages(numPages);
     }
@@ -118,10 +174,9 @@ const PdfAnnotator: React.FC = () => {
         setFile('/rw244.pdf');
     }, []);
 
-
     return (
         <div className="flex-1 flex-col overflow-hidden items-center justify-center">
-            <ToolBar tool={tool} setTool={setTool} />
+            <ToolBar tool={tool} setTool={setTool} onUndo={handleUndo} onRedo={handleRedo} />
             {file ? (
                 <div className="relative items-center justify-center" ref={pdfRef}>
                     <Document
@@ -176,6 +231,7 @@ const PdfAnnotator: React.FC = () => {
                                     fontSize={textNote.fontSize}
                                     fill={textNote.fill}
                                     draggable
+                                    onClick={() => setSelectedId(textNote.id)}
                                     onDblClick={(e) => {
                                         const stage = e.target.getStage();
                                         const absPos = e.target.getAbsolutePosition();
@@ -197,7 +253,7 @@ const PdfAnnotator: React.FC = () => {
                                         textArea.focus();
 
                                         textArea.onblur = () => {
-                                            const updatedText = textArea.value;
+                                            const updatedText = textArea.value || 'New note';
                                             setTexts((prev) =>
                                                 prev.map((t) =>
                                                     t.id === id ? { ...t, text: updatedText } : t

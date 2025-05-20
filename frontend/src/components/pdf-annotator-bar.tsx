@@ -10,9 +10,11 @@ type annotationColour = 'red' | 'green' | 'blue' | 'yellow' | 'purple' | 'black'
 type Props = ({
     tool: Tool | null;
     setTool: (tool: Tool | null) => void;
+    onUndo: () => void;
+    onRedo: () => void;
 });
 
-export default function PdfAnnotatorBar({ tool, setTool }: Props) {
+export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props) {
     const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
 
     const handleToolChange = (tool: Tool) => {
@@ -30,11 +32,6 @@ export default function PdfAnnotatorBar({ tool, setTool }: Props) {
                             <Highlighter className="h-5 w-5" />
                         </Button>
                     </Tooltip> */}
-                    <Tooltip>
-                        <Button variant="outline">
-                            <text>Upload PDF</text>
-                        </Button>
-                    </Tooltip>
                     <Tooltip>
                         <Button variant="outline" onClick={() => handleToolChange('pencil')}>
                             {/* <Pencil className="h-5 w-5" /> */}
@@ -60,21 +57,17 @@ export default function PdfAnnotatorBar({ tool, setTool }: Props) {
                         </Button>
                     </Tooltip>
                     <Tooltip>
-                        <Button variant="outline">
-                            {/* <StickyNote className="h-5 w-5" /> */}
-                            <text>Download PDF</text>
-                        </Button>
-                    </Tooltip>
-                    {/* <Tooltip>
-                        <Button variant="outline" size="icon" onClick={() => handleToolChange('undo')}>
-                            <Undo2 className="h-5 w-5" />
+                        <Button variant="outline" onClick={onUndo} >
+                            {/* <Undo2 className="h-5 w-5" /> */}
+                            <text>Undo</text>
                         </Button>
                     </Tooltip>
                     <Tooltip>
-                        <Button variant="outline" size="icon" onClick={() => handleToolChange('redo')}>
-                            <Redo2 className="h-5 w-5" />
+                        <Button variant="outline" onClick={onRedo}>
+                            {/* <Redo2 className="h-5 w-5" /> */}
+                            <text>Redo</text>
                         </Button>
-                    </Tooltip> */}
+                    </Tooltip>
                 </div>
             </div>
         </TooltipProvider>
