@@ -33,37 +33,55 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                         </Button>
                     </Tooltip> */}
                     <Tooltip>
-                        <Button variant="outline" onClick={() => handleToolChange('pencil')}>
+                        <Button
+                            className={`transition-colors duration-150 ${selectedTool === 'pencil' ? 'border-blue-500' : ''}`}
+                            variant="outline"
+                            onClick={() => handleToolChange('pencil')}>
                             {/* <Pencil className="h-5 w-5" /> */}
                             <text>Pencil</text>
                         </Button>
                     </Tooltip>
                     <Tooltip>
-                        <Button variant="outline" onClick={() => handleToolChange('eraser')}>
+                        <Button
+                            className={`transition-colors duration-150 ${selectedTool === 'eraser' ? 'border-blue-500' : ''}`}
+                            variant="outline"
+                            onClick={() => handleToolChange('eraser')}>
                             {/* <Eraser className="h-5 w-5" /> */}
                             <text>Eraser</text>
                         </Button>
                     </Tooltip>
                     <Tooltip>
-                        <Button variant="outline" onClick={() => handleToolChange('text-note')}>
+                        <Button
+                            className={`transition-colors duration-150 ${selectedTool === 'text-note' ? 'border-blue-500' : ''}`}
+                            variant="outline"
+                            onClick={() => handleToolChange('text-note')}>
                             {/* <StickyNote className="h-5 w-5" /> */}
                             <text>Text Note</text>
                         </Button>
                     </Tooltip>
                     <Tooltip>
-                        <Button variant="outline" onClick={() => handleToolChange('sticky-note')}>
+                        <Button
+                            className={`transition-colors duration-150 ${selectedTool === 'sticky-note' ? 'border-blue-500' : ''}`}
+                            variant="outline"
+                            onClick={() => handleToolChange('sticky-note')}>
                             {/* <StickyNote className="h-5 w-5" /> */}
                             <text>Sticky Note</text>
                         </Button>
                     </Tooltip>
                     <Tooltip>
-                        <Button variant="outline" onClick={onUndo} >
+                        <Button
+                            // className={`transition-colors duration-150 ${selectedTool === 'pencil' ? 'border-blue-500' : ''}`}
+                            variant="outline"
+                            onClick={onUndo} >
                             {/* <Undo2 className="h-5 w-5" /> */}
                             <text>Undo</text>
                         </Button>
                     </Tooltip>
                     <Tooltip>
-                        <Button variant="outline" onClick={onRedo}>
+                        <Button
+                            // className={`transition-colors duration-150 ${selectedTool === 'pencil' ? 'border-blue-500' : ''}`}
+                            variant="outline"
+                            onClick={onRedo}>
                             {/* <Redo2 className="h-5 w-5" /> */}
                             <text>Redo</text>
                         </Button>

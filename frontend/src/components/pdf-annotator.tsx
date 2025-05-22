@@ -5,6 +5,8 @@ import { Stage, Layer, Text, Line } from 'react-konva';
 import Konva from 'konva';
 import ToolBar from './pdf-annotator-bar';
 
+import StickyNote from './sticky-note';
+
 GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/build/pdf.worker.min.mjs",
     import.meta.url
@@ -31,14 +33,15 @@ interface TextElement {
     page?: number;
 }
 
-interface StickyNote {
+interface StickyNoteElement {
     id: string;
+    tool: 'sticky-note';
     x: number;
     y: number;
-    width: number;
-    height: number;
     text: string;
-    color: string;
+    fontSize: number;
+    fill: string;
+    page?: number;
 }
 
 type Tool = 'highlighter' | 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
@@ -59,7 +62,7 @@ const PdfAnnotator: React.FC = () => {
     const [currentPoints, setCurrentPoints] = useState<number[]>([]);
     const [currentColor, setCurrentColor] = useState<string>('#ff0000');
     const [texts, setTexts] = useState<TextElement[]>([]);
-    const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
+    const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
 
     // const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     //     width: 0,
@@ -102,6 +105,19 @@ const PdfAnnotator: React.FC = () => {
 
             pushToHistory();
             setTexts(prev => [...prev, newText]);
+        } else if (tool === 'sticky-note') {
+            const newStickyNote: StickyNoteElement = {
+                id: `sticky_${Date.now()}`,
+                tool: 'sticky-note',
+                x: pos.x,
+                y: pos.y,
+                text: '',
+                fontSize: 16,
+                fill: currentColor
+            };
+
+            pushToHistory();
+            setStickyNotes(prev => [...prev, newStickyNote]);
         }
     };
 
@@ -126,7 +142,8 @@ const PdfAnnotator: React.FC = () => {
                 stroke: tool === 'eraser' ? 'white' : currentColor,
                 strokeWidth: tool === 'eraser' ? 20 : 2,
                 id: `line_${Date.now()}`,
-                compositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over'
+                compositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over',
+                tool: 'pencil'
             };
 
             setLines(prev => [...prev, newLine]);
@@ -158,6 +175,58 @@ const PdfAnnotator: React.FC = () => {
     const pushToHistory = () => {
         setHistory(prev => [...prev, { lines, texts, stickyNotes }]);
         setRedoStack([]); // Clear redo on new action
+    };
+
+    const handleStickyDrag = (
+        e: React.MouseEvent,
+        stickyNoteId: string
+    ) => {
+        e.stopPropagation();
+
+        const container = pdfRef.current;
+        if (!container) return;
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        let dragged = false;
+
+        const stickyNote = stickyNotes.find((s) => s.id === stickyNoteId);
+        if (!stickyNote) return;
+
+        const initialX = stickyNote.x;
+        const initialY = stickyNote.y;
+
+        const containerRect = container.getBoundingClientRect();
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            const deltaY = moveEvent.clientY - startY;
+
+            // If Sticky was dragged, then dont handle mousedown event
+            if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+                dragged = true;
+            }
+
+            // adjust by container offset
+            const newX = initialX + deltaX;
+            const newY = initialY + deltaY;
+
+            setStickyNotes((prev) =>
+                prev.map((s) =>
+                    s.id === stickyNoteId
+                        ? { ...s, x: newX, y: newY }
+                        : s
+                )
+            );
+        };
+
+        const handleMouseUp = () => {
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+        };
+
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
     };
 
     const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
@@ -271,9 +340,32 @@ const PdfAnnotator: React.FC = () => {
                                     }}
                                 />
                             ))}
-
                         </Layer>
                     </Stage>
+                    {stickyNotes.map((stickyNote) => (
+                        <div
+                            key={stickyNote.id}
+                            style={{
+                                position: 'absolute',
+                                top: stickyNote.y,
+                                left: stickyNote.x,
+                                zIndex: 10,
+                                cursor: 'move',
+                            }}
+                            onMouseDown={(e) => handleStickyDrag(e, stickyNote.id)}
+                        >
+                            <StickyNote
+                                content={stickyNote.text}
+                                onChange={(val) => {
+                                    setStickyNotes((prev) =>
+                                        prev.map((s) => (s.id === stickyNote.id ? { ...s, text: val } : s))
+                                    );
+                                }}
+                                onClick={() => setSelectedId(stickyNote.id)}
+                                isSelected={selectedId === stickyNote.id}
+                            />
+                        </div>
+                    ))}
 
                 </div>
             ) : (
