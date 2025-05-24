@@ -5,17 +5,19 @@ interface LeftSidebarProps {
     activeNavItem: string;
     width: number;
     onUploadPdf: (file: File) => void;
+    onExportPdf?: () => void;
+    onExportJson?: (annotationJson: string | null) => void;
 }
 
-export default function LeftSidebar({ activeNavItem, width, onUploadPdf }: LeftSidebarProps) {
+export default function LeftSidebar({ activeNavItem, width, onUploadPdf, onExportJson }: LeftSidebarProps) {
     const renderPanel = () => {
         switch (activeNavItem) {
             case "document":
-                return <DocumentPanel onUpload={onUploadPdf} />
+                return <DocumentPanel onUpload={onUploadPdf} onExportJson={onExportJson} />
             case "settings":
                 return <SettingsPanel />
             default:
-                return <DocumentPanel onUpload={onUploadPdf} />
+                return <DocumentPanel onUpload={onUploadPdf} onExportJson={onExportJson} />
         }
     }
 

@@ -12,6 +12,37 @@ const PdfAnnotator = dynamic(() => import('../components/pdf-annotator'), {
   ssr: false,
 });
 
+interface LineElement {
+  id: string;
+  tool: 'pencil' | 'eraser';
+  points: number[];
+  stroke: string;
+  strokeWidth: number;
+  compositeOperation?: string;
+  page?: number;
+}
+
+interface TextElement {
+  id: string;
+  tool: 'text-note';
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  fill: string;
+  page: number;
+}
+
+interface StickyNoteElement {
+  id: string;
+  tool: 'sticky-note';
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  fill: string;
+  page: number;
+}
 
 export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
@@ -19,6 +50,9 @@ export default function Home() {
 
   const [activeNavItem, setActiveNavItem] = useState('document');
   const [pdfFile, setPdfFile] = useState<File | string | null>(null);
+  const [lines, setLines] = useState<LineElement[]>([]);
+  const [texts, setTexts] = useState<TextElement[]>([]);
+  const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
 
 
   // Function to handle the left sidebar toggle
@@ -48,7 +82,16 @@ export default function Home() {
         </div>
 
         <div className="overflow-hidden">
-          <PdfAnnotator file={pdfFile} />
+          <PdfAnnotator
+            file={pdfFile}
+            lines={lines}
+            setLines={setLines}
+            texts={texts}
+            setTexts={setTexts}
+            stickyNotes={stickyNotes}
+            setStickyNotes={setStickyNotes}
+          />
+
         </div>
 
         <div className="border-l border-zinc-800">

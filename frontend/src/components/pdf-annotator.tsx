@@ -14,6 +14,12 @@ GlobalWorkerOptions.workerSrc = new URL(
 
 interface PdfAnnotatorProps {
     file: File | string | null;
+    lines: LineElement[];
+    texts: TextElement[];
+    stickyNotes: StickyNoteElement[];
+    setLines: React.Dispatch<React.SetStateAction<LineElement[]>>;
+    setTexts: React.Dispatch<React.SetStateAction<TextElement[]>>;
+    setStickyNotes: React.Dispatch<React.SetStateAction<StickyNoteElement[]>>;
 }
 
 interface LineElement {
@@ -34,7 +40,7 @@ interface TextElement {
     text: string;
     fontSize: number;
     fill: string;
-    page?: number;
+    page: number;
 }
 
 interface StickyNoteElement {
@@ -45,12 +51,12 @@ interface StickyNoteElement {
     text: string;
     fontSize: number;
     fill: string;
-    page?: number;
+    page: number;
 }
 
 type Tool = 'highlighter' | 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
-const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file }) => {
+const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, texts, setTexts, stickyNotes, setStickyNotes }) => {
     const pdfRef = useRef<HTMLDivElement>(null);
     const [numPages, setNumPages] = React.useState<number | null>(null);
     const [pageNumber, setPageNumber] = React.useState<number>(1);
@@ -60,12 +66,12 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file }) => {
     const [history, setHistory] = useState<any[]>([]);
     const [redoStack, setRedoStack] = useState<any[]>([]);
 
-    const [lines, setLines] = useState<LineElement[]>([]);
+    // const [lines, setLines] = useState<LineElement[]>([]);
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const [currentPoints, setCurrentPoints] = useState<number[]>([]);
     const [currentColor, setCurrentColor] = useState<string>('#ff0000');
-    const [texts, setTexts] = useState<TextElement[]>([]);
-    const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
+    // const [texts, setTexts] = useState<TextElement[]>([]);
+    // const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
 
     // const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     //     width: 0,
@@ -86,7 +92,6 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file }) => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedId]);
 
-
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
         const pos = e.target.getStage()?.getPointerPosition();
         if (!pos) return;
@@ -103,7 +108,8 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file }) => {
                 y: pos.y,
                 text: 'New note',
                 fontSize: 16,
-                fill: currentColor
+                fill: currentColor,
+                page: pageNumber
             };
 
             pushToHistory();
@@ -116,7 +122,8 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file }) => {
                 y: pos.y,
                 text: '',
                 fontSize: 16,
-                fill: currentColor
+                fill: currentColor,
+                page: pageNumber
             };
 
             pushToHistory();
@@ -280,7 +287,7 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file }) => {
                                     strokeWidth={line.strokeWidth}
                                     tension={0.5}
                                     lineCap="round"
-                                    globalCompositeOperation={line.compositeOperation || 'source-over'}
+                                    globalCompositeOperation={(line.compositeOperation as GlobalCompositeOperation) || 'source-over' as GlobalCompositeOperation}
                                 />
                             ))}
                             {/* Render the in-progress line */}

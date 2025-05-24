@@ -3,14 +3,20 @@ import { TooltipProvider } from "@radix-ui/react-tooltip";
 
 interface DocumentPanelProps {
     onUpload: (file: File) => void;
+    onExportPdf?: () => void;
+    onExportJson?: (annotationJson: string | null) => void;
 }
 
-export default function DocumentPanel({ onUpload }: DocumentPanelProps) {
+export default function DocumentPanel({ onUpload, onExportJson }: DocumentPanelProps) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file && file.type === "application/pdf") {
             onUpload(file);
         }
+    };
+
+    const handleExportJson = () => {
+        alert("Exporting JSON is not implemented yet.");
     };
 
     return (
@@ -30,7 +36,7 @@ export default function DocumentPanel({ onUpload }: DocumentPanelProps) {
                         </label>
                     </Button>
                     <Button variant="outline">Export PDF</Button>
-                    <Button variant="outline">Export JSON</Button>
+                    <Button variant="outline" onClick={handleExportJson}>Export JSON</Button>
                 </div>
             </TooltipProvider>
         </>
