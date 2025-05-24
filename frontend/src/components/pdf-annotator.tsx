@@ -29,7 +29,7 @@ interface LineElement {
     stroke: string;
     strokeWidth: number;
     compositeOperation?: string;
-    page?: number;
+    page: number;
 }
 
 interface TextElement {
@@ -153,7 +153,8 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                 strokeWidth: tool === 'eraser' ? 20 : 2,
                 id: `line_${Date.now()}`,
                 compositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over',
-                tool: 'pencil'
+                tool: 'pencil',
+                page: pageNumber
             };
 
             setLines(prev => [...prev, newLine]);

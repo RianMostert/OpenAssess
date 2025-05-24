@@ -4,11 +4,11 @@ import { on } from "events";
 
 interface DocumentPanelProps {
     onUpload: (file: File) => void;
-    onExportPdf?: () => void;
+    onExportPdf: () => void;
     onExportJson: () => void;
 }
 
-export default function DocumentPanel({ onUpload, onExportJson }: DocumentPanelProps) {
+export default function DocumentPanel({ onUpload, onExportPdf, onExportJson }: DocumentPanelProps) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file && file.type === "application/pdf") {
@@ -18,6 +18,10 @@ export default function DocumentPanel({ onUpload, onExportJson }: DocumentPanelP
 
     const handleExportJson = () => {
         onExportJson();
+    };
+
+    const handlePdfExport = () => {
+        onExportPdf();
     };
 
     // const downloadJson = () => {
@@ -50,7 +54,7 @@ export default function DocumentPanel({ onUpload, onExportJson }: DocumentPanelP
                             />
                         </label>
                     </Button>
-                    <Button variant="outline">Export PDF</Button>
+                    <Button variant="outline" onClick={handlePdfExport}>Export PDF</Button>
                     <Button variant="outline" onClick={handleExportJson}>Export JSON</Button>
                 </div>
             </TooltipProvider>

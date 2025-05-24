@@ -19,7 +19,7 @@ interface LineElement {
   stroke: string;
   strokeWidth: number;
   compositeOperation?: string;
-  page?: number;
+  page: number;
 }
 
 interface TextElement {
@@ -62,12 +62,16 @@ export default function Home() {
     setIsRightSidebarCollapsed(!isRightSidebarCollapsed);
   }
 
-  const exportAnnotationsToJson = () => {
-    const exportData = JSON.stringify({
+  const getJson = () => {
+    return JSON.stringify({
       lines,
       texts,
       stickyNotes
     }, null, 2);
+  }
+
+  const exportAnnotationsToJson = () => {
+    const exportData = getJson();
 
     const blob = new Blob([exportData], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -78,6 +82,41 @@ export default function Home() {
     a.click();
 
     URL.revokeObjectURL(url);
+  };
+
+  const burnAnnotations = async () => {
+    if (!pdfFile || typeof pdfFile === "string") {
+      alert("Please upload a valid PDF file first.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("pdf", pdfFile); // PDF file
+    formData.append("annotation_json", getJson()); // JSON string
+
+    try {
+      const response = await fetch("http://localhost:8000/annotations/burn", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to burn annotations on PDF");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "annotated.pdf";
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error during annotation burn:", error);
+      alert("Something went wrong while exporting the PDF.");
+    }
   };
 
   return (
@@ -95,7 +134,7 @@ export default function Home() {
         </div>
 
         <div className="border-r border-zinc-800">
-          <LeftSideBar activeNavItem={activeNavItem} width={300} onUploadPdf={setPdfFile} onExportJson={exportAnnotationsToJson} />
+          <LeftSideBar activeNavItem={activeNavItem} width={300} onUploadPdf={setPdfFile} onExportPdf={burnAnnotations} onExportJson={exportAnnotationsToJson} />
         </div>
 
         <div className="overflow-hidden">
