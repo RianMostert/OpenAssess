@@ -12,11 +12,14 @@ const PdfAnnotator = dynamic(() => import('../components/pdf-annotator'), {
   ssr: false,
 });
 
+
 export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
 
   const [activeNavItem, setActiveNavItem] = useState('document');
+  const [pdfFile, setPdfFile] = useState<File | string | null>(null);
+
 
   // Function to handle the left sidebar toggle
   const toggleLeftSidebar = () => {
@@ -41,11 +44,11 @@ export default function Home() {
         </div>
 
         <div className="border-r border-zinc-800">
-          <LeftSideBar activeNavItem="document" width={300} />
+          <LeftSideBar activeNavItem={activeNavItem} width={300} onUploadPdf={setPdfFile} />
         </div>
 
         <div className="overflow-hidden">
-          <PdfAnnotator />
+          <PdfAnnotator file={pdfFile} />
         </div>
 
         <div className="border-l border-zinc-800">
@@ -53,7 +56,6 @@ export default function Home() {
         </div>
 
       </div>
-
 
     </div>
   );

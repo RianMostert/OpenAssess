@@ -8,7 +8,7 @@ interface NavBarProps {
 
 const nacBarItems = [
     { name: 'document', icon: <FileText />, value: 'Document' },
-    { name: 'annotation', icon: <Highlighter />, value: 'Annotation' },
+    // { name: 'annotation', icon: <Highlighter />, value: 'Annotation' },
     { name: 'settings', icon: <Settings />, value: 'Settings' },
 ];
 

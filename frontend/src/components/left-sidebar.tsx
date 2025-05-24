@@ -1,19 +1,21 @@
-"use client"
-
 import DocumentPanel from "@/components/left-sidebar-panels/document-panel"
+import SettingsPanel from "@/components/left-sidebar-panels/settings-panel"
 
 interface LeftSidebarProps {
-    activeNavItem: string
-    width: number
+    activeNavItem: string;
+    width: number;
+    onUploadPdf: (file: File) => void;
 }
 
-export default function LeftSidebar({ activeNavItem, width }: LeftSidebarProps) {
+export default function LeftSidebar({ activeNavItem, width, onUploadPdf }: LeftSidebarProps) {
     const renderPanel = () => {
         switch (activeNavItem) {
             case "document":
-                return <DocumentPanel />
+                return <DocumentPanel onUpload={onUploadPdf} />
+            case "settings":
+                return <SettingsPanel />
             default:
-                return <DocumentPanel />
+                return <DocumentPanel onUpload={onUploadPdf} />
         }
     }
 

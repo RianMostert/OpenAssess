@@ -38,7 +38,7 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                             variant="outline"
                             onClick={() => handleToolChange('pencil')}>
                             {/* <Pencil className="h-5 w-5" /> */}
-                            <text>Pencil</text>
+                            Pencil
                         </Button>
                     </Tooltip>
                     <Tooltip>
@@ -47,7 +47,7 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                             variant="outline"
                             onClick={() => handleToolChange('eraser')}>
                             {/* <Eraser className="h-5 w-5" /> */}
-                            <text>Eraser</text>
+                            Eraser
                         </Button>
                     </Tooltip>
                     <Tooltip>
@@ -56,7 +56,7 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                             variant="outline"
                             onClick={() => handleToolChange('text-note')}>
                             {/* <StickyNote className="h-5 w-5" /> */}
-                            <text>Text Note</text>
+                            Text Note
                         </Button>
                     </Tooltip>
                     <Tooltip>
@@ -65,7 +65,7 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                             variant="outline"
                             onClick={() => handleToolChange('sticky-note')}>
                             {/* <StickyNote className="h-5 w-5" /> */}
-                            <text>Sticky Note</text>
+                            Sticky Note
                         </Button>
                     </Tooltip>
                     <Tooltip>
@@ -74,7 +74,7 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                             variant="outline"
                             onClick={onUndo} >
                             {/* <Undo2 className="h-5 w-5" /> */}
-                            <text>Undo</text>
+                            Undo
                         </Button>
                     </Tooltip>
                     <Tooltip>
@@ -83,7 +83,7 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                             variant="outline"
                             onClick={onRedo}>
                             {/* <Redo2 className="h-5 w-5" /> */}
-                            <text>Redo</text>
+                            Redo
                         </Button>
                     </Tooltip>
                 </div>

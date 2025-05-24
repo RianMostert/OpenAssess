@@ -12,6 +12,10 @@ GlobalWorkerOptions.workerSrc = new URL(
     import.meta.url
 ).toString();
 
+interface PdfAnnotatorProps {
+    file: File | string | null;
+}
+
 interface LineElement {
     id: string;
     tool: 'pencil' | 'eraser';
@@ -46,9 +50,8 @@ interface StickyNoteElement {
 
 type Tool = 'highlighter' | 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
-const PdfAnnotator: React.FC = () => {
+const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file }) => {
     const pdfRef = useRef<HTMLDivElement>(null);
-    const [file, setFile] = React.useState<File | string | null>(null);
     const [numPages, setNumPages] = React.useState<number | null>(null);
     const [pageNumber, setPageNumber] = React.useState<number>(1);
     const [scale, setScale] = React.useState<number>(1.0);
@@ -237,17 +240,17 @@ const PdfAnnotator: React.FC = () => {
         if (pdfRef.current) {
             pdfRef.current.scrollTop = 0;
         }
-    }, []);
+    }, [file]);
 
-    useEffect(() => {
-        setFile('/rw244.pdf');
-    }, []);
+    // useEffect(() => {
+    //     setFile('/rw244.pdf');
+    // }, []);
 
     return (
         <div className="flex-1 flex-col overflow-hidden items-center justify-center">
             <ToolBar tool={tool} setTool={setTool} onUndo={handleUndo} onRedo={handleRedo} />
             {file ? (
-                <div className="relative items-center justify-center" ref={pdfRef}>
+                <div className="relative flex items-center justify-center" ref={pdfRef}>
                     <Document
                         file={file}
                         onLoadSuccess={onDocumentLoadSuccess}
