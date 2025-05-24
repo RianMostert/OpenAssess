@@ -6,7 +6,7 @@ interface LeftSidebarProps {
     width: number;
     onUploadPdf: (file: File) => void;
     onExportPdf?: () => void;
-    onExportJson?: (annotationJson: string | null) => void;
+    onExportJson: () => void;
 }
 
 export default function LeftSidebar({ activeNavItem, width, onUploadPdf, onExportJson }: LeftSidebarProps) {

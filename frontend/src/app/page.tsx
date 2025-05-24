@@ -54,7 +54,6 @@ export default function Home() {
   const [texts, setTexts] = useState<TextElement[]>([]);
   const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
 
-
   // Function to handle the left sidebar toggle
   const toggleLeftSidebar = () => {
     setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed);
@@ -62,6 +61,24 @@ export default function Home() {
   const toggleRightSidebar = () => {
     setIsRightSidebarCollapsed(!isRightSidebarCollapsed);
   }
+
+  const exportAnnotationsToJson = () => {
+    const exportData = JSON.stringify({
+      lines,
+      texts,
+      stickyNotes
+    }, null, 2);
+
+    const blob = new Blob([exportData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'annotations.json';
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="flex flex-col h-screen overflow-hidden ">
@@ -78,7 +95,7 @@ export default function Home() {
         </div>
 
         <div className="border-r border-zinc-800">
-          <LeftSideBar activeNavItem={activeNavItem} width={300} onUploadPdf={setPdfFile} />
+          <LeftSideBar activeNavItem={activeNavItem} width={300} onUploadPdf={setPdfFile} onExportJson={exportAnnotationsToJson} />
         </div>
 
         <div className="overflow-hidden">

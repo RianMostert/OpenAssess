@@ -1,10 +1,11 @@
 import { Button } from "@components/ui/button";
 import { TooltipProvider } from "@radix-ui/react-tooltip";
+import { on } from "events";
 
 interface DocumentPanelProps {
     onUpload: (file: File) => void;
     onExportPdf?: () => void;
-    onExportJson?: (annotationJson: string | null) => void;
+    onExportJson: () => void;
 }
 
 export default function DocumentPanel({ onUpload, onExportJson }: DocumentPanelProps) {
@@ -16,8 +17,22 @@ export default function DocumentPanel({ onUpload, onExportJson }: DocumentPanelP
     };
 
     const handleExportJson = () => {
-        alert("Exporting JSON is not implemented yet.");
+        onExportJson();
     };
+
+    // const downloadJson = () => {
+    //     const json = getExportJson();
+    //     const blob = new Blob([json], { type: 'application/json' });
+    //     const url = URL.createObjectURL(blob);
+
+    //     const a = document.createElement('a');
+    //     a.href = url;
+    //     a.download = 'annotations.json';
+    //     a.click();
+
+    //     URL.revokeObjectURL(url);
+    //   };
+
 
     return (
         <>

@@ -247,6 +247,10 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         if (pdfRef.current) {
             pdfRef.current.scrollTop = 0;
         }
+        setLines([]);
+        setTexts([]);
+        setStickyNotes([]);
+        setHistory([]);
     }, [file]);
 
     // useEffect(() => {
