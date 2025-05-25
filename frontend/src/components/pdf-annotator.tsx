@@ -92,6 +92,20 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedId]);
 
+    function isPointNearEraser(eraserPoints: number[], point: { x: number, y: number }, threshold: number): boolean {
+        for (let i = 0; i < eraserPoints.length; i += 2) {
+            const ex = eraserPoints[i];
+            const ey = eraserPoints[i + 1];
+            const dx = ex - point.x;
+            const dy = ey - point.y;
+            if (Math.sqrt(dx * dx + dy * dy) <= threshold) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
         const pos = e.target.getStage()?.getPointerPosition();
         if (!pos) return;
@@ -147,17 +161,53 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         setIsDrawing(false);
 
         if (currentPoints.length >= 4) {
-            const newLine: LineElement = {
-                points: currentPoints,
-                stroke: tool === 'eraser' ? 'white' : currentColor,
-                strokeWidth: tool === 'eraser' ? 20 : 2,
-                id: `line_${Date.now()}`,
-                compositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over',
-                tool: 'pencil',
-                page: pageNumber
-            };
+            if (tool === 'eraser') {
+                const threshold = 15; // adjust based on strokeWidth
+                const newLines = lines.flatMap(line => {
+                    if (line.tool !== 'pencil' || line.page !== pageNumber) return [line];
 
-            setLines(prev => [...prev, newLine]);
+                    const segments: number[][] = [];
+                    let currentSegment: number[] = [];
+
+                    for (let i = 0; i < line.points.length; i += 2) {
+                        const point = { x: line.points[i], y: line.points[i + 1] };
+                        const isErased = isPointNearEraser(currentPoints, point, threshold);
+
+                        if (isErased) {
+                            if (currentSegment.length >= 4) {
+                                segments.push(currentSegment);
+                            }
+                            currentSegment = [];
+                        } else {
+                            currentSegment.push(point.x, point.y);
+                        }
+                    }
+
+                    if (currentSegment.length >= 4) {
+                        segments.push(currentSegment);
+                    }
+
+                    return segments.map((seg) => ({
+                        ...line,
+                        id: `line_${Date.now()}_${Math.random()}`,
+                        points: seg
+                    }));
+                });
+
+                setLines(newLines);
+            } else {
+                const newLine: LineElement = {
+                    points: currentPoints,
+                    stroke: currentColor,
+                    strokeWidth: 2,
+                    id: `line_${Date.now()}`,
+                    compositeOperation: 'source-over',
+                    tool: 'pencil',
+                    page: pageNumber
+                };
+                setLines(prev => [...prev, newLine]);
+            }
+
         }
 
         setCurrentPoints([]);
@@ -300,7 +350,7 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                 <Line
                                     points={currentPoints}
                                     stroke={tool === 'eraser' ? 'white' : currentColor}
-                                    strokeWidth={tool === 'eraser' ? 20 : 2}
+                                    strokeWidth={tool === 'eraser' ? 10 : 2}
                                     tension={0.5}
                                     lineCap="round"
                                     globalCompositeOperation={tool === 'eraser' ? 'destination-out' : 'source-over'}
