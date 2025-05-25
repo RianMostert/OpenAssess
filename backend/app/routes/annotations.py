@@ -53,12 +53,31 @@ def burn_annotations(pdf_path, output_path, annotation_json):
             page.draw_line(p1, p2, color=stroke, width=stroke_width)
             page.draw_circle(p1, stroke_width / 4, color=stroke)
 
+    canvas_width = 779
+    print(f"Page width: {page.rect.width}, Canvas width: {canvas_width}")
+
     for text in data.get("texts", []):
-        pos = fitz.Point(text["x"] - 90, text["y"] + 13)
+        x = text["x"]
+        y = text["y"]  # if this aligns well, no need to touch
+        width = 200
+        height = 1000
+
+        # p1 = fitz.Point(x,y)
+        # page.draw_circle(p1, 5, color=(0, 0, 0))  # Draw a circle at the text position for debugging
+
+        rect = fitz.Rect(x, y, x + width, y + height)
         color = hex_to_rgb(text["fill"])
         font_size = text["fontSize"]
         content = text["text"]
-        page.insert_text(pos, content, fontsize=font_size, color=color)
+
+        page.insert_textbox(
+            rect,
+            content,
+            fontsize=font_size,
+            color=color,
+            align=0,
+        )
+
 
     for sticky in data.get("stickyNotes", []):
         x = adjust_x(sticky["x"], page_width)

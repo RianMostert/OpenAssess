@@ -66,12 +66,23 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
     const [history, setHistory] = useState<any[]>([]);
     const [redoStack, setRedoStack] = useState<any[]>([]);
 
-    // const [lines, setLines] = useState<LineElement[]>([]);
     const [isDrawing, setIsDrawing] = useState<boolean>(false);
     const [currentPoints, setCurrentPoints] = useState<number[]>([]);
     const [currentColor, setCurrentColor] = useState<string>('#ff0000');
-    // const [texts, setTexts] = useState<TextElement[]>([]);
-    // const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
+    const [containerWidth, setContainerWidth] = useState(0);
+    const [pageNaturalWidth, setPageNaturalWidth] = useState(0);
+
+    useEffect(() => {
+        const updateSize = () => {
+            if (pdfRef.current) {
+                setContainerWidth(pdfRef.current.clientWidth);
+            }
+        };
+
+        updateSize(); // Initial call
+        window.addEventListener('resize', updateSize);
+        return () => window.removeEventListener('resize', updateSize);
+    }, []);
 
     // const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     //     width: 0,
@@ -322,6 +333,7 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                     <Document
                         file={file}
                         onLoadSuccess={onDocumentLoadSuccess}
+                        className="border border-zinc-800 rounded-lg overflow-hidden"
                     >
                         <Page
                             pageNumber={pageNumber}
@@ -330,7 +342,7 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                             renderTextLayer={false} />
                     </Document>
                     <Stage
-                        width={pdfRef.current?.clientWidth || 0}
+                        width={containerWidth || 0}
                         height={pdfRef.current?.clientHeight || 0}
                         onMouseDown={handleMouseDown}
                         onMousemove={handleMouseMove}
@@ -371,25 +383,25 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                     fontSize={textNote.fontSize}
                                     fill={textNote.fill}
                                     draggable
+                                    width={200} // set to whatever max width you want
+                                    wrap="word" // or 'char' for stricter wrapping
                                     onClick={() => setSelectedId(textNote.id)}
                                     onDblClick={(e) => {
                                         const stage = e.target.getStage();
                                         const absPos = e.target.getAbsolutePosition();
                                         const id = textNote.id;
 
-                                        // Show a textarea for editing
                                         const textArea = document.createElement('textarea');
-                                        if (textNote.text === 'New note') {
-                                            textArea.value = '';
-                                        } else {
-                                            textArea.value = textNote.text;
-                                        }
+                                        textArea.value = textNote.text === 'New note' ? '' : textNote.text;
                                         document.body.appendChild(textArea);
 
                                         textArea.style.position = 'absolute';
-                                        textArea.style.top = `${stage?.container().offsetTop! + absPos.y}px`;
-                                        textArea.style.left = `${stage?.container().offsetLeft! + absPos.x}px`;
+                                        textArea.style.top = `${absPos.y + 120}px`;
+                                        textArea.style.left = `${absPos.x + 340}px`;
                                         textArea.style.fontSize = `${textNote.fontSize}px`;
+                                        textArea.style.background = '#ffffff';
+                                        textArea.style.width = '200px';
+                                        textArea.style.whiteSpace = 'pre-wrap';
                                         textArea.focus();
 
                                         textArea.onblur = () => {
@@ -407,7 +419,7 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                                 e.preventDefault();
                                                 textArea.blur();
                                             }
-                                        }
+                                        };
                                     }}
                                 />
                             ))}

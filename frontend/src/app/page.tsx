@@ -124,18 +124,36 @@ export default function Home() {
       <TopBar
         toggleLeftSidebar={toggleLeftSidebar}
         toggleRightSidebar={toggleRightSidebar}
-        leftSidebarCollapsed={false}
-        rightSidebarCollapsed={false}
+        leftSidebarCollapsed={isLeftSidebarCollapsed}
+        rightSidebarCollapsed={isRightSidebarCollapsed}
       />
-      <div className="grid grid-cols-[auto_300px_1fr_300px] h-screen overflow-hidden">
+      <div
+        className={`grid h-screen overflow-hidden ${isLeftSidebarCollapsed && isRightSidebarCollapsed
+          ? 'grid-cols-[auto_1fr]'
+          : isLeftSidebarCollapsed
+            ? 'grid-cols-[auto_1fr_300px]'
+            : isRightSidebarCollapsed
+              ? 'grid-cols-[auto_300px_1fr]'
+              : 'grid-cols-[auto_300px_1fr_300px]'
+          }`}
+      >
 
         <div className="flex flex-col border-r border-zinc-800">
           <NavBar activeNavItem="document" itemSelected={setActiveNavItem} />
         </div>
 
-        <div className="border-r border-zinc-800">
-          <LeftSideBar activeNavItem={activeNavItem} width={300} onUploadPdf={setPdfFile} onExportPdf={burnAnnotations} onExportJson={exportAnnotationsToJson} />
-        </div>
+        {!isLeftSidebarCollapsed && (
+          <div className="border-r border-zinc-800">
+            <LeftSideBar
+              activeNavItem={activeNavItem}
+              width={300}
+              onUploadPdf={setPdfFile}
+              onExportPdf={burnAnnotations}
+              onExportJson={exportAnnotationsToJson}
+            />
+          </div>
+        )}
+
 
         <div className="overflow-hidden">
           <PdfAnnotator
@@ -150,9 +168,12 @@ export default function Home() {
 
         </div>
 
-        <div className="border-l border-zinc-800">
-          <RightSidebar width={300} />
-        </div>
+        {!isRightSidebarCollapsed && (
+          <div className="border-l border-zinc-800">
+            <RightSidebar width={300} />
+          </div>
+        )}
+
 
       </div>
 
