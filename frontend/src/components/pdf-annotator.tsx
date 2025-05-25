@@ -81,7 +81,13 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
     useEffect(() => {
         // maybe delete on backspace as well but will need to check if the text is selected
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Delete') {
+            if (e.key === 'Delete' || (e.key === 'Backspace' && e.metaKey)) {
+                const activeEl = document.activeElement as HTMLElement;
+                if (activeEl && activeEl.tagName === 'TEXTAREA') {
+                    activeEl.blur();
+                }
+                e.preventDefault();
+                e.stopPropagation();
                 setTexts(prev => prev.filter(t => t.id !== selectedId));
                 setStickyNotes(prev => prev.filter(s => s.id !== selectedId));
                 setSelectedId(null);
