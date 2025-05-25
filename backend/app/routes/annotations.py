@@ -33,7 +33,7 @@ def flip_y(y, page_height):
     return y
 
 def adjust_x(x, page_width):
-    return x - 90
+    return x
 
 def burn_annotations(pdf_path, output_path, annotation_json):
     doc = fitz.open(pdf_path)
@@ -77,7 +77,6 @@ def burn_annotations(pdf_path, output_path, annotation_json):
             color=color,
             align=0,
         )
-
 
     for sticky in data.get("stickyNotes", []):
         x = adjust_x(sticky["x"], page_width)

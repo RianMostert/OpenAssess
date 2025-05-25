@@ -71,18 +71,20 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
     const [currentColor, setCurrentColor] = useState<string>('#ff0000');
     const [containerWidth, setContainerWidth] = useState(0);
     const [pageNaturalWidth, setPageNaturalWidth] = useState(0);
+    const [pageSize, setPageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
-    useEffect(() => {
-        const updateSize = () => {
-            if (pdfRef.current) {
-                setContainerWidth(pdfRef.current.clientWidth);
-            }
-        };
 
-        updateSize(); // Initial call
-        window.addEventListener('resize', updateSize);
-        return () => window.removeEventListener('resize', updateSize);
-    }, []);
+    // useEffect(() => {
+    //     const updateSize = () => {
+    //         if (pdfRef.current) {
+    //             setContainerWidth(pdfRef.current.clientWidth);
+    //         }
+    //     };
+
+    //     updateSize(); // Initial call
+    //     window.addEventListener('resize', updateSize);
+    //     return () => window.removeEventListener('resize', updateSize);
+    // }, []);
 
     // const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     //     width: 0,
@@ -274,8 +276,6 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         const initialX = stickyNote.x;
         const initialY = stickyNote.y;
 
-        const containerRect = container.getBoundingClientRect();
-
         const handleMouseMove = (moveEvent: MouseEvent) => {
             const deltaX = moveEvent.clientX - startX;
             const deltaY = moveEvent.clientY - startY;
@@ -339,15 +339,19 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                             pageNumber={pageNumber}
                             scale={scale}
                             renderAnnotationLayer={false}
-                            renderTextLayer={false} />
+                            renderTextLayer={false}
+                            onRenderSuccess={(page) => {
+                                setPageNaturalWidth(page.view[2]);
+                                setPageSize({ width: page.width, height: page.height });
+                            }} />
                     </Document>
                     <Stage
-                        width={containerWidth || 0}
-                        height={pdfRef.current?.clientHeight || 0}
+                        width={pageSize.width}
+                        height={pageSize.height}
                         onMouseDown={handleMouseDown}
                         onMousemove={handleMouseMove}
                         onMouseup={handleMouseUp}
-                        className='absolute top-0 left-0'
+                        className='absolute'
                     >
                         <Layer>
                             {/* Render saved lines */}
@@ -385,6 +389,14 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                     draggable
                                     width={200} // set to whatever max width you want
                                     wrap="word" // or 'char' for stricter wrapping
+                                    onDragEnd={(e) => {
+                                        const { x, y } = e.target.position();
+                                        setTexts((prev) =>
+                                            prev.map((t) =>
+                                                t.id === textNote.id ? { ...t, x, y } : t
+                                            )
+                                        );
+                                    }}
                                     onClick={() => setSelectedId(textNote.id)}
                                     onDblClick={(e) => {
                                         const stage = e.target.getStage();
