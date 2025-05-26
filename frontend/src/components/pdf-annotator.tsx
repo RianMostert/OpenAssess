@@ -73,24 +73,6 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
     const [pageNaturalWidth, setPageNaturalWidth] = useState(0);
     const [pageSize, setPageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
 
-
-    // useEffect(() => {
-    //     const updateSize = () => {
-    //         if (pdfRef.current) {
-    //             setContainerWidth(pdfRef.current.clientWidth);
-    //         }
-    //     };
-
-    //     updateSize(); // Initial call
-    //     window.addEventListener('resize', updateSize);
-    //     return () => window.removeEventListener('resize', updateSize);
-    // }, []);
-
-    // const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
-    //     width: 0,
-    //     height: 0
-    // });
-
     useEffect(() => {
         // maybe delete on backspace as well but will need to check if the text is selected
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -124,9 +106,14 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         return false;
     }
 
+    const getPointerPosition = (e: Konva.KonvaEventObject<any>) => {
+        const stage = e.target.getStage();
+        return stage?.getPointerPosition();
+    };
 
-    const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-        const pos = e.target.getStage()?.getPointerPosition();
+    const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+        e.evt.preventDefault();
+        const pos = getPointerPosition(e);
         if (!pos) return;
 
         if (tool === 'pencil' || tool === 'eraser') {
@@ -164,7 +151,8 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         }
     };
 
-    const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+        e.evt.preventDefault();
         if (!isDrawing) return;
 
         const stage = e.target.getStage();
@@ -321,15 +309,65 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         setHistory([]);
     }, [file]);
 
+    let longPressTimer: NodeJS.Timeout;
+
+    // const handleLongPressStart = (e: Konva.KonvaEventObject<TouchEvent>) => {
+    //     e.evt.preventDefault();
+
+    //     longPressTimer = setTimeout(() => {
+    //         const stage = e.target.getStage();
+    //         const absPos = e.target.getAbsolutePosition();
+    //         const id = textNote.id;
+
+    //         const textArea = document.createElement('textarea');
+    //         textArea.value = textNote.text === 'New note' ? '' : textNote.text;
+    //         document.body.appendChild(textArea);
+
+    //         textArea.style.position = 'absolute';
+    //         textArea.style.top = `${absPos.y + 120}px`;
+    //         textArea.style.left = `${absPos.x + 340}px`;
+    //         textArea.style.fontSize = `${textNote.fontSize}px`;
+    //         textArea.style.background = '#ffffff';
+    //         textArea.style.width = '200px';
+    //         textArea.style.whiteSpace = 'pre-wrap';
+    //         textArea.focus();
+
+    //         textArea.onblur = () => {
+    //             const updatedText = textArea.value || 'New note';
+    //             setTexts((prev) =>
+    //                 prev.map((t) =>
+    //                     t.id === id ? { ...t, text: updatedText } : t
+    //                 )
+    //             );
+    //             document.body.removeChild(textArea);
+    //         };
+
+    //         textArea.onkeydown = (e) => {
+    //             if (e.key === 'Enter') {
+    //                 e.preventDefault();
+    //                 textArea.blur();
+    //             }
+    //         };
+    //     }, 600); // 600ms threshold for long press
+    // };
+
+    const handleLongPressCancel = () => {
+        clearTimeout(longPressTimer);
+    };
+
+
     // useEffect(() => {
     //     setFile('/rw244.pdf');
     // }, []);
+
+    let startX = 0;
+    let startY = 0;
 
     return (
         <div className="flex-1 flex-col overflow-hidden items-center justify-center">
             <ToolBar tool={tool} setTool={setTool} onUndo={handleUndo} onRedo={handleRedo} />
             {file ? (
-                <div className="relative flex items-center justify-center" ref={pdfRef}>
+                <div className="relative flex items-center justify-center touch-none" ref={pdfRef}>
                     <Document
                         file={file}
                         onLoadSuccess={onDocumentLoadSuccess}
@@ -351,6 +389,9 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                         onMouseDown={handleMouseDown}
                         onMousemove={handleMouseMove}
                         onMouseup={handleMouseUp}
+                        onTouchStart={handleMouseDown}
+                        onTouchMove={handleMouseMove}
+                        onTouchEnd={handleMouseUp}
                         className='absolute'
                     >
                         <Layer>
@@ -375,6 +416,7 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                     strokeWidth={tool === 'eraser' ? 10 : 2}
                                     tension={0.5}
                                     lineCap="round"
+                                    lineJoin="round"
                                     globalCompositeOperation={tool === 'eraser' ? 'destination-out' : 'source-over'}
                                 />
                             )}
@@ -433,6 +475,60 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                             }
                                         };
                                     }}
+                                    onTouchStart={(e) => {
+                                        e.evt.preventDefault();
+                                        const touch = e.evt.touches[0];
+                                        startX = touch.clientX;
+                                        startY = touch.clientY;
+
+                                        longPressTimer = setTimeout(() => {
+                                            const stage = e.target.getStage();
+                                            const absPos = e.target.getAbsolutePosition();
+                                            const id = textNote.id;
+
+                                            const textArea = document.createElement('textarea');
+                                            textArea.value = textNote.text === 'New note' ? '' : textNote.text;
+                                            document.body.appendChild(textArea);
+
+                                            textArea.style.position = 'absolute';
+                                            textArea.style.top = `${absPos.y + 120}px`;
+                                            textArea.style.left = `${absPos.x}px`;
+                                            textArea.style.fontSize = `${textNote.fontSize}px`;
+                                            textArea.style.background = '#ffffff';
+                                            textArea.style.width = '200px';
+                                            textArea.style.whiteSpace = 'pre-wrap';
+                                            textArea.focus();
+
+                                            textArea.onblur = () => {
+                                                const updatedText = textArea.value || 'New note';
+                                                setTexts((prev) =>
+                                                    prev.map((t) =>
+                                                        t.id === id ? { ...t, text: updatedText } : t
+                                                    )
+                                                );
+                                                document.body.removeChild(textArea);
+                                            };
+
+                                            textArea.onkeydown = (e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    textArea.blur();
+                                                }
+                                            };
+                                        }, 600); // 600ms for long-press feel
+                                    }}
+
+                                    onTouchEnd={() => clearTimeout(longPressTimer)}
+                                    onTouchMove={(e) => {
+                                        const touch = e.evt.touches[0];
+                                        const dx = touch.clientX - startX;
+                                        const dy = touch.clientY - startY;
+
+                                        if (Math.sqrt(dx * dx + dy * dy) > 1) { // movementthreshhold = 1
+                                            clearTimeout(longPressTimer);
+                                        }
+                                    }}
+
                                 />
                             ))}
                         </Layer>
