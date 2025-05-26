@@ -202,6 +202,33 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                 });
 
                 setLines(newLines);
+                // if (tool === 'eraser') {
+                //     const threshold = 1;
+
+                //     const newLines = lines.filter(line => {
+                //         if (line.tool !== 'pencil' || line.page !== pageNumber) return true;
+
+                //         // Check if any eraser point is close to this line
+                //         for (let i = 0; i < line.points.length; i += 2) {
+                //             const linePoint = { x: line.points[i], y: line.points[i + 1] };
+
+                //             for (let j = 0; j < currentPoints.length; j += 2) {
+                //                 const eraserPoint = { x: currentPoints[j], y: currentPoints[j + 1] };
+                //                 const dx = linePoint.x - eraserPoint.x;
+                //                 const dy = linePoint.y - eraserPoint.y;
+                //                 const dist = Math.sqrt(dx * dx + dy * dy);
+
+                //                 if (dist < threshold) {
+                //                     return false; // This line should be erased
+                //                 }
+                //             }
+                //         }
+
+                //         return true; // Keep the line
+                //     });
+
+                //     setLines(newLines);
+
             } else {
                 const newLine: LineElement = {
                     points: currentPoints,
@@ -246,16 +273,19 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
     };
 
     const handleStickyDrag = (
-        e: React.MouseEvent,
+        e: React.MouseEvent | React.TouchEvent,
         stickyNoteId: string
     ) => {
         e.stopPropagation();
+        e.preventDefault();
 
         const container = pdfRef.current;
         if (!container) return;
 
-        const startX = e.clientX;
-        const startY = e.clientY;
+        // Normalize input type
+        const isTouch = 'touches' in e;
+        const startX = isTouch ? e.touches[0].clientX : e.clientX;
+        const startY = isTouch ? e.touches[0].clientY : e.clientY;
         let dragged = false;
 
         const stickyNote = stickyNotes.find((s) => s.id === stickyNoteId);
@@ -264,16 +294,17 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
         const initialX = stickyNote.x;
         const initialY = stickyNote.y;
 
-        const handleMouseMove = (moveEvent: MouseEvent) => {
-            const deltaX = moveEvent.clientX - startX;
-            const deltaY = moveEvent.clientY - startY;
+        const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+            const currentX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+            const currentY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
 
-            // If Sticky was dragged, then dont handle mousedown event
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+
             if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
                 dragged = true;
             }
 
-            // adjust by container offset
             const newX = initialX + deltaX;
             const newY = initialY + deltaY;
 
@@ -286,14 +317,73 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
             );
         };
 
-        const handleMouseUp = () => {
-            window.removeEventListener("mousemove", handleMouseMove);
-            window.removeEventListener("mouseup", handleMouseUp);
+        const handleEnd = () => {
+            window.removeEventListener('mousemove', handleMove as any);
+            window.removeEventListener('mouseup', handleEnd);
+            window.removeEventListener('touchmove', handleMove as any);
+            window.removeEventListener('touchend', handleEnd);
         };
 
-        window.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("mouseup", handleMouseUp);
+        if (isTouch) {
+            window.addEventListener('touchmove', handleMove as any, { passive: false });
+            window.addEventListener('touchend', handleEnd);
+        } else {
+            window.addEventListener('mousemove', handleMove as any);
+            window.addEventListener('mouseup', handleEnd);
+        }
     };
+
+
+    // const handleStickyDrag = (
+    //     e: React.MouseEvent | React.TouchEvent,
+    //     stickyNoteId: string
+    // ) => {
+    //     e.stopPropagation();
+    //     e.preventDefault();
+
+    //     const container = pdfRef.current;
+    //     if (!container) return;
+
+    //     const startX = e.clientX;
+    //     const startY = e.clientY;
+    //     let dragged = false;
+
+    //     const stickyNote = stickyNotes.find((s) => s.id === stickyNoteId);
+    //     if (!stickyNote) return;
+
+    //     const initialX = stickyNote.x;
+    //     const initialY = stickyNote.y;
+
+    //     const handleMouseMove = (moveEvent: MouseEvent) => {
+    //         const deltaX = moveEvent.clientX - startX;
+    //         const deltaY = moveEvent.clientY - startY;
+
+    //         // If Sticky was dragged, then dont handle mousedown event
+    //         if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+    //             dragged = true;
+    //         }
+
+    //         // adjust by container offset
+    //         const newX = initialX + deltaX;
+    //         const newY = initialY + deltaY;
+
+    //         setStickyNotes((prev) =>
+    //             prev.map((s) =>
+    //                 s.id === stickyNoteId
+    //                     ? { ...s, x: newX, y: newY }
+    //                     : s
+    //             )
+    //         );
+    //     };
+
+    //     const handleMouseUp = () => {
+    //         window.removeEventListener("mousemove", handleMouseMove);
+    //         window.removeEventListener("mouseup", handleMouseUp);
+    //     };
+
+    //     window.addEventListener("mousemove", handleMouseMove);
+    //     window.addEventListener("mouseup", handleMouseUp);
+    // };
 
     const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
         setNumPages(numPages);
@@ -524,7 +614,7 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                         const dx = touch.clientX - startX;
                                         const dy = touch.clientY - startY;
 
-                                        if (Math.sqrt(dx * dx + dy * dy) > 1) { // movementthreshhold = 1
+                                        if (Math.sqrt(dx * dx + dy * dy) > 3) { // movementthreshhold = 1
                                             clearTimeout(longPressTimer);
                                         }
                                     }}
@@ -542,8 +632,10 @@ const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, text
                                 left: stickyNote.x,
                                 zIndex: 10,
                                 cursor: 'move',
+                                touchAction: 'none',
                             }}
                             onMouseDown={(e) => handleStickyDrag(e, stickyNote.id)}
+                            onTouchStart={(e) => handleStickyDrag(e, stickyNote.id)}
                         >
                             <StickyNote
                                 content={stickyNote.text}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Pencil } from "lucide-react";
@@ -17,15 +17,36 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     isSelected = false,
 }) => {
     const [expanded, setExpanded] = useState(false);
+    const noteRef = useRef<HTMLDivElement>(null);
 
-    const toggleExpand = (e: React.MouseEvent) => {
+    // Detect clicks outside the sticky note
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent | TouchEvent | PointerEvent) => {
+            if (noteRef.current && !noteRef.current.contains(event.target as Node)) {
+                setExpanded(false);
+            }
+        };
+
+        if (expanded) {
+            document.addEventListener("pointerdown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("pointerdown", handleClickOutside);
+        };
+    }, [expanded]);
+
+    const toggleExpand = (e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
-        setExpanded(!expanded);
-        onClick?.(); // optional callback to parent
+        if (!expanded) {
+            setExpanded(true);
+            onClick?.();
+        }
     };
 
     return (
         <Card
+            ref={noteRef}
             onClick={toggleExpand}
             className={`cursor-pointer p-2 transition-all duration-300 ${expanded ? "w-64 h-64" : "w-16 h-16"
                 } overflow-hidden bg-yellow-100 shadow-xl rounded-2xl border-2 ${isSelected ? "border-blue-500" : "border-transparent"
@@ -35,6 +56,8 @@ const StickyNote: React.FC<StickyNoteProps> = ({
                 <Textarea
                     value={content}
                     onChange={(e) => onChange(e.target.value)}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onBlur={() => setExpanded(false)}
                     className="w-full h-full resize-none bg-yellow-100 border-none focus:outline-none"
                     autoFocus
                 />
