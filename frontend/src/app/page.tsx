@@ -95,7 +95,7 @@ export default function Home() {
     formData.append("annotation_json", getJson()); // JSON string
 
     try {
-      const response = await fetch("http://localhost:8000/annotations/burn", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/annotations/burn`, {
         method: "POST",
         body: formData,
       });
