@@ -109,7 +109,7 @@ export default function Home() {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = "annotated.pdf";
+      a.download = `${pdfFile.name}`;
       a.click();
 
       window.URL.revokeObjectURL(url);

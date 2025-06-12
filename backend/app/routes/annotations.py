@@ -82,7 +82,13 @@ def burn_annotations(pdf_path, output_path, annotation_json):
         x = adjust_x(sticky["x"], page_width)
         y = flip_y(sticky["y"], page_height)
         content = sticky["text"]
-        page.add_text_annot(fitz.Point(x, y), content)
+        # page.add_text_annot(fitz.Point(x, y), content).set_open(True)
+        # Add sticky note (Text annotation)
+        annot = page.add_text_annot(fitz.Point(x, y), content)
+
+        # Optional but recommended for compatibility
+        annot.set_open(True)
+        annot.set_info(title="Sticky Note")
 
     doc.save(output_path)
 
