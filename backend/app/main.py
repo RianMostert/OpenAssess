@@ -22,6 +22,7 @@ app = FastAPI(
     title="Assesment Management System",
     description="Backend for managing and grading assessment papers using FastAPI",
     version="1.0.0",
+    lifespan=register_dependencies(),
 )
 
 # CORS Middleware
@@ -34,7 +35,7 @@ app.add_middleware(
 )
 
 # Register DB/session/auth dependencies
-register_dependencies(app)
+# register_dependencies(app)
 
 # Register routers
 app.include_router(users.router, prefix="/api/v1")

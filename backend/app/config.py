@@ -9,6 +9,7 @@ setting environment variables or editing the .env file.
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 
 
 class Settings(BaseSettings):
@@ -16,8 +17,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "*"
     ENV: str = "dev"
 
-    class Config:
-        env_file = ".env"
+    model_config = ConfigDict(env_file=".env")
 
 
 settings = Settings()

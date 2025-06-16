@@ -12,6 +12,8 @@ Defines shared dependencies used across the FastAPI application.
 Will need to add get_current_user and require_admin later
 """
 
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from app.db.session import SessionLocal
 
 
@@ -24,11 +26,11 @@ def get_db():
         db.close()
 
 
-def register_dependencies(app):
-    @app.on_event("startup")
-    def startup():
+def register_dependencies():
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
         print("🚀 App starting...")
-
-    @app.on_event("shutdown")
-    def shutdown():
+        yield
         print("🛑 App shutting down...")
+
+    return lifespan
