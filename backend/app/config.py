@@ -10,6 +10,7 @@ setting environment variables or editing the .env file.
 
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./test.db"
     FRONTEND_URL: str = "*"
@@ -17,5 +18,6 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
 
 settings = Settings()

@@ -1,15 +1,13 @@
 from sqlalchemy.orm import Session
 from app.models.user import User
 from app.schemas.user import UserCreate
+from app.schemas.user import UserUpdate
 import uuid
 import hashlib
 
+
 def create_user(db: Session, user_data: UserCreate):
-    password_hash = (
-        hashlib.sha256(user_data.password.encode()).hexdigest()
-        if user_data.password
-        else None
-    )
+    password_hash = hash_password(user_data.password) if user_data.password else None
 
     new_user = User(
         id=uuid.uuid4(),
@@ -36,3 +34,30 @@ def get_user_by_email(db: Session, email: str):
 
 def get_all_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(User).offset(skip).limit(limit).all()
+
+
+def update_user(db: Session, user: User, user_update: UserUpdate):
+    update_data = user_update.model_dump(exclude_unset=True)
+
+    if "password" in update_data:
+        update_data["password_hash"] = hash_password(update_data["password"])
+        del update_data["password"]
+
+    for key, value in update_data.items():
+        setattr(user, key, value)
+
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def delete_user(db: Session, user_id: uuid.UUID):
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        db.delete(user)
+        db.commit()
+    return user
+
+
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()

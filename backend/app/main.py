@@ -15,14 +15,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.dependencies import register_dependencies
-from app.db.base import Base  # Importing Base to ensure models are registered
 
 from app.routers import users
 
 app = FastAPI(
     title="Assesment Management System",
     description="Backend for managing and grading assessment papers using FastAPI",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS Middleware
@@ -39,6 +38,7 @@ register_dependencies(app)
 
 # Register routers
 app.include_router(users.router, prefix="/api/v1")
+
 
 @app.get("/")
 def root():

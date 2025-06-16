@@ -3,13 +3,24 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
+
 class UserCreate(BaseModel):
     first_name: str
     last_name: str
-    email: EmailStr = None
+    email: EmailStr
     student_number: Optional[str] = None
-    password: Optional[str] = None  # plaintext input
+    password: str  # plaintext input
     role: str
+
+
+class UserUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    student_number: Optional[str] = None
+    password: Optional[str] = None
+    role: Optional[str] = None
+
 
 class UserOut(BaseModel):
     id: UUID

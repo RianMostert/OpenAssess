@@ -14,6 +14,7 @@ Will need to add get_current_user and require_admin later
 
 from app.db.session import SessionLocal
 
+
 # The actual dependency function used in routes
 def get_db():
     db = SessionLocal()
@@ -21,6 +22,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 def register_dependencies(app):
     @app.on_event("startup")
