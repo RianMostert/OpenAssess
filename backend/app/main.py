@@ -17,6 +17,11 @@ from app.config import settings
 from app.dependencies import register_dependencies
 
 from app.routers import users
+from app.routers import courses
+from app.routers import assessments
+from app.routers import uploaded_files
+from app.routers import questions
+from app.routers import question_results
 
 app = FastAPI(
     title="Assesment Management System",
@@ -39,6 +44,11 @@ app.add_middleware(
 
 # Register routers
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(courses.router, prefix="/api/v1")
+app.include_router(assessments.router, prefix="/api/v1")
+app.include_router(uploaded_files.router, prefix="/api/v1")
+app.include_router(questions.router, prefix="/api/v1")
+app.include_router(question_results.router, prefix="/api/v1")
 
 
 @app.get("/")
