@@ -8,14 +8,14 @@ def test_create_question_result(client, student, assessment, question, marker):
             "marker_id": str(marker.id),
             "mark": 7.5,
             "comment": "Good work",
-            "file_path": "/annotations/q1.json",
+            "annotation_file_path": "/annotations/q1.json",
         },
     )
     assert response.status_code == 200
     data = response.json()
     assert data["mark"] == 7.5
     assert data["comment"] == "Good work"
-    assert data["file_path"] == "/annotations/q1.json"
+    assert data["annotation_file_path"] == "/annotations/q1.json"
 
 
 def test_get_question_result(client, question_result):

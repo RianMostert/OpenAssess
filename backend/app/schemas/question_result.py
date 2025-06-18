@@ -11,14 +11,14 @@ class QuestionResultCreate(BaseModel):
     marker_id: UUID
     mark: Optional[float] = None
     comment: Optional[str] = None
-    file_path: Optional[str] = None
+    annotation_file_path: Optional[str] = None
     updated_at: Optional[datetime] = None
 
 
 class QuestionResultUpdate(BaseModel):
     mark: Optional[float] = None
     comment: Optional[str] = None
-    file_path: Optional[str] = None
+    annotation_file_path: Optional[str] = None
     updated_at: Optional[datetime] = None
 
 
@@ -30,7 +30,7 @@ class QuestionResultOut(BaseModel):
     marker_id: UUID
     mark: Optional[float]
     comment: Optional[str]
-    file_path: Optional[str]
+    annotation_file_path: Optional[str]
     created_at: datetime
     updated_at: Optional[datetime]
 

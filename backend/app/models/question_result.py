@@ -18,7 +18,7 @@ class QuestionResult(Base):
     marker_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
     mark = Column(Float)
     comment = Column(String)
-    file_path = Column(String)
+    annotation_file_path = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=True)
 
