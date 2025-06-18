@@ -37,7 +37,7 @@ def read_user(user_id: UUID, db: Session = Depends(get_db)):
 #     return current_user
 
 
-# IF email is provided, return user by email, otherwise return all users
+# If email is provided, return user by email, otherwise return all users
 @router.get("/", response_model=List[UserOut])
 def list_users(
     skip: int = 0,

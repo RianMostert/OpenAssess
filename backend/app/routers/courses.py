@@ -22,8 +22,10 @@ def create_course(course: CourseCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[CourseOut])
-def list_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(Course).offset(skip).limit(limit).all()
+def get_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    courses = db.query(Course).offset(skip).limit(limit).all()
+    if not courses:
+        raise HTTPException(status_code=404, detail="No courses found")
 
 
 @router.get("/{course_id}", response_model=CourseOut)
@@ -58,5 +60,9 @@ def delete_course(course_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/{course_id}/assessments", response_model=List[AssessmentOut])
-def list_assessments(course_id: UUID, db: Session = Depends(get_db)):
-    return db.query(Assessment).filter(Assessment.course_id == course_id).all()
+def get_course_assessments(course_id: UUID, db: Session = Depends(get_db)):
+    assessment = db.query(Assessment).filter(Assessment.course_id == course_id).all()
+    if not assessment:
+        raise HTTPException(
+            status_code=404, detail="No assessments found for this course"
+        )
