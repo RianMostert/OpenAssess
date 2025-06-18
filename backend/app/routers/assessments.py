@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from uuid import UUID
+from uuid import UUID, uuid4
+import shutil
 
 from app.schemas.assessment import AssessmentCreate, AssessmentUpdate, AssessmentOut
 from app.models.assessment import Assessment
@@ -8,8 +9,38 @@ from app.schemas.question import QuestionOut
 from app.models.question import Question
 
 from app.dependencies import get_db
+from app.config import settings
 
 router = APIRouter(prefix="/assessments", tags=["Assessments"])
+
+storage_path = settings.QUESTION_PAPER_STORAGE_FOLDER
+storage_path.mkdir(parents=True, exist_ok=True)
+
+
+@router.post("/upload", response_model=AssessmentOut)
+def upload_assessment(
+    title: str = Form(...),
+    course_id: UUID = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    file_id = uuid4()
+    filename = f"{file_id}_{file.filename}"
+    file_path = storage_path / filename
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    db_assessment = Assessment(
+        id=file_id,
+        title=title,
+        course_id=course_id,
+        question_paper_file_path=str(file_path),
+    )
+    db.add(db_assessment)
+    db.commit()
+    db.refresh(db_assessment)
+    return db_assessment
 
 
 @router.post("/", response_model=AssessmentOut)

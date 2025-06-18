@@ -10,13 +10,19 @@ setting environment variables or editing the .env file.
 
 from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
+from pathlib import Path
 
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./test.db"
     FRONTEND_URL: str = "*"
     ENV: str = "dev"
-    FILE_STORAGE_PATH: str = "storage/"
+
+    JSON_STORAGE_PATH: Path = Path("storage/json/")
+
+    QUESTION_PAPER_STORAGE_FOLDER: Path = Path("storage/pdfs/question_papers/")
+    ANSWER_SHEET_STORAGE_FOLDER: Path = Path("storage/pdfs/answer_sheets/")
+    ANNOTATION_STORAGE_PATH: Path = Path("storage/jsons/annotations/")
 
     model_config = ConfigDict(env_file=".env")
 

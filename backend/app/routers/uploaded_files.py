@@ -14,7 +14,7 @@ from app.config import settings
 
 router = APIRouter(prefix="/uploaded-files", tags=["Uploaded Files"])
 
-storage_path = Path(settings.FILE_STORAGE_PATH)
+storage_path = settings.ANSWER_SHEET_STORAGE_FOLDER
 storage_path.mkdir(parents=True, exist_ok=True)
 
 

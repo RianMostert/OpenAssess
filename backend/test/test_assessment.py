@@ -1,3 +1,7 @@
+import tempfile
+from pathlib import Path
+
+
 def test_create_assessment(client, course):
     response = client.post(
         "/api/v1/assessments/",
@@ -34,6 +38,33 @@ def test_delete_assessment(client, assessment):
     assert response.status_code == 200
     assert response.json()["message"] == "Assessment deleted"
 
-    # Confirm deletion
     follow_up = client.get(f"/api/v1/assessments/{assessment.id}")
     assert follow_up.status_code == 404
+
+
+def test_upload_assessment_with_pdf(client, course):
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(b"%PDF-1.4\n%Test PDF content\n%%EOF")
+        tmp_path = tmp.name
+
+    with open(tmp_path, "rb") as pdf_file:
+        response = client.post(
+            "/api/v1/assessments/upload",
+            data={
+                "title": "Midterm",
+                "course_id": str(course.id),
+            },
+            files={"file": ("midterm.pdf", pdf_file, "application/pdf")},
+        )
+
+    Path(tmp_path).unlink()
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["title"] == "Midterm"
+    assert data["course_id"] == str(course.id)
+    assert data["question_paper_file_path"].endswith(".pdf")
+
+    stored_path = Path(data["question_paper_file_path"])
+    if stored_path.exists():
+        stored_path.unlink()

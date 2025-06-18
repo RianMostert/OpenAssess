@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from uuid import UUID
+from uuid import UUID, uuid4
+import shutil
 
 from app.schemas.question_result import (
     QuestionResultCreate,
@@ -8,9 +9,64 @@ from app.schemas.question_result import (
     QuestionResultOut,
 )
 from app.models.question_result import QuestionResult
+
 from app.dependencies import get_db
+from app.config import settings
 
 router = APIRouter(prefix="/question-results", tags=["Question Results"])
+
+storage_path = settings.ANNOTATION_STORAGE_PATH
+storage_path.mkdir(parents=True, exist_ok=True)
+
+
+@router.post("/upload-annotation", response_model=QuestionResultOut)
+def upload_annotation(
+    assessment_id: UUID = Form(...),
+    student_id: UUID = Form(...),
+    question_id: UUID = Form(...),
+    marker_id: UUID = Form(...),
+    mark: float = Form(...),
+    comment: str = Form(""),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    existing = (
+        db.query(QuestionResult)
+        .filter_by(
+            assessment_id=assessment_id,
+            student_id=student_id,
+            question_id=question_id,
+        )
+        .first()
+    )
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Result already exists")
+
+    if not file.filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="Only .json files allowed")
+
+    file_id = uuid4()
+    filename = f"{file_id}_{file.filename}"
+    file_path = storage_path / filename
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    db_result = QuestionResult(
+        id=file_id,
+        assessment_id=assessment_id,
+        student_id=student_id,
+        question_id=question_id,
+        marker_id=marker_id,
+        mark=mark,
+        comment=comment,
+        annotation_file_path=str(file_path),
+    )
+    db.add(db_result)
+    db.commit()
+    db.refresh(db_result)
+    return db_result
 
 
 @router.post("/", response_model=QuestionResultOut)
