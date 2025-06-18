@@ -12,8 +12,11 @@ from app.models import uploaded_file as uploaded_file_model
 from app.models import question as question_model
 from app.models import question_result as question_result_model
 import uuid
+import os
 
-TEST_DATABASE_URL = "postgresql://rianmostert:password@localhost:5432/mytestdb"
+TEST_DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://rianmostert:password@localhost:5432/mytestdb"
+)
 
 engine = create_engine(TEST_DATABASE_URL)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

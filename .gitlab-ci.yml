@@ -1,0 +1,31 @@
+stages:
+  - test
+
+variables:
+  POSTGRES_DB: mytestdb
+  POSTGRES_USER: rianmostert
+  POSTGRES_PASSWORD: password
+  DATABASE_URL: postgresql://rianmostert:password@postgres:5432/mytestdb
+
+test_backend:
+  stage: test
+  image: python:3.11
+  services:
+    - name: postgres:13
+      alias: postgres
+  before_script:
+    - python -m venv venv
+    - source venv/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - pytest --tb=short --disable-warnings --junitxml=pytest-report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: pytest-report.xml
+    paths:
+      - pytest-report.xml
+  rules:
+    - changes:
+        - backend/app/routers/**
