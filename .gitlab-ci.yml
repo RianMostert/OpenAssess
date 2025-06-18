@@ -10,6 +10,8 @@ variables:
 test_backend:
   stage: test
   image: python:3.11
+  tags:
+    - shared-docker-runner
   services:
     - name: postgres:13
       alias: postgres
