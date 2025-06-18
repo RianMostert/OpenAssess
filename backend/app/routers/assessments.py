@@ -1,6 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    UploadFile,
+    File,
+    Form,
+)
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from uuid import UUID, uuid4
+from pathlib import Path
 import shutil
 
 from app.schemas.assessment import AssessmentCreate, AssessmentUpdate, AssessmentOut
@@ -41,6 +50,21 @@ def upload_assessment(
     db.commit()
     db.refresh(db_assessment)
     return db_assessment
+
+
+@router.get("/{assessment_id}/question-paper")
+def download_question_paper(assessment_id: UUID, db: Session = Depends(get_db)):
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment or not assessment.question_paper_file_path:
+        raise HTTPException(status_code=404, detail="Question paper not found")
+
+    file_path = Path(assessment.question_paper_file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File missing")
+
+    return FileResponse(
+        file_path, filename=file_path.name, media_type="application/pdf"
+    )
 
 
 @router.post("/", response_model=AssessmentOut)

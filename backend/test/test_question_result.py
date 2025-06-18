@@ -3,36 +3,37 @@ import json
 from pathlib import Path
 
 
-def test_upload_annotation_file(client, student, assessment, question, marker):
-    annotation_data = {"highlights": [1, 2, 3], "notes": "Focus on part B"}
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as tmp:
-        json.dump(annotation_data, tmp)
+def test_download_annotation_file(client, student, assessment, question, marker):
+    with tempfile.NamedTemporaryFile(suffix=".json", mode="w", delete=False) as tmp:
+        tmp.write('{"note": "Important section"}')
         tmp_path = tmp.name
 
     try:
-        with open(tmp_path, "rb") as json_file:
-            response = client.post(
+        with open(tmp_path, "rb") as f:
+            upload_response = client.post(
                 "/api/v1/question-results/upload-annotation",
                 data={
                     "student_id": str(student.id),
                     "assessment_id": str(assessment.id),
                     "question_id": str(question.id),
                     "marker_id": str(marker.id),
-                    "mark": 9.0,
-                    "comment": "Great improvement",
+                    "mark": 8.5,
+                    "comment": "Marked section",
                 },
-                files={"file": ("annotation.json", json_file, "application/json")},
+                files={"file": ("annotation.json", f, "application/json")},
             )
 
-        assert response.status_code == 200, response.text
-        data = response.json()
-        assert data["mark"] == 9.0
-        assert data["comment"] == "Great improvement"
-        assert data["annotation_file_path"].endswith(".json")
+        assert upload_response.status_code == 200
+        result_id = upload_response.json()["id"]
 
-        uploaded_file = Path(data["annotation_file_path"])
-        if uploaded_file.exists():
-            uploaded_file.unlink()
+        response = client.get(f"/api/v1/question-results/{result_id}/annotation")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/json"
+        assert b"Important section" in response.content
+
+        path = Path(upload_response.json()["annotation_file_path"])
+        if path.exists():
+            path.unlink()
 
     finally:
         Path(tmp_path).unlink()
@@ -82,3 +83,38 @@ def test_delete_question_result(client, question_result):
     # Confirm deletion
     follow_up = client.get(f"/api/v1/question-results/{question_result.id}")
     assert follow_up.status_code == 404
+
+
+def test_upload_annotation_file(client, student, assessment, question, marker):
+    annotation_data = {"highlights": [1, 2, 3], "notes": "Focus on part B"}
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as tmp:
+        json.dump(annotation_data, tmp)
+        tmp_path = tmp.name
+
+    try:
+        with open(tmp_path, "rb") as json_file:
+            response = client.post(
+                "/api/v1/question-results/upload-annotation",
+                data={
+                    "student_id": str(student.id),
+                    "assessment_id": str(assessment.id),
+                    "question_id": str(question.id),
+                    "marker_id": str(marker.id),
+                    "mark": 9.0,
+                    "comment": "Great improvement",
+                },
+                files={"file": ("annotation.json", json_file, "application/json")},
+            )
+
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["mark"] == 9.0
+        assert data["comment"] == "Great improvement"
+        assert data["annotation_file_path"].endswith(".json")
+
+        uploaded_file = Path(data["annotation_file_path"])
+        if uploaded_file.exists():
+            uploaded_file.unlink()
+
+    finally:
+        Path(tmp_path).unlink()

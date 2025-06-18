@@ -68,3 +68,32 @@ def test_upload_assessment_with_pdf(client, course):
     stored_path = Path(data["question_paper_file_path"])
     if stored_path.exists():
         stored_path.unlink()
+
+
+def test_download_assessment_question_paper(client, course):
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(b"%PDF-1.4\nTest question paper")
+        tmp_path = tmp.name
+
+    try:
+        with open(tmp_path, "rb") as f:
+            upload_response = client.post(
+                "/api/v1/assessments/upload",
+                data={"title": "Final Exam", "course_id": str(course.id)},
+                files={"file": ("exam.pdf", f, "application/pdf")},
+            )
+
+        assert upload_response.status_code == 200
+        assessment_id = upload_response.json()["id"]
+
+        response = client.get(f"/api/v1/assessments/{assessment_id}/question-paper")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert b"%PDF-1.4" in response.content
+
+        path = Path(upload_response.json()["question_paper_file_path"])
+        if path.exists():
+            path.unlink()
+
+    finally:
+        Path(tmp_path).unlink()

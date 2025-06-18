@@ -2,6 +2,31 @@ import tempfile
 from pathlib import Path
 
 
+def test_get_uploaded_file(client, uploaded_file):
+    response = client.get(f"/api/v1/uploaded-files/{uploaded_file.id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == str(uploaded_file.id)
+
+
+def test_update_uploaded_file(client, uploaded_file):
+    response = client.patch(
+        f"/api/v1/uploaded-files/{uploaded_file.id}",
+        json={"answer_sheet_file_path": "/files/updated.pdf"},
+    )
+    assert response.status_code == 200
+    assert response.json()["answer_sheet_file_path"] == "/files/updated.pdf"
+
+
+def test_delete_uploaded_file(client, uploaded_file):
+    response = client.delete(f"/api/v1/uploaded-files/{uploaded_file.id}")
+    assert response.status_code == 200
+    assert response.json()["message"] == "Uploaded file deleted"
+
+    follow_up = client.get(f"/api/v1/uploaded-files/{uploaded_file.id}")
+    assert follow_up.status_code == 404
+
+
 def test_create_uploaded_file_with_pdf(client, assessment, student, teacher):
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp.write(b"%PDF-1.4\n%Test PDF content\n%%EOF")
@@ -26,35 +51,42 @@ def test_create_uploaded_file_with_pdf(client, assessment, student, teacher):
         assert data["uploaded_by"] == str(teacher.id)
         assert data["answer_sheet_file_path"].endswith(".pdf")
 
-        # Clean up uploaded file from app storage
         stored_file_path = Path(data["answer_sheet_file_path"])
         if stored_file_path.exists():
             stored_file_path.unlink()
 
     finally:
-        Path(tmp_path).unlink()  # clean up temp input file
+        Path(tmp_path).unlink()
 
 
-def test_get_uploaded_file(client, uploaded_file):
-    response = client.get(f"/api/v1/uploaded-files/{uploaded_file.id}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] == str(uploaded_file.id)
+def test_download_uploaded_answer_sheet(client, assessment, student, teacher):
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(b"%PDF-1.4\nStudent answer sheet")
+        tmp_path = tmp.name
 
+    try:
+        with open(tmp_path, "rb") as f:
+            upload_response = client.post(
+                "/api/v1/uploaded-files/upload",
+                data={
+                    "assessment_id": str(assessment.id),
+                    "student_id": str(student.id),
+                    "uploaded_by": str(teacher.id),
+                },
+                files={"file": ("answer.pdf", f, "application/pdf")},
+            )
 
-def test_update_uploaded_file(client, uploaded_file):
-    response = client.patch(
-        f"/api/v1/uploaded-files/{uploaded_file.id}",
-        json={"answer_sheet_file_path": "/files/updated.pdf"},
-    )
-    assert response.status_code == 200
-    assert response.json()["answer_sheet_file_path"] == "/files/updated.pdf"
+        assert upload_response.status_code == 200
+        file_id = upload_response.json()["id"]
 
+        response = client.get(f"/api/v1/uploaded-files/{file_id}/answer-sheet")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert b"%PDF-1.4" in response.content
 
-def test_delete_uploaded_file(client, uploaded_file):
-    response = client.delete(f"/api/v1/uploaded-files/{uploaded_file.id}")
-    assert response.status_code == 200
-    assert response.json()["message"] == "Uploaded file deleted"
+        path = Path(upload_response.json()["answer_sheet_file_path"])
+        if path.exists():
+            path.unlink()
 
-    follow_up = client.get(f"/api/v1/uploaded-files/{uploaded_file.id}")
-    assert follow_up.status_code == 404
+    finally:
+        Path(tmp_path).unlink()

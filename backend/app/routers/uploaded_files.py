@@ -1,4 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    UploadFile,
+    File,
+    Form,
+)
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from uuid import UUID, uuid4
 from pathlib import Path
@@ -56,6 +64,21 @@ def upload_file(
     db.commit()
     db.refresh(db_file)
     return db_file
+
+
+@router.get("/{file_id}/answer-sheet")
+def download_answer_sheet(file_id: UUID, db: Session = Depends(get_db)):
+    uploaded = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
+    if not uploaded or not uploaded.answer_sheet_file_path:
+        raise HTTPException(status_code=404, detail="Answer sheet not found")
+
+    file_path = Path(uploaded.answer_sheet_file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File missing")
+
+    return FileResponse(
+        file_path, filename=file_path.name, media_type="application/pdf"
+    )
 
 
 @router.get("/{file_id}", response_model=UploadedFileOut)
