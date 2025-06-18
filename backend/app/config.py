@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./test.db"
     FRONTEND_URL: str = "*"
     ENV: str = "dev"
+    FILE_STORAGE_PATH: str = "storage/"
 
     model_config = ConfigDict(env_file=".env")
 

@@ -42,13 +42,15 @@ app.add_middleware(
 # Register DB/session/auth dependencies
 # register_dependencies(app)
 
+api_prefix = "/api/v1"
+
 # Register routers
-app.include_router(users.router, prefix="/api/v1")
-app.include_router(courses.router, prefix="/api/v1")
-app.include_router(assessments.router, prefix="/api/v1")
-app.include_router(uploaded_files.router, prefix="/api/v1")
-app.include_router(questions.router, prefix="/api/v1")
-app.include_router(question_results.router, prefix="/api/v1")
+app.include_router(users.router, prefix=api_prefix)
+app.include_router(courses.router, prefix=api_prefix)
+app.include_router(assessments.router, prefix=api_prefix)
+app.include_router(uploaded_files.router, prefix=api_prefix)
+app.include_router(questions.router, prefix=api_prefix)
+app.include_router(question_results.router, prefix=api_prefix)
 
 
 @app.get("/")

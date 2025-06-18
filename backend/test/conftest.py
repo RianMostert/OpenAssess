@@ -13,7 +13,6 @@ from app.models import question as question_model
 from app.models import question_result as question_result_model
 import uuid
 
-# Use your dedicated test database
 TEST_DATABASE_URL = "postgresql://rianmostert:password@localhost:5432/mytestdb"
 
 engine = create_engine(TEST_DATABASE_URL)
@@ -167,7 +166,7 @@ def question_result(db_session, assessment, question, student, marker):
         marker_id=marker.id,
         mark=7.5,
         comment="Well done",
-        file_path="/annotations/q1.json",
+        annotation_file_path="/annotations/q1.json",
     )
     db_session.add(result)
     db_session.commit()
