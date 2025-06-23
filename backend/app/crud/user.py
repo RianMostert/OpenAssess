@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.user import User
-from app.schemas.user import UserCreate
-from app.schemas.user import UserUpdate
+from app.schemas.user import UserCreate, UserUpdate
 import uuid
 import hashlib
 
@@ -16,7 +15,6 @@ def create_user(db: Session, user_data: UserCreate):
         email=user_data.email,
         student_number=user_data.student_number,
         password_hash=password_hash,
-        role=user_data.role,
     )
     db.add(new_user)
     db.commit()

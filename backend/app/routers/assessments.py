@@ -18,7 +18,7 @@ from app.schemas.question import QuestionOut
 from app.models.question import Question
 
 from app.dependencies import get_db
-from app.config import settings
+from app.core.config import settings
 
 router = APIRouter(prefix="/assessments", tags=["Assessments"])
 

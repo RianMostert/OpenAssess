@@ -1,5 +1,6 @@
 from sqlalchemy import Column, ForeignKey, String, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 
@@ -17,6 +18,10 @@ class UploadedFile(Base):
     answer_sheet_file_path = Column(String, nullable=False)
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    student = relationship("User", foreign_keys=[student_id])
+    uploader = relationship("User", foreign_keys=[uploaded_by])
+    assessment = relationship("Assessment")
 
     __table_args__ = (
         Index(

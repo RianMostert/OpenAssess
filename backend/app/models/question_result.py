@@ -1,5 +1,6 @@
 from sqlalchemy import Column, ForeignKey, Float, String, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 
@@ -21,6 +22,11 @@ class QuestionResult(Base):
     annotation_file_path = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=True)
+
+    student = relationship("User", foreign_keys=[student_id])
+    marker = relationship("User", foreign_keys=[marker_id])
+    assessment = relationship("Assessment")
+    question = relationship("Question")
 
     __table_args__ = (
         Index(

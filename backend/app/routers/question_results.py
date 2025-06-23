@@ -20,7 +20,7 @@ from app.schemas.question_result import (
 from app.models.question_result import QuestionResult
 
 from app.dependencies import get_db
-from app.config import settings
+from app.core.config import settings
 
 router = APIRouter(prefix="/question-results", tags=["Question Results"])
 

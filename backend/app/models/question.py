@@ -1,5 +1,6 @@
 from sqlalchemy import Column, ForeignKey, String, Float, Integer, DateTime
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 
@@ -25,3 +26,5 @@ class Question(Base):
     height = Column(Float)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_memo_at = Column(DateTime(timezone=True), nullable=True)
+
+    assessment = relationship("Assessment")

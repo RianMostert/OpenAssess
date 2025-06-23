@@ -1,16 +1,16 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
+# Base user input for creation
 class UserCreate(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
     student_number: Optional[str] = None
     password: str  # plaintext input
-    role: str
 
 
 class UserUpdate(BaseModel):
@@ -19,7 +19,20 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     student_number: Optional[str] = None
     password: Optional[str] = None
-    role: Optional[str] = None
+
+
+class RoleOut(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserCourseRoleOut(BaseModel):
+    course_id: UUID
+    role: RoleOut
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserOut(BaseModel):
@@ -28,7 +41,6 @@ class UserOut(BaseModel):
     last_name: str
     email: EmailStr
     student_number: Optional[str]
-    role: str
     created_at: datetime
     updated_at: Optional[datetime]
 

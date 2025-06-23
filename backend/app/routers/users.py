@@ -43,6 +43,7 @@ def list_users(
     skip: int = 0,
     limit: int = 100,
     email: str | None = None,
+    course_id: UUID | None = None,
     db: Session = Depends(get_db),
 ):
     if email:
@@ -50,7 +51,15 @@ def list_users(
         if db_user is None:
             raise HTTPException(status_code=404, detail="User not found")
         return [db_user]
-    return get_all_users(db, skip=skip, limit=limit)
+
+    users = get_all_users(db, skip=skip, limit=limit)
+
+    if course_id:
+        for user in users:
+            user.course_roles = [
+                role for role in user.course_roles if role.course_id == course_id
+            ]
+    return users
 
 
 @router.patch("/{user_id}", response_model=UserOut)

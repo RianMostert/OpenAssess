@@ -12,7 +12,7 @@ Also includes special connection arguments if using SQLite for local development
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.config import settings
+from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 

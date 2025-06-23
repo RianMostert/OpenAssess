@@ -15,7 +15,7 @@ import uuid
 import os
 
 TEST_DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://rianmostert:password@localhost:5432/mytestdb"
+    "DATABASE_URL", "postgresql://rianmostert:password@localhost:5432/mydbtest"
 )
 
 engine = create_engine(TEST_DATABASE_URL)
@@ -67,7 +67,6 @@ def teacher(db_session):
         email="teacher@example.com",
         student_number="T123456",
         password_hash="hashed",
-        role="teacher",
     )
     db_session.add(user)
     db_session.commit()
@@ -83,7 +82,6 @@ def student(db_session):
         email="student@example.com",
         student_number="S123456",
         password_hash="hashed",
-        role="student",
     )
     db_session.add(user)
     db_session.commit()
@@ -99,7 +97,6 @@ def marker(db_session):
         email="marker@example.com",
         student_number="M123456",
         password_hash="hashed",
-        role="ta",
     )
     db_session.add(user)
     db_session.commit()

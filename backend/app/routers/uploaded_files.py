@@ -18,7 +18,7 @@ from app.schemas.uploaded_file import (
 )
 from app.models.uploaded_file import UploadedFile
 from app.dependencies import get_db
-from app.config import settings
+from app.core.config import settings
 
 router = APIRouter(prefix="/uploaded-files", tags=["Uploaded Files"])
 
