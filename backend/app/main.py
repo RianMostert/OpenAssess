@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.dependencies import register_dependencies
 
+from app.routers import auth
 from app.routers import users
 from app.routers import courses
 from app.routers import assessments
@@ -45,6 +46,7 @@ app.add_middleware(
 api_prefix = "/api/v1"
 
 # Register routers
+app.include_router(auth.router, prefix=api_prefix)
 app.include_router(users.router, prefix=api_prefix)
 app.include_router(courses.router, prefix=api_prefix)
 app.include_router(assessments.router, prefix=api_prefix)

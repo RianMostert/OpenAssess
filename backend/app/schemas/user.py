@@ -10,7 +10,8 @@ class UserCreate(BaseModel):
     last_name: str
     email: EmailStr
     student_number: Optional[str] = None
-    password: str  # plaintext input
+    password: str
+    is_admin: Optional[bool] = False
 
 
 class UserUpdate(BaseModel):
@@ -19,6 +20,7 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     student_number: Optional[str] = None
     password: Optional[str] = None
+    is_admin: Optional[bool] = None
 
 
 class RoleOut(BaseModel):
@@ -41,6 +43,7 @@ class UserOut(BaseModel):
     last_name: str
     email: EmailStr
     student_number: Optional[str]
+    is_admin: bool
     created_at: datetime
     updated_at: Optional[datetime]
 

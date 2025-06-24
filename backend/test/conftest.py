@@ -1,10 +1,12 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from app.core.security import hash_password, create_access_token
 from app.db.base import Base
 from app.dependencies import get_db
 from fastapi.testclient import TestClient
 from app.main import app
+from app.models.user import User
 from app.models import user as user_model
 from app.models import course as course_model
 from app.models import assessment as assessment_model
@@ -56,6 +58,35 @@ def client(db_session):
 # --------------------------
 # Entity Fixtures
 # --------------------------
+def auth_headers(user: User):
+    token = create_access_token({"sub": str(user.id)})
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def admin_token(client, admin):
+    response = client.post(
+        "/api/v1/auth/login",
+        data={"username": admin.email, "password": "adminpass"},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["access_token"]
+
+
+@pytest.fixture
+def admin(db_session):
+    user = user_model.User(
+        id=uuid.uuid4(),
+        first_name="Admin",
+        last_name="User",
+        email="admin@example.com",
+        student_number="24138096",
+        password_hash=hash_password("adminpass"),
+        is_admin=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    return user
 
 
 @pytest.fixture

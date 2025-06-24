@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
+from app.core.security import hash_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from app.models.role import Role
+from app.models.user_course_role import UserCourseRole
 import uuid
-import hashlib
 
 
 def create_user(db: Session, user_data: UserCreate):
@@ -15,6 +17,7 @@ def create_user(db: Session, user_data: UserCreate):
         email=user_data.email,
         student_number=user_data.student_number,
         password_hash=password_hash,
+        is_admin=user_data.is_admin if hasattr(user_data, "is_admin") else False,
     )
     db.add(new_user)
     db.commit()
@@ -57,5 +60,17 @@ def delete_user(db: Session, user_id: uuid.UUID):
     return user
 
 
-def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+def create_user_with_default_role(db: Session, user_data: UserCreate):
+    user = create_user(db, user_data)
+
+    student_role = db.query(Role).filter(Role.name == "student").first()
+    if student_role:
+        user_course_role = UserCourseRole(
+            user_id=user.id,
+            course_id=None,
+            role_id=student_role.id,
+        )
+        db.add(user_course_role)
+        db.commit()
+        db.refresh(user)
+    return user

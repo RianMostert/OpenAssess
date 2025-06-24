@@ -24,3 +24,11 @@ engine = create_engine(DATABASE_URL, connect_args=connect_args)
 
 # SessionLocal is the class that makes DB sessions per request
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

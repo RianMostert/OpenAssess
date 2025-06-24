@@ -14,16 +14,15 @@ Will need to add get_current_user and require_admin later
 
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
-from app.db.session import SessionLocal
+from app.db.session import get_db
+from uuid import UUID
 
-
-# The actual dependency function used in routes
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+from app.models.user import User
+from app.models.user_course_role import UserCourseRole
+from app.models.role import Role
+from sqlalchemy.orm import Session
+from fastapi import Depends, HTTPException
+from app.core.auth import get_current_user
 
 
 def register_dependencies():
@@ -34,3 +33,28 @@ def register_dependencies():
         print("🛑 App shutting down...")
 
     return lifespan
+
+
+def require_course_role(required_role: str):
+    def role_checker(
+        course_id: UUID,
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ):
+        role_entry = (
+            db.query(UserCourseRole)
+            .join(Role)
+            .filter(
+                UserCourseRole.user_id == user.id,
+                UserCourseRole.course_id == course_id,
+                Role.name == required_role,
+            )
+            .first()
+        )
+
+        if not role_entry:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        return user
+
+    return role_checker

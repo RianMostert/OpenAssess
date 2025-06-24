@@ -5,6 +5,7 @@ CREATE TABLE "user" (
   "email" varchar UNIQUE NOT NULL,
   "student_number" varchar UNIQUE,
   "password_hash" varchar NOT NULL,
+  "is_admin" boolean DEFAULT false,
   "created_at" timestamp DEFAULT now(),
   "updated_at" timestamp
 );
