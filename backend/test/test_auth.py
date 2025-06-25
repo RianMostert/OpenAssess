@@ -5,7 +5,7 @@ def test_signup_success(client, db_session):
             "first_name": "New",
             "last_name": "User",
             "email": "newuser@example.com",
-            "student_number": "U12345678",
+            "student_number": "12345678",
             "password": "securepass",
         },
     )
@@ -22,7 +22,7 @@ def test_signup_duplicate_email(client, student):
             "first_name": "Dup",
             "last_name": "User",
             "email": student.email,  # already taken
-            "student_number": "U99999999",
+            "student_number": "99999999",
             "password": "anotherpass",
         },
     )

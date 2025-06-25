@@ -2,10 +2,10 @@ stages:
   - test
 
 variables:
-  POSTGRES_DB: mytestdb
+  POSTGRES_DB: mydbtest
   POSTGRES_USER: rianmostert
   POSTGRES_PASSWORD: password
-  DATABASE_URL: postgresql://rianmostert:password@postgres:5432/mytestdb
+  DATABASE_URL: postgresql://rianmostert:password@postgres:5432/mydbtest
 
 test_backend:
   stage: test
