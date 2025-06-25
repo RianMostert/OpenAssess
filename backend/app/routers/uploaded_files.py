@@ -19,6 +19,11 @@ from app.schemas.uploaded_file import (
 from app.models.uploaded_file import UploadedFile
 from app.dependencies import get_db
 from app.core.config import settings
+from app.models.user import User
+from app.models.assessment import Assessment
+from app.dependencies import get_current_user
+from app.core.security import has_course_role
+
 
 router = APIRouter(prefix="/uploaded-files", tags=["Uploaded Files"])
 
@@ -30,17 +35,26 @@ storage_path.mkdir(parents=True, exist_ok=True)
 def upload_file(
     assessment_id: UUID = Form(...),
     student_id: UUID = Form(...),
-    uploaded_by: UUID = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # Check uniqueness
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    is_course_teacher = assessment.course.teacher_id == current_user.id
+    is_target_student = current_user.id == student_id
+
+    if not (current_user.is_admin or is_course_teacher or is_target_student):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the student or the course's teacher can upload",
+        )
+
     existing = (
         db.query(UploadedFile)
-        .filter_by(
-            assessment_id=assessment_id,
-            student_id=student_id,
-        )
+        .filter_by(assessment_id=assessment_id, student_id=student_id)
         .first()
     )
     if existing:
@@ -57,7 +71,7 @@ def upload_file(
         id=file_id,
         assessment_id=assessment_id,
         student_id=student_id,
-        uploaded_by=uploaded_by,
+        uploaded_by=current_user.id,
         answer_sheet_file_path=str(file_path),
     )
     db.add(db_file)
@@ -67,12 +81,23 @@ def upload_file(
 
 
 @router.get("/{file_id}/answer-sheet")
-def download_answer_sheet(file_id: UUID, db: Session = Depends(get_db)):
-    uploaded = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
-    if not uploaded or not uploaded.answer_sheet_file_path:
+def download_answer_sheet(
+    file_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    file = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
+    if not file or not file.answer_sheet_file_path:
         raise HTTPException(status_code=404, detail="Answer sheet not found")
 
-    file_path = Path(uploaded.answer_sheet_file_path)
+    if not (
+        current_user.is_admin
+        or file.student_id == current_user.id
+        or has_course_role(current_user, file.assessment.course_id, "ta", "teacher")
+    ):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    file_path = Path(file.answer_sheet_file_path)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File missing")
 
@@ -82,10 +107,22 @@ def download_answer_sheet(file_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/{file_id}", response_model=UploadedFileOut)
-def get_uploaded_file(file_id: UUID, db: Session = Depends(get_db)):
+def get_uploaded_file(
+    file_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     file = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
     if not file:
         raise HTTPException(status_code=404, detail="Uploaded file not found")
+
+    if not (
+        current_user.is_admin
+        or file.student_id == current_user.id
+        or has_course_role(current_user, file.assessment.course_id, "ta", "teacher")
+    ):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     return file
 
 
@@ -93,6 +130,7 @@ def get_uploaded_file(file_id: UUID, db: Session = Depends(get_db)):
 def download_uploaded_file(
     file_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     file = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
     if not file:
@@ -105,11 +143,29 @@ def download_uploaded_file(
 
 @router.patch("/{file_id}", response_model=UploadedFileOut)
 def update_uploaded_file(
-    file_id: UUID, update: UploadedFileUpdate, db: Session = Depends(get_db)
+    file_id: UUID,
+    update: UploadedFileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     file = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
     if not file:
         raise HTTPException(status_code=404, detail="Uploaded file not found")
+
+    assessment = (
+        db.query(Assessment).filter(Assessment.id == file.assessment_id).first()
+    )
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    is_course_teacher = assessment.course.teacher_id == current_user.id
+    is_target_student = file.student_id == current_user.id
+
+    if not (current_user.is_admin or is_course_teacher or is_target_student):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the student or the course's teacher can update",
+        )
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(file, field, value)
@@ -119,10 +175,29 @@ def update_uploaded_file(
 
 
 @router.delete("/{file_id}")
-def delete_uploaded_file(file_id: UUID, db: Session = Depends(get_db)):
+def delete_uploaded_file(
+    file_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     file = db.query(UploadedFile).filter(UploadedFile.id == file_id).first()
     if not file:
         raise HTTPException(status_code=404, detail="Uploaded file not found")
+
+    assessment = (
+        db.query(Assessment).filter(Assessment.id == file.assessment_id).first()
+    )
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    is_course_teacher = assessment.course.teacher_id == current_user.id
+    is_target_student = file.student_id == current_user.id
+
+    if not (current_user.is_admin or is_course_teacher or is_target_student):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the student or the course's teacher can delete",
+        )
 
     file_path = Path(file.answer_sheet_file_path)
     if file_path.exists():

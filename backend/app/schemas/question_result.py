@@ -8,7 +8,6 @@ class QuestionResultCreate(BaseModel):
     student_id: UUID
     assessment_id: UUID
     question_id: UUID
-    marker_id: UUID
     mark: Optional[float] = None
     comment: Optional[str] = None
     annotation_file_path: Optional[str] = None

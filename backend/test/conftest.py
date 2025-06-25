@@ -97,7 +97,7 @@ def teacher(db_session):
         last_name="Teacher",
         email="teacher@example.com",
         student_number="12345678",
-        password_hash=hash_password("password"),
+        password_hash=hash_password("teacherpass"),
         is_admin=False,
     )
     db_session.add(user)
@@ -133,7 +133,7 @@ def student(db_session):
         last_name="Student",
         email="student@example.com",
         student_number="S123456",
-        password_hash="hashed",
+        password_hash=hash_password("studentpass"),
         is_admin=False,
     )
     db_session.add(user)
@@ -142,17 +142,30 @@ def student(db_session):
 
 
 @pytest.fixture
-def marker(db_session):
+def marker(db_session, course):
     user = user_model.User(
         id=uuid.uuid4(),
         first_name="Test",
         last_name="Marker",
         email="marker@example.com",
         student_number="M123456",
-        password_hash="hashed",
-        is_admin=False,
+        password_hash=hash_password("markerpass"),
     )
     db_session.add(user)
+    db_session.flush()
+
+    role = db_session.query(role_model.Role).filter_by(name="ta").first()
+    if not role:
+        role = role_model.Role(name="ta")
+        db_session.add(role)
+        db_session.flush()
+
+    from app.models.user_course_role import UserCourseRole
+
+    db_session.add(
+        UserCourseRole(user_id=user.id, course_id=course.id, role_id=role.id)
+    )
+
     db_session.commit()
     return user
 

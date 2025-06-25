@@ -14,7 +14,6 @@ from app.core.security import (
     has_course_role,
     is_course_teacher,
     can_create_course,
-    is_course_teacher_or_ta,
 )
 
 
