@@ -8,8 +8,6 @@ class Role(Base):
     __tablename__ = "role"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), unique=True, nullable=False)
+    name = Column(String, unique=True, nullable=False)
 
-    user_course_roles = relationship(
-        "UserCourseRole", back_populates="role", cascade="all, delete"
-    )
+    user_course_roles = relationship("UserCourseRole", back_populates="role")

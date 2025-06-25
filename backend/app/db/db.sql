@@ -104,4 +104,4 @@ ALTER TABLE "question_result" ADD FOREIGN KEY ("question_id") REFERENCES "questi
 ALTER TABLE "question_result" ADD FOREIGN KEY ("marker_id") REFERENCES "user" ("id");
 
 -- Role seed data
-INSERT INTO role (name) VALUES ('admin'), ('teacher'), ('ta'), ('student');
+INSERT INTO role (name) VALUES ('teacher'), ('ta'), ('student');

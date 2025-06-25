@@ -6,13 +6,14 @@ from app.db.base import Base
 from app.dependencies import get_db
 from fastapi.testclient import TestClient
 from app.main import app
-from app.models.user import User
 from app.models import user as user_model
+from app.models import role as role_model
 from app.models import course as course_model
 from app.models import assessment as assessment_model
 from app.models import uploaded_file as uploaded_file_model
 from app.models import question as question_model
 from app.models import question_result as question_result_model
+from app.models import user_course_role as user_course_role_model
 import uuid
 import os
 
@@ -58,7 +59,7 @@ def client(db_session):
 # --------------------------
 # Entity Fixtures
 # --------------------------
-def auth_headers(user: User):
+def auth_headers(user: user_model.User):
     token = create_access_token({"sub": str(user.id)})
     return {"Authorization": f"Bearer {token}"}
 
@@ -92,14 +93,34 @@ def admin(db_session):
 @pytest.fixture
 def teacher(db_session):
     user = user_model.User(
-        id=uuid.uuid4(),
         first_name="Test",
         last_name="Teacher",
         email="teacher@example.com",
-        student_number="T123456",
-        password_hash="hashed",
+        student_number="12345678",
+        password_hash=hash_password("password"),
+        is_admin=False,
     )
     db_session.add(user)
+    db_session.flush()
+
+    role = db_session.query(role_model.Role).filter_by(name="teacher").first()
+    if not role:
+        role = role_model.Role(name="teacher")
+        db_session.add(role)
+        db_session.flush()
+
+    dummy_course = course_model.Course(
+        id=uuid.uuid4(), title="Dummy Course", teacher_id=user.id, code="DUMMY101"
+    )
+    db_session.add(dummy_course)
+    db_session.flush()
+
+    dummy_link = user_course_role_model.UserCourseRole(
+        user_id=user.id,
+        course_id=dummy_course.id,
+        role_id=role.id,
+    )
+    db_session.add(dummy_link)
     db_session.commit()
     return user
 
@@ -113,6 +134,7 @@ def student(db_session):
         email="student@example.com",
         student_number="S123456",
         password_hash="hashed",
+        is_admin=False,
     )
     db_session.add(user)
     db_session.commit()
@@ -128,6 +150,7 @@ def marker(db_session):
         email="marker@example.com",
         student_number="M123456",
         password_hash="hashed",
+        is_admin=False,
     )
     db_session.add(user)
     db_session.commit()
@@ -140,6 +163,17 @@ def course(db_session, teacher):
         id=uuid.uuid4(), title="Test Course", teacher_id=teacher.id, code="TEST101"
     )
     db_session.add(course)
+    db_session.flush()
+
+    print(f"Creating course with ID: {course.id} for teacher: {teacher.id}")
+
+    role = db_session.query(role_model.Role).filter_by(name="teacher").first()
+    user_course_role = user_course_role_model.UserCourseRole(
+        user_id=teacher.id,
+        course_id=course.id,
+        role_id=role.id,
+    )
+    db_session.add(user_course_role)
     db_session.commit()
     return course
 

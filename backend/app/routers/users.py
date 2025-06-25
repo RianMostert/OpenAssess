@@ -14,6 +14,7 @@ from app.crud.user import (
 )
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
+from app.core.security import is_admin_or_self
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -65,7 +66,7 @@ def read_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if user_id != current_user.id and not current_user.is_admin:
+    if not is_admin_or_self(current_user, user_id):
         raise HTTPException(status_code=403, detail="Not authorized to view this user")
 
     db_user = get_user_by_id(db, user_id)
@@ -81,7 +82,7 @@ def update_user_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if user_id != current_user.id and not current_user.is_admin:
+    if not is_admin_or_self(current_user, user_id):
         raise HTTPException(
             status_code=403, detail="Not authorized to update this user"
         )

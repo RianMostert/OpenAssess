@@ -16,6 +16,10 @@ from app.schemas.assessment import AssessmentCreate, AssessmentUpdate, Assessmen
 from app.models.assessment import Assessment
 from app.schemas.question import QuestionOut
 from app.models.question import Question
+from app.models.user import User
+from app.dependencies import get_current_user
+from app.core.security import has_course_role
+
 
 from app.dependencies import get_db
 from app.core.config import settings
@@ -32,7 +36,11 @@ def upload_assessment(
     course_id: UUID = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if not has_course_role(current_user, course_id, "teacher", "ta"):
+        raise HTTPException(status_code=403, detail="Not authorized to upload")
+
     file_id = uuid4()
     filename = f"{file_id}_{file.filename}"
     file_path = storage_path / filename
@@ -53,10 +61,21 @@ def upload_assessment(
 
 
 @router.get("/{assessment_id}/question-paper")
-def download_question_paper(assessment_id: UUID, db: Session = Depends(get_db)):
+def download_question_paper(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment or not assessment.question_paper_file_path:
         raise HTTPException(status_code=404, detail="Question paper not found")
+
+    if not has_course_role(
+        current_user, assessment.course_id, "student", "ta", "teacher"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view this question paper"
+        )
 
     file_path = Path(assessment.question_paper_file_path)
     if not file_path.exists():
@@ -68,7 +87,16 @@ def download_question_paper(assessment_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=AssessmentOut)
-def create_assessment(assessment: AssessmentCreate, db: Session = Depends(get_db)):
+def create_assessment(
+    assessment: AssessmentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to create assessment"
+        )
+
     db_assessment = Assessment(**assessment.model_dump())
     db.add(db_assessment)
     db.commit()
@@ -77,28 +105,58 @@ def create_assessment(assessment: AssessmentCreate, db: Session = Depends(get_db
 
 
 @router.get("/", response_model=list[AssessmentOut])
-def get_assessments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    assessments = db.query(Assessment).offset(skip).limit(limit).all()
-    if not assessments:
-        raise HTTPException(status_code=404, detail="No assessments found")
-    return assessments
+def get_assessments(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.is_admin:
+        return db.query(Assessment).offset(skip).limit(limit).all()
+
+    course_ids = [r.course_id for r in current_user.course_roles]
+    return (
+        db.query(Assessment)
+        .filter(Assessment.course_id.in_(course_ids))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get("/{assessment_id}", response_model=AssessmentOut)
-def get_assessment(assessment_id: UUID, db: Session = Depends(get_db)):
+def get_assessment(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not has_course_role(
+        current_user, assessment.course_id, "student", "ta", "teacher"
+    ):
+        raise HTTPException(
+            status_code=403, detail="Not authorized to view this assessment"
+        )
+
     return assessment
 
 
 @router.patch("/{assessment_id}", response_model=AssessmentOut)
 def update_assessment(
-    assessment_id: UUID, update: AssessmentUpdate, db: Session = Depends(get_db)
+    assessment_id: UUID,
+    update: AssessmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
+        raise HTTPException(status_code=403, detail="Not authorized to update")
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(assessment, field, value)
@@ -108,20 +166,41 @@ def update_assessment(
 
 
 @router.delete("/{assessment_id}")
-def delete_assessment(assessment_id: UUID, db: Session = Depends(get_db)):
+def delete_assessment(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not (current_user.is_admin or assessment.course.teacher_id == current_user.id):
+        raise HTTPException(
+            status_code=403, detail="Only course teacher or admin can delete"
+        )
+
     db.delete(assessment)
     db.commit()
     return {"message": "Assessment deleted"}
 
 
 @router.get("/{assessment_id}/questions", response_model=list[QuestionOut])
-def get_assessment_questions(assessment_id: UUID, db: Session = Depends(get_db)):
-    questions = db.query(Question).filter(Question.assessment_id == assessment_id).all()
+def get_assessment_questions(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not has_course_role(
+        current_user, assessment.course_id, "student", "ta", "teacher"
+    ):
+        raise HTTPException(status_code=403, detail="Not authorized to view questions")
+
+    questions = db.query(Question).filter(Question.assessment_id == assessment.id).all()
     if not questions:
-        raise HTTPException(
-            status_code=404, detail="No questions found for this assessment"
-        )
+        raise HTTPException(status_code=404, detail="No questions found")
     return questions

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 
 
 # Base user input for creation
