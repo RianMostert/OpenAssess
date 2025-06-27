@@ -1,6 +1,7 @@
-"use client"
+'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import TopBar from '@/components/top-bar';
 import LeftSideBar from '@components/left-sidebar';
 import RightSidebar from '@components/right-sidebar';
@@ -53,6 +54,19 @@ export default function Home() {
   const [lines, setLines] = useState<LineElement[]>([]);
   const [texts, setTexts] = useState<TextElement[]>([]);
   const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
+
+  // Auth
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      router.push('/auth');
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [router]);
 
   // Function to handle the left sidebar toggle
   const toggleLeftSidebar = () => {
@@ -119,6 +133,8 @@ export default function Home() {
     }
   };
 
+  if (isAuthenticated === null) return null;
+
   return (
     <div className="flex flex-col h-screen overflow-hidden ">
       <TopBar
@@ -174,9 +190,7 @@ export default function Home() {
           </div>
         )}
 
-
       </div>
-
     </div>
   );
 }
