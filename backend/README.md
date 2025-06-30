@@ -1,30 +1,23 @@
-# Backend Structure Overview
+# Backend – WHK6
 
-This FastAPI backend is organized into modular subfolders, each with a clear responsibility:
+This is the FastAPI backend for the WHK6 application. It handles API logic, database operations, and authentication.
 
-## app/models/
-Contains SQLAlchemy models — each one maps to a table in the database.
-- Example: `user.py` defines the `User` table structure.
+## Quick Start
 
-## app/schemas/
-Contains Pydantic schemas used for request validation and response formatting.
-- Keeps API input/output strict and secure.
+Run the backend using Docker Compose (from the project root):
 
-## app/crud/
-Contains functions for database operations (create, read, update, delete).
-- Keeps SQL logic separate from routing.
+```bash
+docker-compose up
+```
 
-## app/routers/
-Contains FastAPI route definitions, grouped by resource.
-- These define the actual HTTP endpoints exposed to the client (e.g., `/users/`).
+Or run it mannually:
 
-## app/db/
-Holds core database infrastructure:
-- `base.py` defines the shared SQLAlchemy Base class.
-- `session.py` creates the DB engine and session factory.
+```bash
+uvicorn app.main:app --reload
+```
 
-## app/dependencies.py
-Contains dependency injection helpers, like `get_db()` and optional startup/shutdown hooks.
+Make sure to configure your `.env` file before running locally.
 
-## app/config.py
-Manages configuration via Pydantic, loading values from `.env`.
+## Documentation
+
+For a detailed overview of the backend structure, dependencies, and API endpoints, see the [Backend section in the project wiki]().

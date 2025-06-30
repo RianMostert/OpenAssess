@@ -1,11 +1,24 @@
-# To Run
+# Frontend – WHK6
+
+This is the Next.js + React frontend for the WHK6 application. It provides the web interface for users to interact with the system.
+
+## Quick Start
+
+Run the frontend using Docker Compose (from the project root):
 
 ```bash
+docker-compose up
+```
+
+Or run manually:
+
+```bash
+pnpm install
 pnpm run dev
 ```
 
-# Bugs to swat and improvements to make
-- Don't allow sticky notes and text notes to be dragged of screen.
-- Let text note expand instead of a pop of on the center of the screen.
-- When changing context close sticky note
-- 
+Make sure to configure you .env.local file before running locally.
+
+## Documentation
+
+For component structure, routing, and state management details, see the [Frontend section in the project wiki]().
