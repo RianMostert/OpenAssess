@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/top-bar';
-import LeftSideBar from '@components/left-sidebar';
+import LeftSideBar from '@components/LeftSideBar';
+import MainPanel from '@/components/MainPanel';
 import RightSidebar from '@components/right-sidebar';
-// import PdfAnnotator from '@/components/pdf-annotator';
-import NavBar from '@/components/nav-bar';
+import NavBar from '@/components/NavBar';
 import dynamic from 'next/dynamic';
+import { jwtDecode } from 'jwt-decode';
+import { set } from 'react-hook-form';
 
 const PdfAnnotator = dynamic(() => import('../components/pdf-annotator'), {
   ssr: false,
@@ -55,18 +57,59 @@ export default function Home() {
   const [texts, setTexts] = useState<TextElement[]>([]);
   const [stickyNotes, setStickyNotes] = useState<StickyNoteElement[]>([]);
 
+  const [activeMainPanel, setActiveMainPanel] = useState('pdf-annotator');
+  const [selectedAssessment, setSelectedAssessment] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+
+  const handleSelectAssessment = (assessment: { id: string; title: string }) => {
+    setSelectedAssessment(assessment);
+    setActiveMainPanel('assessment');
+  };
+
   // Auth
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
-    if (!token) {
+
+    if (!token || isTokenExpired(token)) {
+      localStorage.removeItem('authToken');
       router.push('/auth');
-    } else {
-      setIsAuthenticated(true);
+      return;
     }
+
+    setIsAuthenticated(true);
+
+    const exp = getTokenExpiration(token);
+    const timeout = exp ? (exp * 1000 - Date.now()) : 0;
+
+    const timer = setTimeout(() => {
+      localStorage.removeItem('authToken');
+      router.push('/auth');
+    }, timeout);
+
+    return () => clearTimeout(timer);
   }, [router]);
+
+
+
+  function getTokenExpiration(token: string): number | null {
+    try {
+      const decoded: { exp: number } = jwtDecode(token);
+      return decoded.exp;
+    } catch {
+      return null;
+    }
+  }
+
+  function isTokenExpired(token: string): boolean {
+    const exp = getTokenExpiration(token);
+    if (!exp) return true;
+    return exp < Date.now() / 1000;
+  }
 
   // Function to handle the left sidebar toggle
   const toggleLeftSidebar = () => {
@@ -155,7 +198,7 @@ export default function Home() {
       >
 
         <div className="flex flex-col border-r border-zinc-800">
-          <NavBar activeNavItem="document" itemSelected={setActiveNavItem} />
+          <NavBar activeNavItem={activeNavItem} itemSelected={setActiveNavItem} />
         </div>
 
         {!isLeftSidebarCollapsed && (
@@ -163,23 +206,18 @@ export default function Home() {
             <LeftSideBar
               activeNavItem={activeNavItem}
               width={300}
-              onUploadPdf={setPdfFile}
-              onExportPdf={burnAnnotations}
-              onExportJson={exportAnnotationsToJson}
+              selectedAssessment={selectedAssessment}
+              onSelectAssessment={handleSelectAssessment}
+              onSelectPanel={setActiveMainPanel}
             />
           </div>
         )}
 
 
         <div className="overflow-hidden">
-          <PdfAnnotator
-            file={pdfFile}
-            lines={lines}
-            setLines={setLines}
-            texts={texts}
-            setTexts={setTexts}
-            stickyNotes={stickyNotes}
-            setStickyNotes={setStickyNotes}
+          <MainPanel
+            activeMainPanel={activeMainPanel}
+            selectedAssessment={selectedAssessment}
           />
 
         </div>

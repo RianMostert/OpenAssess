@@ -19,3 +19,7 @@ class Course(Base):
     user_roles = relationship(
         "UserCourseRole", back_populates="course", cascade="all, delete"
     )
+
+    assessments = relationship(
+        "Assessment", back_populates="course", cascade="all, delete-orphan"
+    )

@@ -20,12 +20,34 @@ from app.core.security import (
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
 
+# @router.post("/", response_model=CourseOut)
+# async def create_course_debug(
+#     request: Request,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user),
+# ):
+#     body = await request.body()
+#     print("Raw request body:", body.decode())
+
+#     # Try parsing manually to test
+#     try:
+#         data = await request.json()
+#         print("Parsed JSON:", data)
+#     except Exception as e:
+#         print("JSON parse error:", e)
+
+#     raise HTTPException(status_code=418, detail="Debug mode")
+
+
 @router.post("/", response_model=CourseOut)
-def create_course(
+async def create_course(
     course: CourseCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # print("create_course route HIT")
+    # print("Received course data:", course)
+    # print("Current user:", current_user.email)
     if not can_create_course(current_user):
         raise HTTPException(
             status_code=403, detail="Only teachers or admins can create courses"
@@ -36,6 +58,17 @@ def create_course(
     db.commit()
     db.refresh(db_course)
     return db_course
+
+
+@router.get("/my-course-ids", response_model=List[UUID])
+def get_my_course_ids(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    enrolled_ids = [r.course_id for r in current_user.course_roles if r.course_id]
+    if not enrolled_ids:
+        raise HTTPException(status_code=404, detail="No enrolled courses found")
+    return enrolled_ids
 
 
 @router.get("/", response_model=List[CourseOut])
@@ -134,8 +167,8 @@ def get_course_assessments(
         )
 
     assessments = db.query(Assessment).filter(Assessment.course_id == course_id).all()
-    if not assessments:
-        raise HTTPException(
-            status_code=404, detail="No assessments found for this course"
-        )
+    # if not assessments:
+    #     raise HTTPException(
+    #         status_code=404, detail="No assessments found for this course"
+    #     )
     return assessments

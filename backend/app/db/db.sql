@@ -19,7 +19,7 @@ CREATE TABLE "course" (
   "id" UUID PRIMARY KEY,
   "title" varchar NOT NULL,
   "teacher_id" UUID,
-  "code" varchar UNIQUE,
+  "code" varchar,
   "created_at" timestamp DEFAULT now()
 );
 
@@ -79,6 +79,7 @@ CREATE TABLE "question_result" (
 );
 
 -- Indexes
+CREATE UNIQUE INDEX ON "course" ("title", "code");
 CREATE UNIQUE INDEX ON "user_course_role" ("user_id", "course_id", "role_id");
 CREATE UNIQUE INDEX ON "uploaded_file" ("assessment_id", "student_id");
 CREATE UNIQUE INDEX ON "question_result" ("assessment_id", "student_id", "question_id");

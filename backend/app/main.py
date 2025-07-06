@@ -11,10 +11,13 @@ This file:
 All app-wide behavior (middleware, metadata, events) is configured here.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.dependencies import register_dependencies
+from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
 
 from app.routers import auth
 from app.routers import users
@@ -39,6 +42,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    print("Validation error for request:", await request.body())
+    print("Validation details:", exc.errors())
+    return JSONResponse(
+        status_code=HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors()},
+    )
+
 
 # Register DB/session/auth dependencies
 # register_dependencies(app)

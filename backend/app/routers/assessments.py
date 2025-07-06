@@ -30,6 +30,24 @@ storage_path = settings.QUESTION_PAPER_STORAGE_FOLDER
 storage_path.mkdir(parents=True, exist_ok=True)
 
 
+@router.post("/upload/question-paper", response_model=dict)
+def upload_question_paper(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+
+    file_id = uuid4()
+    filename = f"{file_id}_{file.filename}"
+    file_path = storage_path / filename
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {"file_path": str(file_path)}
+
+
 @router.post("/upload", response_model=AssessmentOut)
 def upload_assessment(
     title: str = Form(...),

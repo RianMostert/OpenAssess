@@ -21,4 +21,4 @@ Make sure to configure you .env.local file before running locally.
 
 ## Documentation
 
-For component structure, routing, and state management details, see the [Frontend section in the project wiki]().
+For component structure, routing, and state management details, see the [Frontend section in the project wiki](https://git.cs.sun.ac.za/Computer-Science/rw771/2025/24138096-WHK6-doc/-/wikis/Frontend).

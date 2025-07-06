@@ -20,4 +20,4 @@ Make sure to configure your `.env` file before running locally.
 
 ## Documentation
 
-For a detailed overview of the backend structure, dependencies, and API endpoints, see the [Backend section in the project wiki]().
+For a detailed overview of the backend structure, dependencies, and API endpoints, see the [Backend section in the project wiki](https://git.cs.sun.ac.za/Computer-Science/rw771/2025/24138096-WHK6-doc/-/wikis/Backend).

@@ -19,6 +19,11 @@ from app.core.security import is_admin_or_self
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+@router.get("/me", response_model=UserOut)
+def get_current_user_info(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
 @router.post("/", response_model=UserOut)
 def create_user_endpoint(
     user: UserCreate,
@@ -107,8 +112,3 @@ def delete_user_endpoint(
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
-
-
-@router.get("/me", response_model=UserOut)
-def get_current_user_info(current_user: User = Depends(get_current_user)):
-    return current_user

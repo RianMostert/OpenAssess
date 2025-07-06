@@ -53,7 +53,7 @@ export default function AuthPage() {
 
                 const data = await res.json();
                 localStorage.setItem("authToken", data.access_token);
-                router.push("/");
+                setTimeout(() => router.push("/"), 100);
             } else {
                 const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
                     method: "POST",
