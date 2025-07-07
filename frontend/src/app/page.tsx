@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, act } from 'react';
 import { useRouter } from 'next/navigation';
 import TopBar from '@/components/top-bar';
 import LeftSideBar from '@components/LeftSideBar';
 import MainPanel from '@/components/MainPanel';
-import RightSidebar from '@components/right-sidebar';
+import RightSidebar from '@components/RightSideBar';
 import NavBar from '@/components/NavBar';
 import dynamic from 'next/dynamic';
 import { jwtDecode } from 'jwt-decode';
@@ -51,7 +51,7 @@ export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
 
-  const [activeNavItem, setActiveNavItem] = useState('document');
+  const [activeNavItem, setActiveNavItem] = useState('courses');
   const [pdfFile, setPdfFile] = useState<File | string | null>(null);
   const [lines, setLines] = useState<LineElement[]>([]);
   const [texts, setTexts] = useState<TextElement[]>([]);
@@ -67,6 +67,8 @@ export default function Home() {
     setSelectedAssessment(assessment);
     setActiveMainPanel('assessment');
   };
+
+  const [rightSidebarActivePanel, setRightSidebarActivePanel] = useState('mapping');
 
   // Auth
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -224,7 +226,7 @@ export default function Home() {
 
         {!isRightSidebarCollapsed && (
           <div className="border-l border-zinc-800">
-            <RightSidebar width={300} />
+            <RightSidebar width={300} activeMainPanel={activeMainPanel} selectedAssessment={selectedAssessment} />
           </div>
         )}
 

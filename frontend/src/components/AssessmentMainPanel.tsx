@@ -34,11 +34,6 @@ const actionPanels: {
             content: 'Render your interactive map or GIS tool here.',
             className: 'bg-blue-100',
         },
-        // {
-        //     key: 'edit',
-        //     title: 'Edit Assessment',
-        //     content: 'Form or editor UI for editing goes here.',
-        // },
         {
             key: 'upload',
             title: 'Upload Files',
@@ -49,12 +44,6 @@ const actionPanels: {
             title: 'Export Assessment',
             content: 'Export options / download actions go here.',
         },
-        // {
-        //     key: 'delete',
-        //     title: 'Delete Confirmation',
-        //     content: 'Danger zone – confirm deletion here.',
-        //     className: 'text-red-600',
-        // },
     ];
 
 export default function AssessmentMainPanel({
@@ -63,6 +52,9 @@ export default function AssessmentMainPanel({
     const [activeAction, setActiveAction] = useState<AssessmentAction | null>(null);
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [pdfError, setPdfError] = useState<string | null>(null);
+
 
     const panel = actionPanels.find((p) => p.key === activeAction);
 
@@ -72,6 +64,35 @@ export default function AssessmentMainPanel({
         if (activeAction === 'edit') setEditModalOpen(true);
         if (activeAction === 'delete') setDeleteConfirmOpen(true);
     }, [activeAction, selectedAssessment]);
+
+    useEffect(() => {
+        const fetchPdf = async () => {
+            if (!selectedAssessment || activeAction !== 'map') {
+                setPdfUrl(null);
+                setPdfError(null);
+                return;
+            }
+
+            try {
+                const res = await fetchWithAuth(
+                    `${process.env.NEXT_PUBLIC_API_URL}/assessments/${selectedAssessment.id}/question-paper`
+                );
+
+                if (!res.ok) throw new Error('PDF not found');
+
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                setPdfUrl(url);
+            } catch (err) {
+                console.error('Failed to fetch PDF:', err);
+                setPdfUrl(null);
+                setPdfError('Failed to load PDF.');
+            }
+        };
+
+        fetchPdf();
+    }, [selectedAssessment, activeAction]);
+
 
     const handleDelete = async () => {
         if (!selectedAssessment) return;
@@ -96,26 +117,43 @@ export default function AssessmentMainPanel({
         <div className="flex flex-col h-full">
             <AssessmentBar onAction={setActiveAction} selectedAction={activeAction} />
 
-            <div className={`flex-1 overflow-auto p-4 ${panel?.className || 'text-gray-500'}`}>
-                {selectedAssessment ? (
-                    <div className="mb-4">
-                        <h2 className="text-lg font-semibold">Selected Assessment</h2>
-                        <p>ID: {selectedAssessment.id}</p>
-                        <p>Title: {selectedAssessment.title}</p>
-                    </div>
-                ) : (
-                    <p className="mb-4 text-gray-400">No assessment selected.</p>
-                )}
+            {/* <div className={`flex-1 overflow-auto p-4 ${panel?.className || 'text-gray-500'}`}> */}
+            {selectedAssessment ? (
+                <div className="mb-4">
+                    {activeAction === 'map' ? (
+                        pdfUrl ? (
+                            <div className="w-full h-[80vh] border rounded overflow-hidden">
+                                <iframe
+                                    src={pdfUrl}
+                                    title="Assessment PDF"
+                                    className="w-full h-full"
+                                    style={{ border: 'none' }}
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-sm text-red-500">{pdfError || 'No question paper available.'}</p>
+                        )
+                    ) : (
+                        <>
+                            <p>ID: {selectedAssessment.id}</p>
+                            <p>Title: {selectedAssessment.title}</p>
+                        </>
+                    )}
 
-                {panel ? (
-                    <>
-                        <h2 className="text-xl font-semibold">{panel.title}</h2>
-                        <p>{panel.content}</p>
-                    </>
-                ) : (
-                    <p>Select an action from the toolbar above.</p>
-                )}
-            </div>
+                </div>
+            ) : (
+                <p className="mb-4 text-gray-400">No assessment selected.</p>
+            )}
+
+            {/* {panel ? (
+                <>
+                    <h2 className="text-xl font-semibold">{panel.title}</h2>
+                    <p>{panel.content}</p>
+                </>
+            ) : (
+                <p>Select an action from the toolbar above.</p>
+            )} */}
+            {/* </div> */}
 
             {/* Edit Modal */}
             {selectedAssessment && (

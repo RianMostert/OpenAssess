@@ -78,6 +78,27 @@ def upload_assessment(
     return db_assessment
 
 
+@router.get("/{assessment_id}/questions", response_model=list[QuestionOut])
+def get_assessment_questions(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not has_course_role(
+        current_user, assessment.course_id, "student", "ta", "teacher"
+    ):
+        raise HTTPException(status_code=403, detail="Not authorized to view questions")
+
+    questions = db.query(Question).filter(Question.assessment_id == assessment.id).all()
+    # if not questions:
+    #     raise HTTPException(status_code=404, detail="No questions found")
+    return questions
+
+
 @router.get("/{assessment_id}/question-paper")
 def download_question_paper(
     assessment_id: UUID,
@@ -201,24 +222,3 @@ def delete_assessment(
     db.delete(assessment)
     db.commit()
     return {"message": "Assessment deleted"}
-
-
-@router.get("/{assessment_id}/questions", response_model=list[QuestionOut])
-def get_assessment_questions(
-    assessment_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not has_course_role(
-        current_user, assessment.course_id, "student", "ta", "teacher"
-    ):
-        raise HTTPException(status_code=403, detail="Not authorized to view questions")
-
-    questions = db.query(Question).filter(Question.assessment_id == assessment.id).all()
-    if not questions:
-        raise HTTPException(status_code=404, detail="No questions found")
-    return questions

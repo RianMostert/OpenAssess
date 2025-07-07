@@ -10,8 +10,8 @@ interface Assessment {
 interface LeftSidebarProps {
     activeNavItem: string;
     width: number;
-    selectedAssessment?: { id: string; title: string } | null;
-    onSelectAssessment?: (assessment: { id: string; title: string }) => void;
+    selectedAssessment?: Assessment | null;
+    onSelectAssessment?: (assessment: Assessment) => void;
     onSelectPanel?: (panel: string) => void;
 }
 
