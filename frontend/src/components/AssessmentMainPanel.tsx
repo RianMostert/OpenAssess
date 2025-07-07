@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Document, Page, pdfjs } from 'react-pdf';
 import AssessmentBar from '@components/AssessmentBar';
 import EditAssessmentModel from '@/components/EditAssessmentModel';
+import CreateQuestionModel from '@/components/CreateQuestionModel';
 import {
     Dialog,
     DialogContent,
@@ -10,6 +12,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { GlobalWorkerOptions } from 'pdfjs-dist';
+
+GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url
+).toString();
 
 type AssessmentAction = 'edit' | 'map' | 'upload' | 'export' | 'delete';
 
@@ -22,30 +30,6 @@ interface AssessmentMainPanelProps {
     selectedAssessment?: Assessment | null;
 }
 
-const actionPanels: {
-    key: AssessmentAction;
-    title: string;
-    content: string;
-    className?: string;
-}[] = [
-        {
-            key: 'map',
-            title: 'Map View',
-            content: 'Render your interactive map or GIS tool here.',
-            className: 'bg-blue-100',
-        },
-        {
-            key: 'upload',
-            title: 'Upload Files',
-            content: 'Upload form UI goes here.',
-        },
-        {
-            key: 'export',
-            title: 'Export Assessment',
-            content: 'Export options / download actions go here.',
-        },
-    ];
-
 export default function AssessmentMainPanel({
     selectedAssessment,
 }: AssessmentMainPanelProps) {
@@ -55,10 +39,12 @@ export default function AssessmentMainPanel({
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [pdfError, setPdfError] = useState<string | null>(null);
 
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const pageRef = useRef<HTMLDivElement>(null);
 
-    const panel = actionPanels.find((p) => p.key === activeAction);
+    const [creating, setCreating] = useState(false);
 
-    // Show modal dialogs when action changes
     useEffect(() => {
         if (!selectedAssessment) return;
         if (activeAction === 'edit') setEditModalOpen(true);
@@ -93,7 +79,6 @@ export default function AssessmentMainPanel({
         fetchPdf();
     }, [selectedAssessment, activeAction]);
 
-
     const handleDelete = async () => {
         if (!selectedAssessment) return;
 
@@ -115,23 +100,76 @@ export default function AssessmentMainPanel({
 
     return (
         <div className="flex flex-col h-full">
-            <AssessmentBar onAction={setActiveAction} selectedAction={activeAction} />
+            <AssessmentBar
+                onAction={(action) => {
+                    if (action === 'map') setCreating(true);
+                    setActiveAction(action);
+                }}
+                selectedAction={activeAction}
+            />
 
-            {/* <div className={`flex-1 overflow-auto p-4 ${panel?.className || 'text-gray-500'}`}> */}
             {selectedAssessment ? (
                 <div className="mb-4">
                     {activeAction === 'map' ? (
                         pdfUrl ? (
-                            <div className="w-full h-[80vh] border rounded overflow-hidden">
-                                <iframe
-                                    src={pdfUrl}
-                                    title="Assessment PDF"
-                                    className="w-full h-full"
-                                    style={{ border: 'none' }}
-                                />
+                            <div className="w-full h-[80vh] border rounded overflow-auto relative">
+                                <Document
+                                    file={pdfUrl}
+                                    onLoadSuccess={({ numPages }) => {
+                                        setNumPages(numPages);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <div ref={pageRef} className="relative">
+                                        <Page
+                                            pageNumber={currentPage}
+                                            width={800}
+                                            renderTextLayer={false}
+                                            renderAnnotationLayer={false}
+                                        />
+                                        {creating && (
+                                            <CreateQuestionModel
+                                                assessmentId={selectedAssessment.id}
+                                                currentPage={currentPage}
+                                                pageContainerRef={pageRef}
+                                                onQuestionCreated={() => {
+                                                    setCreating(false);
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                </Document>
+
+                                <div className="flex items-center gap-4 mt-2 px-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            setCurrentPage((prev) => Math.max(prev - 1, 1))
+                                        }
+                                        disabled={currentPage <= 1}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <p className="text-sm text-muted-foreground">
+                                        Page {currentPage} of {numPages}
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            setCurrentPage((prev) =>
+                                                Math.min(prev + 1, numPages || prev)
+                                            )
+                                        }
+                                        disabled={currentPage >= (numPages || 0)}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
                             </div>
                         ) : (
-                            <p className="text-sm text-red-500">{pdfError || 'No question paper available.'}</p>
+                            <p className="text-sm text-red-500">
+                                {pdfError || 'No question paper available.'}
+                            </p>
                         )
                     ) : (
                         <>
@@ -139,27 +177,16 @@ export default function AssessmentMainPanel({
                             <p>Title: {selectedAssessment.title}</p>
                         </>
                     )}
-
                 </div>
             ) : (
                 <p className="mb-4 text-gray-400">No assessment selected.</p>
             )}
 
-            {/* {panel ? (
-                <>
-                    <h2 className="text-xl font-semibold">{panel.title}</h2>
-                    <p>{panel.content}</p>
-                </>
-            ) : (
-                <p>Select an action from the toolbar above.</p>
-            )} */}
-            {/* </div> */}
-
             {/* Edit Modal */}
             {selectedAssessment && (
                 <EditAssessmentModel
                     open={editModalOpen}
-                    setOpen={(open: boolean | ((prevState: boolean) => boolean)) => {
+                    setOpen={(open) => {
                         setEditModalOpen(open);
                         if (!open) setActiveAction(null);
                     }}

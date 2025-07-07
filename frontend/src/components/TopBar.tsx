@@ -25,7 +25,7 @@ export default function TopBar({
                     <PanelLeft className={`h-5 w-5 ${leftSidebarCollapsed ? "rotate-180" : ""}`} />
                 </Button>
             </div>
-            <span className="text-lg font-semibold">PDF Annotator</span>
+            <span className="text-lg font-semibold">Assessment Manager</span>
             <div className="absolute right-4">
                 <Button
                     variant="outline"

@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Plus } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
-// import CreateQuestionModal from '@/components/CreateQuestionModal';
+import CreateQuestionModel from '@/components/CreateQuestionModel';
 // import EditQuestionModal from '@/components/EditQuestionModal';
 
 interface Question {
@@ -33,7 +33,7 @@ interface MappingPanelProps {
 export default function MappingPanel({ selectedAssessment }: MappingPanelProps) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(false);
-    const [modalOpen, setModalOpen] = useState(false);
+    const [modelOpen, setModelOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const [creating, setCreating] = useState(false);
 
@@ -56,6 +56,13 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
         fetchQuestions();
     }, [selectedAssessment]);
 
+    useEffect(() => {
+        const handler = () => fetchQuestions();
+        window.addEventListener('question-created', handler);
+        return () => window.removeEventListener('question-created', handler);
+    }, []);
+
+
     if (!selectedAssessment) {
         return <div className="p-4 text-muted-foreground">Select an assessment to view its questions.</div>;
     }
@@ -66,7 +73,7 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
                 <h2 className="text-xl font-semibold">Questions</h2>
                 <Button onClick={() => {
                     setCreating(true);
-                    setModalOpen(true);
+                    setModelOpen(true);
                 }}
                     variant="ghost"
                     size="icon"
@@ -83,7 +90,7 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
                         <AccordionItem key={question.id} value={question.id}>
                             <div className="flex items-center justify-between w-full">
                                 <AccordionTrigger className="flex-1 text-left">
-                                    Question {question.question_number}
+                                    {question.question_number}
                                 </AccordionTrigger>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -94,11 +101,10 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => {
                                             setEditingQuestion(question);
-                                            setModalOpen(true);
+                                            setModelOpen(true);
                                         }}>
                                             Edit
                                         </DropdownMenuItem>
-                                        {/* Delete can go here */}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -115,42 +121,6 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
                 </Accordion>
             )}
 
-            {/* {creating && selectedAssessment && (
-                <CreateQuestionModal
-                    open={modalOpen}
-                    setOpen={(open) => {
-                        setModalOpen(open);
-                        if (!open) setCreating(false);
-                    }}
-                    assessmentId={selectedAssessment.id}
-                    onQuestionCreated={() => {
-                        setModalOpen(false);
-                        setCreating(false);
-                        fetchQuestions();
-                    }}
-                />
-            )} */}
-
-            {/* {editingQuestion && (
-                <EditQuestionModal
-                    open={modalOpen}
-                    setOpen={(open) => {
-                        setModalOpen(open);
-                        if (!open) setEditingQuestion(null);
-                    }}
-                    questionId={editingQuestion.id}
-                    initialValues={{
-                        question_number: editingQuestion.question_number,
-                        max_marks: editingQuestion.max_marks,
-                        increment: editingQuestion.increment,
-                        memo: editingQuestion.memo,
-                        marking_note: editingQuestion.marking_note,
-                    }}
-                    onQuestionUpdated={() => {
-                        fetchQuestions();
-                    }}
-                />
-            )} */}
         </div>
     );
 }

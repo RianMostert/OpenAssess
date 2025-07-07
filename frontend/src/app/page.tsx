@@ -2,7 +2,7 @@
 
 import { useState, useEffect, act } from 'react';
 import { useRouter } from 'next/navigation';
-import TopBar from '@/components/top-bar';
+import TopBar from '@/components/TopBar';
 import LeftSideBar from '@components/LeftSideBar';
 import MainPanel from '@/components/MainPanel';
 import RightSidebar from '@components/RightSideBar';
