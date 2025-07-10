@@ -29,6 +29,18 @@
       "@components/*": [
         "./src/components/*"
       ],
+      "@lib/*": [
+        "./src/lib/*"
+      ],
+      "@hooks/*": [
+        "./src/hooks/*"
+      ],
+      "@dashboard/*": [
+        "./src/app/dashboard/*"
+      ],
+      "@types/*": [
+        "./src/types/*"
+      ],
     }
   },
   "include": [

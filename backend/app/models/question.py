@@ -12,8 +12,11 @@ class Question(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     assessment_id = Column(
-        UUID(as_uuid=True), ForeignKey("assessment.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("assessment.id", ondelete="CASCADE"),
+        nullable=False,
     )
+
     question_number = Column(String, nullable=False)
     max_marks = Column(Float)
     increment = Column(Float)
@@ -27,4 +30,4 @@ class Question(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_memo_at = Column(DateTime(timezone=True), nullable=True)
 
-    assessment = relationship("Assessment")
+    assessment = relationship("Assessment", back_populates="questions")

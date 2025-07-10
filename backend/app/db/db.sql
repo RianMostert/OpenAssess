@@ -104,5 +104,31 @@ ALTER TABLE "question_result" ADD FOREIGN KEY ("assessment_id") REFERENCES "asse
 ALTER TABLE "question_result" ADD FOREIGN KEY ("question_id") REFERENCES "question" ("id");
 ALTER TABLE "question_result" ADD FOREIGN KEY ("marker_id") REFERENCES "user" ("id");
 
+-- Additional constraints
+ALTER TABLE "assessment"
+  ADD CONSTRAINT fk_assessment_course
+  FOREIGN KEY ("course_id") REFERENCES "course" ("id")
+  ON DELETE CASCADE;
+
+ALTER TABLE "question"
+  ADD CONSTRAINT fk_question_assessment
+  FOREIGN KEY ("assessment_id") REFERENCES "assessment" ("id")
+  ON DELETE CASCADE;
+
+ALTER TABLE "uploaded_file"
+  ADD CONSTRAINT fk_uploaded_file_assessment
+  FOREIGN KEY ("assessment_id") REFERENCES "assessment" ("id")
+  ON DELETE CASCADE;
+
+ALTER TABLE "question_result"
+  ADD CONSTRAINT fk_qr_assessment
+  FOREIGN KEY ("assessment_id") REFERENCES "assessment" ("id")
+  ON DELETE CASCADE;
+
+ALTER TABLE "question_result"
+  ADD CONSTRAINT fk_qr_question
+  FOREIGN KEY ("question_id") REFERENCES "question" ("id")
+  ON DELETE CASCADE;
+
 -- Role seed data
 INSERT INTO role (name) VALUES ('teacher'), ('ta'), ('student');

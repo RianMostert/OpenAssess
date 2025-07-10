@@ -14,28 +14,41 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Plus } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
-import CreateQuestionModel from '@/components/CreateQuestionModel';
-// import EditQuestionModal from '@/components/EditQuestionModal';
 
-interface Question {
+export interface Question {
     id: string;
     question_number: string;
     max_marks?: number;
     increment?: number;
     memo?: string;
     marking_note?: string;
+    assessment_id: string;
+    page_number: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 }
 
 interface MappingPanelProps {
     selectedAssessment: { id: string; title: string } | null;
+    currentPage: number;
+    pageContainerRef: React.RefObject<HTMLDivElement | null>;
+    width?: number;
+    setCreatingQuestion: (val: boolean) => void;
+    setEditingQuestion: (question: Question | null) => void;
 }
 
-export default function MappingPanel({ selectedAssessment }: MappingPanelProps) {
+export default function MappingPanel({
+    selectedAssessment,
+    currentPage,
+    pageContainerRef,
+    width = 250,
+    setCreatingQuestion,
+    setEditingQuestion,
+}: MappingPanelProps) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(false);
-    const [modelOpen, setModelOpen] = useState(false);
-    const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-    const [creating, setCreating] = useState(false);
 
     const fetchQuestions = async () => {
         if (!selectedAssessment) return;
@@ -52,6 +65,26 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
         }
     };
 
+    const handleDelete = async (questionId: string) => {
+        if (!selectedAssessment) return;
+
+        try {
+            const res = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/questions/${questionId}`,
+                { method: 'DELETE' }
+            );
+            if (!res.ok) throw new Error('Delete failed');
+
+            fetchQuestions();
+        } catch (err) {
+            console.error('Error deleting question:', err);
+        }
+    };
+
+    const handleEdit = (question: Question) => {
+        setEditingQuestion(question);
+    }
+
     useEffect(() => {
         fetchQuestions();
     }, [selectedAssessment]);
@@ -62,19 +95,30 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
         return () => window.removeEventListener('question-created', handler);
     }, []);
 
+    useEffect(() => {
+        const handler = () => fetchQuestions();
+        window.addEventListener('question-updated', handler);
+        return () => window.removeEventListener('question-updated', handler);
+    }, []);
+
+    useEffect(() => {
+        const handler = () => fetchQuestions();
+        window.addEventListener('question-deleted', handler);
+        return () => window.removeEventListener('question-deleted', handler);
+    }, []);
 
     if (!selectedAssessment) {
         return <div className="p-4 text-muted-foreground">Select an assessment to view its questions.</div>;
     }
 
     return (
-        <div className="p-4">
+        <div className="p-4" style={{ width: `${width}px`, minWidth: `${width}px` }}>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Questions</h2>
-                <Button onClick={() => {
-                    setCreating(true);
-                    setModelOpen(true);
-                }}
+                <Button
+                    onClick={() => {
+                        setCreatingQuestion(true);
+                    }}
                     variant="ghost"
                     size="icon"
                 >
@@ -99,11 +143,18 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => {
-                                            setEditingQuestion(question);
-                                            setModelOpen(true);
-                                        }}>
+                                        <DropdownMenuItem
+                                            onClick={() => {
+                                                setEditingQuestion(question);
+                                            }}
+                                        >
                                             Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => handleDelete(question.id)}
+                                            className="text-red-600"
+                                        >
+                                            Delete
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -120,7 +171,6 @@ export default function MappingPanel({ selectedAssessment }: MappingPanelProps) 
                     ))}
                 </Accordion>
             )}
-
         </div>
     );
 }

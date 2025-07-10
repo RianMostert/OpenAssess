@@ -1,0 +1,42 @@
+import { useRef, useState } from 'react';
+import PdfViewer from '@dashboard/course/mapping/PdfViewer';
+import MappingRightPanel from '@dashboard/course/mapping/MappingRightPanel';
+import { Assessment, Question } from '@/types/course';
+
+interface MappingLayoutProps {
+    assessment: Assessment;
+}
+
+export default function MappingLayout({ assessment }: MappingLayoutProps) {
+    const pageContainerRef = useRef<HTMLDivElement>(null);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [creating, setCreating] = useState(false);
+    const [editing, setEditing] = useState<Question | null>(null);
+
+    return (
+        <div className="flex h-full w-full border-r border-zinc-800">
+            <div className="flex-1 overflow-auto">
+                <PdfViewer
+                    assessment={assessment}
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
+                    pageContainerRef={pageContainerRef}
+                    creating={creating}
+                    setCreatingQuestion={setCreating}
+                    editing={editing}
+                    setEditingQuestion={setEditing}
+                />
+            </div>
+
+            <div className="overflow-auto border-l border-zinc-800">
+                <MappingRightPanel
+                    selectedAssessment={assessment}
+                    currentPage={currentPage}
+                    pageContainerRef={pageContainerRef}
+                    setCreatingQuestion={setCreating}
+                    setEditingQuestion={setEditing}
+                />
+            </div>
+        </div>
+    );
+}

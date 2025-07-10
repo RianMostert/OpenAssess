@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
-// import { v4 as uuidv4 } from 'uuid';
-import CreateQuestionFormModel from '@components/CreateQuestionFormModel';
+import CreateQuestionFormModel from '@dashboard/course/mapping/CreateQuestionFormModel';
 
 interface Coordinates {
     x: number;

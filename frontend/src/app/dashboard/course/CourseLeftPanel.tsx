@@ -7,20 +7,20 @@ import {
     DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical } from 'lucide-react';
-import CreateCourseModal from '@/components/CreateCourseModel';
-import EditCourseModal from '@components/EditCourseModel';
-import CreateAssessmentModel from '@/components/CreateAssessmentModel';
-import EditAssessmentModel from '@/components/EditAssessmentModel';
+import CreateCourseModel from '@/app/dashboard/course/components/CreateCourseModel';
+import EditCourseModel from '@dashboard/course/components/EditCourseModel';
+import CreateAssessmentModel from '@/app/dashboard/course/components/CreateAssessmentModel';
+import EditAssessmentModel from '@/app/dashboard/course/components/EditAssessmentModel';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 
-interface Course {
+export interface Course {
     id: string;
     title: string;
     code?: string;
     teacher_id: string;
 }
 
-interface Assessment {
+export interface Assessment {
     id: string;
     title: string;
 }
@@ -29,16 +29,20 @@ type CourseWithAssessments = Course & { assessments: Assessment[] };
 
 interface CoursePanelProps {
     assessments: Assessment[];
-    setAssessments: (assessments: Assessment[]) => void;
+    setAssessments: (assessments: Assessment[] | null) => void;
     selectedAssessment?: Assessment | null;
-    onSelectAssessment?: (assessment: Assessment) => void;
+    setSelectedAssessment?: (assessment: Assessment | null) => void;
+    selectedCourse?: Course | null;
+    setSelectedCourse?: (course: Course | null) => void;
+    width?: number;
 }
 
 export default function CoursePanel({
-    assessments,
-    setAssessments,
     selectedAssessment,
-    onSelectAssessment,
+    setSelectedAssessment,
+    selectedCourse,
+    setSelectedCourse,
+    width = 250,
 }: CoursePanelProps) {
     const [courses, setCourses] = useState<CourseWithAssessments[]>([]);
     const [loading, setLoading] = useState(true);
@@ -48,17 +52,14 @@ export default function CoursePanel({
         code?: string;
     } | null>(null);
 
-    const [modalOpen, setModalOpen] = useState(false);
+    const [modelOpen, setModelOpen] = useState(false);
 
     const [creatingAssessmentFor, setCreatingAssessmentFor] = useState<{
         id: string;
         title: string;
     } | null>(null);
 
-    // const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
-
     const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
-
 
     const deleteAssessment = async (assessmentId: string, courseId: string) => {
         try {
@@ -131,6 +132,8 @@ export default function CoursePanel({
 
             // Refresh the course list after deletion
             fetchCourses();
+            setSelectedAssessment?.(null);
+            setSelectedCourse?.(null);
         } catch (error) {
             console.error('Error deleting course:', error);
         }
@@ -148,7 +151,7 @@ export default function CoursePanel({
             code: course.code,
         });
 
-        setModalOpen(true);
+        setModelOpen(true);
     };
 
     const addAssessment = (courseId: string) => {
@@ -162,7 +165,7 @@ export default function CoursePanel({
             title: course.title,
         });
 
-        setModalOpen(true); // open the modal
+        setModelOpen(true); // open the modal
     };
 
 
@@ -170,13 +173,13 @@ export default function CoursePanel({
         fetchCourses();
     }, []);
 
-    if (loading) return <div className="p-4">Loading courses...</div>;
+    if (loading) return <div className="p-4 border-zinc-800 border-r">Loading courses...</div>;
 
     return (
-        <div className="p-4">
+        <div className="p-4 border-zinc-800 border-r " style={{ width: `${width}px`, minWidth: `${width}px` }}>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold">Your Courses</h2>
-                <CreateCourseModal onCourseAdded={fetchCourses} />
+                <CreateCourseModel onCourseAdded={fetchCourses} />
             </div>
 
             <Accordion type="multiple">
@@ -224,7 +227,8 @@ export default function CoursePanel({
                                             variant={selectedAssessment?.id === assessment.id ? "default" : "outline"}
                                             className="justify-start flex-1"
                                             onClick={() => {
-                                                onSelectAssessment?.(assessment);
+                                                setSelectedCourse?.(course);
+                                                setSelectedAssessment?.(assessment);
                                                 console.log('Selected assessment:', assessment);
                                             }}
                                         >
@@ -241,7 +245,7 @@ export default function CoursePanel({
                                                 <DropdownMenuItem
                                                     onClick={() => {
                                                         setEditingAssessment(assessment);
-                                                        setModalOpen(true);
+                                                        setModelOpen(true);
                                                     }}
                                                 >
                                                     Edit
@@ -265,14 +269,14 @@ export default function CoursePanel({
             </Accordion>
             {
                 editingCourse && (
-                    <EditCourseModal
-                        open={modalOpen}
-                        setOpen={setModalOpen}
+                    <EditCourseModel
+                        open={modelOpen}
+                        setOpen={setModelOpen}
                         courseId={editingCourse.id}
                         initialTitle={editingCourse.title}
                         initialCode={editingCourse.code}
                         onCourseUpdated={() => {
-                            setModalOpen(false);
+                            setModelOpen(false);
                             // setEditingCourse(null);
                             fetchCourses();
                         }}
@@ -283,12 +287,12 @@ export default function CoursePanel({
             {creatingAssessmentFor && (
                 <CreateAssessmentModel
                     courseId={creatingAssessmentFor.id}
-                    open={modalOpen}
-                    setOpen={setModalOpen}
+                    open={modelOpen}
+                    setOpen={setModelOpen}
                     onAssessmentCreated={() => {
-                        setModalOpen(false);
+                        setModelOpen(false);
                         setCreatingAssessmentFor(null);
-                        fetchCourses(); // refresh your course list
+                        fetchCourses();
                     }}
                 />
             )}
@@ -297,9 +301,9 @@ export default function CoursePanel({
                 <EditAssessmentModel
                     assessmentId={editingAssessment.id}
                     initialTitle={editingAssessment.title}
-                    open={modalOpen}
+                    open={modelOpen}
                     setOpen={(open) => {
-                        setModalOpen(open);
+                        setModelOpen(open);
                         if (!open) setEditingAssessment(null);
                     }}
                     onAssessmentUpdated={() => {

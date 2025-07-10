@@ -21,3 +21,6 @@ class Assessment(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     course = relationship("Course", back_populates="assessments")
+    questions = relationship(
+        "Question", back_populates="assessment", cascade="all, delete-orphan"
+    )
