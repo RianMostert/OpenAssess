@@ -52,7 +52,8 @@ export default function CoursePanel({
         code?: string;
     } | null>(null);
 
-    const [modelOpen, setModelOpen] = useState(false);
+    // const [modelOpen, setModelOpen] = useState(false);
+    const [modalType, setModalType] = useState<'editCourse' | 'createAssessment' | 'editAssessment' | null>(null);
 
     const [creatingAssessmentFor, setCreatingAssessmentFor] = useState<{
         id: string;
@@ -151,7 +152,7 @@ export default function CoursePanel({
             code: course.code,
         });
 
-        setModelOpen(true);
+        setModalType('editCourse');
     };
 
     const addAssessment = (courseId: string) => {
@@ -165,7 +166,7 @@ export default function CoursePanel({
             title: course.title,
         });
 
-        setModelOpen(true); // open the modal
+        setModalType('createAssessment');
     };
 
 
@@ -245,7 +246,7 @@ export default function CoursePanel({
                                                 <DropdownMenuItem
                                                     onClick={() => {
                                                         setEditingAssessment(assessment);
-                                                        setModelOpen(true);
+                                                        setModalType('editAssessment');
                                                     }}
                                                 >
                                                     Edit
@@ -267,45 +268,53 @@ export default function CoursePanel({
                     </AccordionItem>
                 ))}
             </Accordion>
-            {
-                editingCourse && (
-                    <EditCourseModel
-                        open={modelOpen}
-                        setOpen={setModelOpen}
-                        courseId={editingCourse.id}
-                        initialTitle={editingCourse.title}
-                        initialCode={editingCourse.code}
-                        onCourseUpdated={() => {
-                            setModelOpen(false);
-                            // setEditingCourse(null);
-                            fetchCourses();
-                        }}
-                    />
-                )
-            }
-
-            {creatingAssessmentFor && (
-                <CreateAssessmentModel
-                    courseId={creatingAssessmentFor.id}
-                    open={modelOpen}
-                    setOpen={setModelOpen}
-                    onAssessmentCreated={() => {
-                        setModelOpen(false);
-                        setCreatingAssessmentFor(null);
+            {modalType === 'editCourse' && editingCourse && (
+                <EditCourseModel
+                    open={true}
+                    setOpen={(open) => {
+                        if (!open) {
+                            setModalType(null);
+                            setEditingCourse(null);
+                        }
+                    }}
+                    courseId={editingCourse.id}
+                    initialTitle={editingCourse.title}
+                    initialCode={editingCourse.code}
+                    onCourseUpdated={() => {
+                        setModalType(null);
                         fetchCourses();
                     }}
                 />
             )}
 
-            {editingAssessment && (
+            {modalType === 'createAssessment' && creatingAssessmentFor && (
+                <CreateAssessmentModel
+                    open={true}
+                    setOpen={(open) => {
+                        if (!open) {
+                            setModalType(null);
+                            setCreatingAssessmentFor(null);
+                        }
+                    }}
+                    courseId={creatingAssessmentFor.id}
+                    onAssessmentCreated={() => {
+                        setModalType(null);
+                        fetchCourses();
+                    }}
+                />
+            )}
+
+            {modalType === 'editAssessment' && editingAssessment && (
                 <EditAssessmentModel
+                    open={true}
+                    setOpen={(open) => {
+                        if (!open) {
+                            setModalType(null);
+                            setEditingAssessment(null);
+                        }
+                    }}
                     assessmentId={editingAssessment.id}
                     initialTitle={editingAssessment.title}
-                    open={modelOpen}
-                    setOpen={(open) => {
-                        setModelOpen(open);
-                        if (!open) setEditingAssessment(null);
-                    }}
                     onAssessmentUpdated={() => {
                         fetchCourses();
                     }}

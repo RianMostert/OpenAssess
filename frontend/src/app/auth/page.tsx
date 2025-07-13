@@ -11,6 +11,7 @@ export default function AuthPage() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [studentNumber, setStudentNumber] = useState("");
+    const [role, setRole] = useState("student");
     const [loading, setLoading] = useState(false);
 
     const router = useRouter();
@@ -23,6 +24,7 @@ export default function AuthPage() {
         setFirstName("");
         setLastName("");
         setStudentNumber("");
+        setRole("student");
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -67,6 +69,7 @@ export default function AuthPage() {
                         student_number: studentNumber || undefined,
                         password,
                         is_admin: false,
+                        primary_role_id: role === "teacher" ? 1 : 2,
                     }),
                 });
 
@@ -118,6 +121,27 @@ export default function AuthPage() {
                                 disabled={loading}
                                 className="w-full px-4 py-2 border rounded-xl"
                             />
+                            <div className="flex justify-between items-center">
+                                <label className="font-medium">Role:</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setRole("student")}
+                                        className={`px-3 py-1 rounded-xl border ${role === "student" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+                                        disabled={loading}
+                                    >
+                                        Student
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setRole("teacher")}
+                                        className={`px-3 py-1 rounded-xl border ${role === "teacher" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+                                        disabled={loading}
+                                    >
+                                        Teacher
+                                    </button>
+                                </div>
+                            </div>
                         </>
                     )}
                     <input

@@ -13,7 +13,6 @@ def get_current_user(
     token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(status_code=401, detail="Invalid credentials")
-    # print("Token received by FastAPI:", token)
 
     try:
         payload = decode_token(token)

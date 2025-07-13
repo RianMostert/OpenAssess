@@ -9,6 +9,7 @@ from app.schemas.assessment import AssessmentOut
 from app.models.assessment import Assessment
 from app.dependencies import get_db
 from app.models.user import User
+from app.models.user_course_role import UserCourseRole
 from app.dependencies import get_current_user
 from app.core.security import (
     has_course_role,
@@ -45,18 +46,26 @@ async def create_course(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # print("create_course route HIT")
-    # print("Received course data:", course)
-    # print("Current user:", current_user.email)
     if not can_create_course(current_user):
         raise HTTPException(
             status_code=403, detail="Only teachers or admins can create courses"
         )
 
+    # Create the course
     db_course = Course(**course.model_dump())
     db.add(db_course)
     db.commit()
     db.refresh(db_course)
+
+    # Link the current user to the course via their primary role
+    user_course_role = UserCourseRole(
+        user_id=current_user.id,
+        course_id=db_course.id,
+        role_id=current_user.primary_role_id,
+    )
+    db.add(user_course_role)
+    db.commit()
+
     return db_course
 
 

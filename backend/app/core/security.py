@@ -4,6 +4,7 @@ from passlib.context import CryptContext
 from uuid import UUID
 
 from app.models.user import User
+from app.models import Role
 
 # Token config
 SECRET_KEY = "super-secret-key"
@@ -55,4 +56,4 @@ def is_course_teacher_or_ta(user: User, course_id: UUID) -> bool:
 
 
 def can_create_course(user: User) -> bool:
-    return user.is_admin or any(r.role.name == "teacher" for r in user.course_roles)
+    return user.is_admin or user.primary_role_id == 1
