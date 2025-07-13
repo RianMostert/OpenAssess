@@ -1,6 +1,5 @@
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import sessionmaker
 from app.core.security import hash_password, create_access_token
 from app.db.base import Base
@@ -60,24 +59,6 @@ def client(db_session):
 # --------------------------
 # Entity Fixtures
 # --------------------------
-
-
-@pytest.fixture(scope="session", autouse=True)
-def seed_roles(setup_database):
-    with engine.begin() as conn:
-        stmt = (
-            insert(role_model.Role)
-            .values(
-                [
-                    {"name": "teacher"},
-                    {"name": "ta"},
-                    {"name": "student"},
-                ]
-            )
-            .on_conflict_do_nothing(index_elements=["name"])
-        )
-
-        conn.execute(stmt)
 
 
 def auth_headers(user: user_model.User):

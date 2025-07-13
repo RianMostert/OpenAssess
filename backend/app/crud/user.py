@@ -18,6 +18,7 @@ def create_user(db: Session, user_data: UserCreate):
         student_number=user_data.student_number,
         password_hash=password_hash,
         is_admin=user_data.is_admin if hasattr(user_data, "is_admin") else False,
+        primary_role_id=user_data.primary_role_id,
     )
     db.add(new_user)
     db.commit()
