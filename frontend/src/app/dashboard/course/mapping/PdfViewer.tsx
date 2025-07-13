@@ -22,29 +22,36 @@ interface PdfViewerProps {
     setEditingQuestion: (question: Question | null) => void;
 }
 
-export default function PdfViewer({ assessment, currentPage, setCurrentPage, creating, setCreatingQuestion, setEditingQuestion, editing }: PdfViewerProps) {
+export default function PdfViewer({
+    assessment,
+    currentPage,
+    setCurrentPage,
+    pageContainerRef,
+    creating,
+    setCreatingQuestion,
+    editing,
+    setEditingQuestion,
+}: PdfViewerProps) {
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [pdfError, setPdfError] = useState<string | null>(null);
     const [numPages, setNumPages] = useState<number | null>(null);
-    const pageRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState<number | null>(null);
+    const observerRef = useRef<IntersectionObserver | null>(null);
 
+    // Dynamically set width based on container
     useEffect(() => {
-        if (containerRef.current) {
-            setContainerWidth(containerRef.current.offsetWidth);
-        }
-
-        const handleResize = () => {
-            if (containerRef.current) {
-                setContainerWidth(containerRef.current.offsetWidth);
+        const updateWidth = () => {
+            if (pageContainerRef.current) {
+                setContainerWidth(pageContainerRef.current.offsetWidth);
             }
         };
 
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+        updateWidth();
+        window.addEventListener('resize', updateWidth);
+        return () => window.removeEventListener('resize', updateWidth);
+    }, [pageContainerRef]);
 
+    // Load PDF
     useEffect(() => {
         const fetchPdf = async () => {
             try {
@@ -52,7 +59,6 @@ export default function PdfViewer({ assessment, currentPage, setCurrentPage, cre
                     `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/question-paper`
                 );
                 if (!res.ok) throw new Error('PDF not found');
-
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 setPdfUrl(url);
@@ -66,55 +72,94 @@ export default function PdfViewer({ assessment, currentPage, setCurrentPage, cre
         fetchPdf();
     }, [assessment]);
 
+    // Track visible page
+    useEffect(() => {
+        if (!pageContainerRef.current) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const visible = entries.find((entry) => entry.isIntersecting);
+                if (visible) {
+                    const match = visible.target.id.match(/page-(\d+)/);
+                    if (match) {
+                        setCurrentPage(Number(match[1]));
+                    }
+                }
+            },
+            {
+                root: pageContainerRef.current,
+                threshold: 0.6,
+            }
+        );
+
+        observerRef.current = observer;
+        return () => observer.disconnect();
+    }, [pageContainerRef, setCurrentPage]);
+
+    // Scroll-to-page helper
+    const scrollToPage = (page: number) => {
+        const el = document.getElementById(`page-${page}`);
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
     return (
         <div className="flex flex-col h-full w-full p-4">
             {pdfUrl ? (
                 <>
-                    {/* Scrollable PDF area */}
-                    <div className="flex-1 overflow-auto border rounded relative" ref={containerRef}>
+                    <div
+                        ref={pageContainerRef}
+                        className="border rounded relative overflow-auto"
+                        style={{ height: 'calc(100vh - 160px)' }}
+                    >
                         <Document
                             file={pdfUrl}
                             onLoadSuccess={({ numPages }) => {
+                                console.log("PDF loaded. Pages:", numPages);
                                 setNumPages(numPages);
                                 setCurrentPage(1);
                             }}
+                            onLoadError={(err) => {
+                                console.error("PDF load error:", err);
+                                setPdfError("PDF failed to render.");
+                            }}
                         >
-                            <div ref={pageRef} className="flex justify-center py-4">
+                            <div className="flex justify-center py-4" id={`page-${currentPage}`}>
                                 <Page
                                     pageNumber={currentPage}
                                     width={containerWidth ? containerWidth - 32 : 500}
                                     renderTextLayer={false}
                                     renderAnnotationLayer={false}
                                 />
-                                {creating && (
-                                    <CreateQuestionModel
-                                        assessmentId={assessment.id}
-                                        currentPage={currentPage}
-                                        pageContainerRef={containerRef}
-                                        onQuestionCreated={() => setCreatingQuestion(false)}
-                                    />
-                                )}
-
-                                {editing && (
-                                    <EditQuestionModel
-                                        question={editing}
-                                        open={!!editing}
-                                        setOpen={(open) => !open && setEditingQuestion(null)}
-                                        onUpdated={() => {
-                                            setEditingQuestion(null);
-                                        }}
-                                    />
-                                )}
-
-
                             </div>
                         </Document>
+
+                        {creating && (
+                            <CreateQuestionModel
+                                assessmentId={assessment.id}
+                                currentPage={currentPage}
+                                pageContainerRef={pageContainerRef}
+                                onQuestionCreated={() => setCreatingQuestion(false)}
+                            />
+                        )}
+
+                        {editing && (
+                            <EditQuestionModel
+                                question={editing}
+                                open={!!editing}
+                                setOpen={(open) => !open && setEditingQuestion(null)}
+                                onUpdated={() => {
+                                    setEditingQuestion(null);
+                                }}
+                            />
+                        )}
                     </div>
 
                     <div className="flex items-center justify-center gap-4 mt-4">
                         <Button
                             variant="outline"
-                            onClick={() => setCurrentPage((prev: number) => Math.max(prev - 1, 1))}
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                             disabled={currentPage <= 1}
                         >
                             Previous
@@ -137,6 +182,6 @@ export default function PdfViewer({ assessment, currentPage, setCurrentPage, cre
                 <p className="text-sm text-red-500">{pdfError || 'No question paper available.'}</p>
             )}
         </div>
-    );
 
+    );
 }

@@ -39,7 +39,10 @@ export default function CreateQuestionController({
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!pageContainerRef.current) return;
 
-        const rect = pageContainerRef.current.getBoundingClientRect();
+        const pageElement = document.getElementById(`page-${currentPage}`);
+        if (!pageElement) return;
+
+        const rect = pageElement.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
@@ -50,7 +53,10 @@ export default function CreateQuestionController({
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!drawing || !startCoord || !pageContainerRef.current) return;
 
-        const rect = pageContainerRef.current.getBoundingClientRect();
+        const pageElement = document.getElementById(`page-${currentPage}`);
+        if (!pageElement || !startCoord) return;
+
+        const rect = pageElement.getBoundingClientRect();
         const x2 = e.clientX - rect.left;
         const y2 = e.clientY - rect.top;
 

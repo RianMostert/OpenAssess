@@ -14,8 +14,8 @@ export default function MappingLayout({ assessment }: MappingLayoutProps) {
     const [editing, setEditing] = useState<Question | null>(null);
 
     return (
-        <div className="flex h-full w-full border-r border-zinc-800">
-            <div className="flex-1 overflow-auto">
+        <div className="flex h-screen w-full border-r border-zinc-800">
+            <div className="flex-1 h-full overflow-auto" ref={pageContainerRef}>
                 <PdfViewer
                     assessment={assessment}
                     currentPage={currentPage}
@@ -28,7 +28,7 @@ export default function MappingLayout({ assessment }: MappingLayoutProps) {
                 />
             </div>
 
-            <div className="overflow-auto border-l border-zinc-800">
+            <div className="h-full overflow-auto border-l border-zinc-800">
                 <MappingRightPanel
                     selectedAssessment={assessment}
                     currentPage={currentPage}
