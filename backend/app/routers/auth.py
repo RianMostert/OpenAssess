@@ -6,7 +6,7 @@ from datetime import timedelta
 from app.db.session import get_db
 from app.crud.user import get_user_by_email
 from app.schemas.user import UserCreate, UserOut
-from app.crud.user import create_user_with_default_role
+from app.crud.user import create_user
 from app.core.security import (
     verify_password,
     create_access_token,
@@ -42,4 +42,4 @@ def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    return create_user_with_default_role(db, user_data)
+    return create_user(db, user_data)

@@ -12,7 +12,9 @@ class UploadedFile(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     assessment_id = Column(
-        UUID(as_uuid=True), ForeignKey("assessment.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("assessment.id", ondelete="CASCADE"),
+        nullable=False,
     )
     student_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
     answer_sheet_file_path = Column(String, nullable=False)
@@ -21,7 +23,7 @@ class UploadedFile(Base):
 
     student = relationship("User", foreign_keys=[student_id])
     uploader = relationship("User", foreign_keys=[uploaded_by])
-    assessment = relationship("Assessment")
+    assessment = relationship("Assessment", back_populates="uploaded_files")
 
     __table_args__ = (
         Index(

@@ -11,6 +11,7 @@ def test_create_user(client, admin):
             "email": "alice@example.com",
             "student_number": "12345678",
             "password": "securepassword",
+            "primary_role_id": 3,
         },
         headers=headers,
     )
@@ -30,6 +31,7 @@ def test_get_user_by_id(client, admin):
             "email": "bob@example.com",
             "student_number": "87654321",
             "password": "buildit",
+            "primary_role_id": 3,
         },
         headers=headers,
     )
@@ -57,6 +59,7 @@ def test_update_user(client, admin):
             "email": "charlie@example.com",
             "student_number": "11112222",
             "password": "pass1234",
+            "primary_role_id": 3,
         },
         headers=headers,
     )
@@ -82,6 +85,7 @@ def test_delete_user(client, admin):
             "email": "dana@example.com",
             "student_number": "33334444",
             "password": "remove",
+            "primary_role_id": 3,
         },
         headers=headers,
     )
@@ -92,29 +96,3 @@ def test_delete_user(client, admin):
 
     follow_up = client.get(f"/api/v1/users/{user_id}", headers=headers)
     assert follow_up.status_code == 404
-
-
-# def test_assign_role_to_user_in_course(client, db_session, teacher, student, course):
-#     from app.models.user_course_role import UserCourseRole
-
-#     response = client.post(
-#         "/api/v1/user-roles/assign",
-#         json={
-#             "user_id": str(student.id),
-#             "course_id": str(course.id),
-#             "role_name": "ta",
-#         },
-#     )
-
-#     assert response.status_code == 200, response.text
-#     data = response.json()
-#     assert data["course_id"] == str(course.id)
-#     assert data["role"]["name"] == "ta"
-
-#     db_entry = (
-#         db_session.query(UserCourseRole)
-#         .filter_by(user_id=student.id, course_id=course.id)
-#         .first()
-#     )
-#     assert db_entry is not None
-#     assert db_entry.role.name == "ta"

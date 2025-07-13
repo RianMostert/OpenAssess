@@ -10,6 +10,7 @@ def test_create_user(client, admin):
         "student_number": "87654321",
         "password": "testpass",
         "is_admin": False,
+        "primary_role_id": 3,
     }
     response = client.post("/api/v1/users/", json=payload, headers=headers)
     assert response.status_code == 200

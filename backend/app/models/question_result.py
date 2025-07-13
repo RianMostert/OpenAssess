@@ -13,10 +13,17 @@ class QuestionResult(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     student_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
     assessment_id = Column(
-        UUID(as_uuid=True), ForeignKey("assessment.id"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("assessment.id", ondelete="CASCADE"),
+        nullable=False,
     )
-    question_id = Column(UUID(as_uuid=True), ForeignKey("question.id"), nullable=False)
+    question_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("question.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     marker_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
+
     mark = Column(Float)
     comment = Column(String)
     annotation_file_path = Column(String)
@@ -25,8 +32,8 @@ class QuestionResult(Base):
 
     student = relationship("User", foreign_keys=[student_id])
     marker = relationship("User", foreign_keys=[marker_id])
-    assessment = relationship("Assessment")
-    question = relationship("Question")
+    assessment = relationship("Assessment", back_populates="question_results")
+    question = relationship("Question", back_populates="question_results")
 
     __table_args__ = (
         Index(

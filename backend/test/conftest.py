@@ -76,6 +76,12 @@ def admin_token(client, admin):
 
 @pytest.fixture
 def admin(db_session):
+    role = db_session.query(role_model.Role).filter_by(name="teacher").first()
+    if not role:
+        role = role_model.Role(name="teacher")
+        db_session.add(role)
+        db_session.flush()
+
     user = user_model.User(
         id=uuid.uuid4(),
         first_name="Admin",
@@ -83,6 +89,7 @@ def admin(db_session):
         email="admin@example.com",
         student_number="24138096",
         password_hash=hash_password("adminpass"),
+        primary_role_id=role.id,
         is_admin=True,
     )
     db_session.add(user)
@@ -92,22 +99,24 @@ def admin(db_session):
 
 @pytest.fixture
 def teacher(db_session):
-    user = user_model.User(
-        first_name="Test",
-        last_name="Teacher",
-        email="teacher@example.com",
-        student_number="12345678",
-        password_hash=hash_password("teacherpass"),
-        is_admin=False,
-    )
-    db_session.add(user)
-    db_session.flush()
-
     role = db_session.query(role_model.Role).filter_by(name="teacher").first()
     if not role:
         role = role_model.Role(name="teacher")
         db_session.add(role)
         db_session.flush()
+
+    user = user_model.User(
+        id=uuid.uuid4(),
+        first_name="Test",
+        last_name="Teacher",
+        email="teacher@example.com",
+        student_number="12345678",
+        password_hash=hash_password("teacherpass"),
+        primary_role_id=role.id,
+        is_admin=False,
+    )
+    db_session.add(user)
+    db_session.flush()
 
     dummy_course = course_model.Course(
         id=uuid.uuid4(), title="Dummy Course", teacher_id=user.id, code="DUMMY101"
@@ -127,6 +136,12 @@ def teacher(db_session):
 
 @pytest.fixture
 def student(db_session):
+    role = db_session.query(role_model.Role).filter_by(name="student").first()
+    if not role:
+        role = role_model.Role(name="student")
+        db_session.add(role)
+        db_session.flush()
+
     user = user_model.User(
         id=uuid.uuid4(),
         first_name="Test",
@@ -134,6 +149,7 @@ def student(db_session):
         email="student@example.com",
         student_number="S123456",
         password_hash=hash_password("studentpass"),
+        primary_role_id=role.id,
         is_admin=False,
     )
     db_session.add(user)
@@ -143,6 +159,12 @@ def student(db_session):
 
 @pytest.fixture
 def marker(db_session, course):
+    role = db_session.query(role_model.Role).filter_by(name="ta").first()
+    if not role:
+        role = role_model.Role(name="ta")
+        db_session.add(role)
+        db_session.flush()
+
     user = user_model.User(
         id=uuid.uuid4(),
         first_name="Test",
@@ -150,22 +172,17 @@ def marker(db_session, course):
         email="marker@example.com",
         student_number="M123456",
         password_hash=hash_password("markerpass"),
+        primary_role_id=role.id,
+        is_admin=False,
     )
     db_session.add(user)
     db_session.flush()
 
-    role = db_session.query(role_model.Role).filter_by(name="ta").first()
-    if not role:
-        role = role_model.Role(name="ta")
-        db_session.add(role)
-        db_session.flush()
-
-    from app.models.user_course_role import UserCourseRole
-
     db_session.add(
-        UserCourseRole(user_id=user.id, course_id=course.id, role_id=role.id)
+        user_course_role_model.UserCourseRole(
+            user_id=user.id, course_id=course.id, role_id=role.id
+        )
     )
-
     db_session.commit()
     return user
 
@@ -249,3 +266,11 @@ def question_result(db_session, assessment, question, student, marker):
     db_session.add(result)
     db_session.commit()
     return result
+
+
+# @pytest.fixture(scope="session", autouse=True)
+# def role_factory(db_session):
+#     for role_name in ["teacher", "ta", "student"]:
+#         if not db_session.query(role_model.Role).filter_by(name=role_name).first():
+#             db_session.add(role_model.Role(name=role_name))
+#     db_session.commit()

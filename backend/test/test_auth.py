@@ -7,6 +7,7 @@ def test_signup_success(client, db_session):
             "email": "newuser@example.com",
             "student_number": "12345678",
             "password": "securepass",
+            "primary_role_id": 3,
         },
     )
     assert response.status_code == 200
@@ -24,6 +25,7 @@ def test_signup_duplicate_email(client, student):
             "email": student.email,  # already taken
             "student_number": "99999999",
             "password": "anotherpass",
+            "primary_role_id": 3,  # assuming role ID 3 exists
         },
     )
     assert response.status_code == 400

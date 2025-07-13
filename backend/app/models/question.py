@@ -1,4 +1,12 @@
-from sqlalchemy import Column, ForeignKey, String, Float, Integer, DateTime
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    String,
+    Float,
+    Integer,
+    DateTime,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -31,3 +39,12 @@ class Question(Base):
     updated_memo_at = Column(DateTime(timezone=True), nullable=True)
 
     assessment = relationship("Assessment", back_populates="questions")
+    question_results = relationship(
+        "QuestionResult", back_populates="question", cascade="all, delete-orphan"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "assessment_id", "question_number", name="uq_question_number_per_assessment"
+        ),
+    )

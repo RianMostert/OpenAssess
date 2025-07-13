@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
     student_number: Optional[str] = None
     password: str
     is_admin: Optional[bool] = False
+    primary_role_id: int
 
 
 class UserUpdate(BaseModel):
@@ -44,6 +45,7 @@ class UserOut(BaseModel):
     email: EmailStr
     student_number: Optional[str]
     is_admin: bool
+    primary_role: Optional[RoleOut]
     created_at: datetime
     updated_at: Optional[datetime]
 
