@@ -1,7 +1,7 @@
 from test.conftest import auth_headers
 
 
-def test_create_user(client, admin):
+def test_create_user(client, admin, teacher_role_id):
     headers = auth_headers(admin)
     payload = {
         "first_name": "Test",
@@ -10,7 +10,7 @@ def test_create_user(client, admin):
         "student_number": "87654321",
         "password": "testpass",
         "is_admin": False,
-        "primary_role_id": 3,
+        "primary_role_id": teacher_role_id,
     }
     response = client.post("/api/v1/users/", json=payload, headers=headers)
     assert response.status_code == 200
@@ -104,3 +104,19 @@ def test_admin_can_delete_user(client, admin, student):
     response = client.delete(f"/api/v1/users/{student.id}", headers=headers)
     assert response.status_code == 200
     assert response.json()["id"] == str(student.id)
+
+
+def test_create_user_missing_email(client, admin, teacher_role_id):
+    headers = auth_headers(admin)
+    response = client.post(
+        "/api/v1/users/",
+        json={
+            "first_name": "Test",
+            "last_name": "User",
+            "student_number": "00001111",
+            "password": "pass1234",
+            "primary_role_id": teacher_role_id,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 422  # Unprocessable Entity due to validation

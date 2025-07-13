@@ -61,6 +61,26 @@ def client(db_session):
 # --------------------------
 
 
+@pytest.fixture(scope="session", autouse=True)
+def seed_roles(setup_database):
+    from sqlalchemy.dialects.postgresql import insert
+
+    with engine.begin() as conn:
+        stmt = (
+            insert(role_model.Role)
+            .values(
+                [
+                    {"name": "teacher"},
+                    {"name": "ta"},
+                    {"name": "student"},
+                ]
+            )
+            .on_conflict_do_nothing(index_elements=["name"])
+        )
+
+        conn.execute(stmt)
+
+
 def auth_headers(user: user_model.User):
     token = create_access_token({"sub": str(user.id)})
     return {"Authorization": f"Bearer {token}"}
@@ -197,8 +217,6 @@ def course(db_session, teacher):
     db_session.add(course)
     db_session.flush()
 
-    print(f"Creating course with ID: {course.id} for teacher: {teacher.id}")
-
     role = db_session.query(role_model.Role).filter_by(name="teacher").first()
     user_course_role = user_course_role_model.UserCourseRole(
         user_id=teacher.id,
@@ -270,9 +288,6 @@ def question_result(db_session, assessment, question, student, marker):
     return result
 
 
-# @pytest.fixture(scope="session", autouse=True)
-# def role_factory(db_session):
-#     for role_name in ["teacher", "ta", "student"]:
-#         if not db_session.query(role_model.Role).filter_by(name=role_name).first():
-#             db_session.add(role_model.Role(name=role_name))
-#     db_session.commit()
+@pytest.fixture
+def teacher_role_id(db_session):
+    return db_session.query(role_model.Role).filter_by(name="teacher").first().id
