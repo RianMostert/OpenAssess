@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import CourseLeftPanel from '@dashboard/course/CourseLeftPanel';
 import CourseOverview from '@dashboard/course/overview/CourseOverview';
 import MappingLayout from '@dashboard/course/mapping/MappingView';
+import GradingLayout from '@dashboard/course/grading/GradingView';
 
 import { Course, Assessment } from '@/types/course';
 
@@ -39,6 +40,10 @@ export default function CourseView() {
 
             {activeMode === 'map' && selectedAssessment && (
                 <MappingLayout assessment={selectedAssessment} />
+            )}
+
+            {activeMode === 'grade' && selectedAssessment && (
+                <GradingLayout assessment={selectedAssessment} />
             )}
 
         </div>
