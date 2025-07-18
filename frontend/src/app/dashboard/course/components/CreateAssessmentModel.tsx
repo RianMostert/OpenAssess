@@ -39,14 +39,37 @@ export default function CreateAssessmentModal({
     const [uploading, setUploading] = useState(false);
 
     const onSubmit = async (data: CreateAssessmentForm) => {
-        let uploadedPath: string | undefined;
+        let assessmentId: string | null = null;
 
         try {
             setUploading(true);
 
-            if (file) {
+            const createRes = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/assessments/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: data.title,
+                        course_id: courseId,
+                        question_paper_file_path: null,
+                    }),
+                }
+            );
+
+            if (!createRes.ok) throw new Error('Assessment creation failed');
+
+            const createdAssessment = await createRes.json();
+            assessmentId = createdAssessment.id;
+            console.log('Created Assessment:', createdAssessment);
+
+            if (file && assessmentId) {
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('course_id', courseId);
+                formData.append('assessment_id', assessmentId);
 
                 const uploadRes = await fetchWithAuth(
                     `${process.env.NEXT_PUBLIC_API_URL}/assessments/upload/question-paper`,
@@ -59,25 +82,20 @@ export default function CreateAssessmentModal({
                 if (!uploadRes.ok) throw new Error('File upload failed');
 
                 const { file_path } = await uploadRes.json();
-                uploadedPath = file_path;
+
+                await fetchWithAuth(
+                    `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessmentId}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question_paper_file_path: file_path,
+                        }),
+                    }
+                );
             }
-
-            const createRes = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        title: data.title,
-                        course_id: courseId,
-                        question_paper_file_path: uploadedPath,
-                    }),
-                }
-            );
-
-            if (!createRes.ok) throw new Error('Assessment creation failed');
 
             reset();
             setFile(null);
@@ -89,6 +107,7 @@ export default function CreateAssessmentModal({
             setUploading(false);
         }
     };
+
 
     useEffect(() => {
         if (open) {

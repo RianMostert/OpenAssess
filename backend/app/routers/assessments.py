@@ -1,3 +1,4 @@
+import os
 from fastapi import (
     APIRouter,
     Depends,
@@ -33,14 +34,20 @@ storage_path.mkdir(parents=True, exist_ok=True)
 @router.post("/upload/question-paper", response_model=dict)
 def upload_question_paper(
     file: UploadFile = File(...),
+    course_id: str = Form(...),
+    assessment_id: str = Form(...),
     current_user: User = Depends(get_current_user),
 ):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
-    file_id = uuid4()
-    filename = f"{file_id}_{file.filename}"
-    file_path = storage_path / filename
+    # if not has_course_role(current_user, course_id, "teacher", "ta"):
+    #     raise HTTPException(status_code=403, detail="Not authorized to upload")
+
+    destination_dir = storage_path / course_id / assessment_id
+    os.makedirs(destination_dir, exist_ok=True)
+
+    file_path = destination_dir / f"{uuid4()}_{file.filename}"
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -131,6 +138,7 @@ def create_assessment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    print("Creating assessment:", assessment.model_dump())
     if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
         raise HTTPException(
             status_code=403, detail="Not authorized to create assessment"

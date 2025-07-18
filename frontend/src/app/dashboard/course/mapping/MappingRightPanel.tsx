@@ -14,21 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Plus } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
-
-export interface Question {
-    id: string;
-    question_number: string;
-    max_marks?: number;
-    increment?: number;
-    memo?: string;
-    marking_note?: string;
-    assessment_id: string;
-    page_number: number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
+import { Question } from '@/types/course';
 
 interface MappingPanelProps {
     selectedAssessment: { id: string; title: string } | null;

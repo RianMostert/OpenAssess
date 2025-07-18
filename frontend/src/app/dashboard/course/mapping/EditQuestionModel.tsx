@@ -11,21 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { useEffect, useState } from 'react';
+import { Question } from '@/types/course';
 
-interface Question {
-    id: string;
-    question_number: string;
-    max_marks?: number;
-    increment?: number;
-    memo?: string;
-    marking_note?: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    page_number: number;
-    assessment_id: string;
-}
 
 interface EditQuestionModalProps {
     question: Question;

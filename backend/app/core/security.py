@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from uuid import UUID
 
 from app.models.user import User
-from app.models import Role
+# from app.models import Role
 
 # Token config
 SECRET_KEY = "super-secret-key"

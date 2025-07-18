@@ -17,6 +17,7 @@ interface EditAssessmentForm {
 }
 
 interface EditAssessmentModalProps {
+    courseId: string;
     assessmentId: string;
     initialTitle: string;
     open: boolean;
@@ -25,6 +26,7 @@ interface EditAssessmentModalProps {
 }
 
 export default function EditAssessmentModal({
+    courseId,
     assessmentId,
     initialTitle,
     open,
@@ -51,30 +53,34 @@ export default function EditAssessmentModal({
         try {
             setUploading(true);
 
+            // Step 1: Upload file if selected
             if (file) {
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append("file", file);
+                formData.append("course_id", courseId);
+                formData.append("assessment_id", assessmentId);
 
                 const uploadRes = await fetchWithAuth(
                     `${process.env.NEXT_PUBLIC_API_URL}/assessments/upload/question-paper`,
                     {
-                        method: 'POST',
+                        method: "POST",
                         body: formData,
                     }
                 );
 
-                if (!uploadRes.ok) throw new Error('File upload failed');
+                if (!uploadRes.ok) throw new Error("File upload failed");
 
                 const { file_path } = await uploadRes.json();
                 uploadedPath = file_path;
             }
 
+            // Step 2: Update assessment metadata
             const response = await fetchWithAuth(
                 `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessmentId}`,
                 {
-                    method: 'PATCH',
+                    method: "PATCH",
                     headers: {
-                        'Content-Type': 'application/json',
+                        "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
                         title: data.title,
@@ -83,18 +89,19 @@ export default function EditAssessmentModal({
                 }
             );
 
-            if (!response.ok) throw new Error('Failed to update assessment');
+            if (!response.ok) throw new Error("Failed to update assessment");
 
             reset();
             setFile(null);
             setOpen(false);
             onAssessmentUpdated?.();
         } catch (error) {
-            console.error('Error updating assessment:', error);
+            console.error("Error updating assessment:", error);
         } finally {
             setUploading(false);
         }
     };
+
 
     useEffect(() => {
         if (open) {

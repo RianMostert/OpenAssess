@@ -12,18 +12,7 @@ import EditCourseModel from '@dashboard/course/components/EditCourseModel';
 import CreateAssessmentModel from '@/app/dashboard/course/components/CreateAssessmentModel';
 import EditAssessmentModel from '@/app/dashboard/course/components/EditAssessmentModel';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
-
-export interface Course {
-    id: string;
-    title: string;
-    code?: string;
-    teacher_id: string;
-}
-
-export interface Assessment {
-    id: string;
-    title: string;
-}
+import { Course, Assessment } from '@/types/course';
 
 type CourseWithAssessments = Course & { assessments: Assessment[] };
 
@@ -52,7 +41,6 @@ export default function CoursePanel({
         code?: string;
     } | null>(null);
 
-    // const [modelOpen, setModelOpen] = useState(false);
     const [modalType, setModalType] = useState<'editCourse' | 'createAssessment' | 'editAssessment' | null>(null);
 
     const [creatingAssessmentFor, setCreatingAssessmentFor] = useState<{
@@ -313,6 +301,7 @@ export default function CoursePanel({
                             setEditingAssessment(null);
                         }
                     }}
+                    courseId={selectedCourse?.id || ''}
                     assessmentId={editingAssessment.id}
                     initialTitle={editingAssessment.title}
                     onAssessmentUpdated={() => {
