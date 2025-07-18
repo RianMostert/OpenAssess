@@ -1,3 +1,5 @@
+import os
+from typing import List
 from fastapi import (
     APIRouter,
     Depends,
@@ -29,6 +31,64 @@ router = APIRouter(prefix="/uploaded-files", tags=["Uploaded Files"])
 
 storage_path = settings.ANSWER_SHEET_STORAGE_FOLDER
 storage_path.mkdir(parents=True, exist_ok=True)
+
+
+@router.post("/bulk-upload", response_model=List[UploadedFileOut])
+def bulk_upload_answer_sheets(
+    assessment_id: UUID = Form(...),
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not (current_user.is_admin or assessment.course.teacher_id == current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    course_id = assessment.course_id
+    uploaded_files = []
+
+    for file in files:
+        filename = file.filename
+        if not filename.lower().endswith(".pdf"):
+            continue
+
+        student_number = filename.split("_")[0].split(".")[0]
+        student = db.query(User).filter(User.student_number == student_number).first()
+        if not student:
+            continue
+
+        exists = (
+            db.query(UploadedFile)
+            .filter_by(assessment_id=assessment_id, student_id=student.id)
+            .first()
+        )
+        if exists:
+            continue
+
+        path = (
+            settings.ANSWER_SHEET_STORAGE_FOLDER / str(course_id) / str(assessment_id)
+        )
+        os.makedirs(path, exist_ok=True)
+        file_path = path / f"{student.id}.pdf"
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        uploaded = UploadedFile(
+            id=uuid4(),
+            assessment_id=assessment_id,
+            student_id=student.id,
+            uploaded_by=current_user.id,
+            answer_sheet_file_path=str(file_path),
+        )
+        db.add(uploaded)
+        uploaded_files.append(uploaded)
+
+    db.commit()
+    return uploaded_files
 
 
 @router.post("/upload", response_model=UploadedFileOut)

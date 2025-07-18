@@ -64,6 +64,18 @@ def bulk_upload_users(
 
         existing_user = db.query(User).filter_by(email=email).first()
         if existing_user:
+            existing_user_course_link = (
+                db.query(UserCourseRole)
+                .filter_by(
+                    user_id=existing_user.id, course_id=course_id, role_id=role_id
+                )
+                .first()
+            )
+            if not existing_user_course_link:
+                user_course_link = UserCourseRole(
+                    user_id=existing_user.id, course_id=course_id, role_id=role_id
+                )
+                db.add(user_course_link)
             continue
 
         new_user = User(

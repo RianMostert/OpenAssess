@@ -45,13 +45,33 @@ export default function CourseOverview({
         }
     };
 
+    const handleAnswerSheetPDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0 || !assessment) return;
 
+        const formData = new FormData();
+        formData.append("assessment_id", assessment.id);
 
-    const handleAnswerSheetPDFUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            // TODO: handle PDF upload logic here
-            console.log("Answer sheet PDF uploaded:", file.name);
+        Array.from(files).forEach(file => {
+            formData.append("files", file);
+        });
+
+        try {
+            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/bulk-upload`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Upload failed");
+            }
+
+            const result = await res.json();
+            alert(`Successfully uploaded ${result.length} answer sheets`);
+        } catch (err) {
+            console.error(err);
+            alert("Bulk upload failed");
         }
     };
 
@@ -99,6 +119,7 @@ export default function CourseOverview({
                             <input
                                 type="file"
                                 accept=".pdf"
+                                multiple
                                 onChange={handleAnswerSheetPDFUpload}
                                 className="hidden"
                             />
