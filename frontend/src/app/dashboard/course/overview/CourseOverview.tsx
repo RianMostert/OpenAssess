@@ -1,3 +1,4 @@
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { Assessment, Course } from "@/types/course";
 
 interface CourseOverviewProps {
@@ -11,6 +12,49 @@ export default function CourseOverview({
     assessment,
     setActiveMode,
 }: CourseOverviewProps) {
+    const handleStudentCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        if (!course) {
+            alert("Course is not available.");
+            return;
+        }
+        formData.append("course_id", course.id);
+        formData.append("role_id", "3");
+
+        try {
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/bulk-upload`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Upload failed");
+            }
+
+            const result = await response.json();
+            console.log("Created users:", result);
+            alert(`Successfully created ${result.length} users`);
+        } catch (err) {
+            console.error(err);
+            alert(`Error uploading CSV: ${err instanceof Error ? err.message : "Unknown error"}`);
+        }
+    };
+
+
+
+    const handleAnswerSheetPDFUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // TODO: handle PDF upload logic here
+            console.log("Answer sheet PDF uploaded:", file.name);
+        }
+    };
+
     if (!course) {
         return <div className="p-6 text-muted-foreground">No course selected</div>;
     }
@@ -25,7 +69,7 @@ export default function CourseOverview({
                         Assessment: {assessment.title}
                     </h2>
 
-                    <div className="flex gap-2 mt-4">
+                    <div className="flex gap-2 mt-4 flex-wrap">
                         <button
                             onClick={() => setActiveMode('map')}
                             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -39,6 +83,26 @@ export default function CourseOverview({
                         >
                             Grading Mode
                         </button>
+
+                        <label className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer">
+                            Upload Student CSV
+                            <input
+                                type="file"
+                                accept=".csv"
+                                onChange={handleStudentCSVUpload}
+                                className="hidden"
+                            />
+                        </label>
+
+                        <label className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 cursor-pointer">
+                            Upload Answer Sheet PDFs
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                onChange={handleAnswerSheetPDFUpload}
+                                className="hidden"
+                            />
+                        </label>
                     </div>
                 </>
             ) : (

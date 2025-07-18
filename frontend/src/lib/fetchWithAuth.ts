@@ -1,7 +1,5 @@
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
     const token = localStorage.getItem("authToken");
-    console.log("Token being sent:", token);
-
 
     if (!token) {
         throw new Error("No auth token found");
