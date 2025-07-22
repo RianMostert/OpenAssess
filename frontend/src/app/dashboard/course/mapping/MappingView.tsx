@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import PdfViewer from '@dashboard/course/mapping/PdfViewer';
+import MappingPdfViewer from '@dashboard/course/mapping/MappingPdfViewer';
 import MappingRightPanel from '@dashboard/course/mapping/MappingRightPanel';
 import { Assessment, Question } from '@/types/course';
 
@@ -16,7 +16,7 @@ export default function MappingLayout({ assessment }: MappingLayoutProps) {
     return (
         <div className="flex h-screen w-full border-r border-zinc-800">
             <div className="flex-1 h-full overflow-auto" ref={pageContainerRef}>
-                <PdfViewer
+                <MappingPdfViewer
                     assessment={assessment}
                     currentPage={currentPage}
                     setCurrentPage={setCurrentPage}

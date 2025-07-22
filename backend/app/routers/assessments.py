@@ -1,4 +1,5 @@
 import os
+from typing import List
 from fastapi import (
     APIRouter,
     Depends,
@@ -17,6 +18,8 @@ from app.schemas.assessment import AssessmentCreate, AssessmentUpdate, Assessmen
 from app.models.assessment import Assessment
 from app.schemas.question import QuestionOut
 from app.models.question import Question
+from app.models.uploaded_file import UploadedFile
+from app.schemas.uploaded_file import UploadedFileOut
 from app.models.user import User
 from app.dependencies import get_current_user
 from app.core.security import has_course_role
@@ -130,6 +133,39 @@ def download_question_paper(
     return FileResponse(
         file_path, filename=file_path.name, media_type="application/pdf"
     )
+
+
+@router.get("/{assessment_id}/answer-sheets", response_model=List[UploadedFileOut])
+def list_student_answer_sheets(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not (current_user.is_admin or assessment.course.teacher_id == current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    files = (
+        db.query(UploadedFile, User)
+        .join(User, UploadedFile.student_id == User.id)
+        .filter(UploadedFile.assessment_id == assessment_id)
+        .order_by(UploadedFile.uploaded_at)
+        .all()
+    )
+
+    results = []
+    for uploaded_file, user in files:
+        results.append(
+            UploadedFileOut(
+                **uploaded_file.__dict__,
+                student_name=user.first_name + " " + user.last_name,
+                student_number=user.student_number,
+            )
+        )
+    return results
 
 
 @router.post("/", response_model=AssessmentOut)

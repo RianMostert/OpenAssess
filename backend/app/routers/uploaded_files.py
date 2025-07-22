@@ -60,13 +60,13 @@ def bulk_upload_answer_sheets(
         if not student:
             continue
 
-        exists = (
-            db.query(UploadedFile)
-            .filter_by(assessment_id=assessment_id, student_id=student.id)
-            .first()
-        )
-        if exists:
-            continue
+        # exists = (
+        #     db.query(UploadedFile)
+        #     .filter_by(assessment_id=assessment_id, student_id=student.id)
+        #     .first()
+        # )
+        # if exists:
+        #     continue
 
         path = (
             settings.ANSWER_SHEET_STORAGE_FOLDER / str(course_id) / str(assessment_id)
