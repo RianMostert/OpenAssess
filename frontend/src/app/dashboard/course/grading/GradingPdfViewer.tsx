@@ -29,8 +29,9 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [containerWidth, setContainerWidth] = useState<number | null>(null);
     const [numPages, setNumPages] = useState<number | null>(null);
     const [pdfReady, setPdfReady] = useState(false);
+    const [selectedMark, setSelectedMark] = useState<number | null>(null);
+    const [gradingError, setGradingError] = useState<string | null>(null);
 
-    // const viewerRef = useRef<HTMLDivElement>(null);
 
     const currentAnswer = answers[currentIndex] || null;
 
@@ -96,6 +97,35 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         setCurrentIndex((i) => Math.max(i - 1, 0));
     };
 
+    const handleGrade = async (mark: number) => {
+        if (!question || !currentAnswer) return;
+
+        try {
+            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    student_id: currentAnswer.student_id,
+                    assessment_id: assessment.id,
+                    question_id: question.id,
+                    mark,
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.detail || 'Failed to submit mark');
+            }
+
+            setSelectedMark(mark);
+            setGradingError(null);
+        } catch (err: any) {
+            console.error('Grade submission error:', err);
+            setGradingError(err.message);
+        }
+    };
+
+
     if (!question) {
         return <p className="text-muted-foreground p-4">No question selected.</p>;
     }
@@ -137,6 +167,25 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                             zIndex: 10,
                                         }}
                                     />
+                                    {/* Marks Bar */}
+                                    {question.max_marks !== undefined && (
+                                        <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-center pr-2">
+                                            {Array.from({
+                                                length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
+                                            }).map((_, idx) => {
+                                                const value = idx * (question.increment || 1);
+                                                return (
+                                                    <button
+                                                        key={value}
+                                                        onClick={() => handleGrade(value)}
+                                                        className="bg-white border border-gray-300 text-sm rounded px-2 py-1 mb-1 hover:bg-blue-100"
+                                                    >
+                                                        {value}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </Document>

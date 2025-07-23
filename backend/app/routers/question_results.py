@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import (
     APIRouter,
     Depends,
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID, uuid4
 from pathlib import Path
 import shutil
+from datetime import timezone
 
 from app.schemas.question_result import (
     QuestionResultCreate,
@@ -116,7 +118,7 @@ def download_annotation(
 
 
 @router.post("/", response_model=QuestionResultOut)
-def create_question_result(
+def create_or_update_question_result(
     result: QuestionResultCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -132,11 +134,15 @@ def create_question_result(
         )
         .first()
     )
+
     if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Result already exists for this student and question",
-        )
+        existing.mark = result.mark
+        existing.comment = result.comment
+        existing.annotation_file_path = result.annotation_file_path
+        existing.updated_at = result.updated_at or datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(existing)
+        return existing
 
     db_result = QuestionResult(**result.model_dump(), marker_id=current_user.id)
     db.add(db_result)
