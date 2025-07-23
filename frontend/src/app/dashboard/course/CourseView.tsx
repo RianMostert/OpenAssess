@@ -14,7 +14,7 @@ export default function CourseView() {
     const prevAssessmentId = useRef<string | null>(null);
 
     useEffect(() => {
-        if (selectedAssessment?.id && selectedAssessment.id !== prevAssessmentId.current) {
+        if (selectedAssessment?.id && prevAssessmentId.current !== selectedAssessment.id) {
             prevAssessmentId.current = selectedAssessment.id;
             setActiveMode('view');
         }
@@ -29,6 +29,7 @@ export default function CourseView() {
                 setSelectedAssessment={setSelectedAssessment}
                 assessments={[]}
                 setAssessments={() => { }}
+                setActiveMode={setActiveMode}
             />
             {activeMode === 'view' && (
                 <CourseOverview

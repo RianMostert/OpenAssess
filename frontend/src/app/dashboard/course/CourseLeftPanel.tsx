@@ -13,6 +13,7 @@ import CreateAssessmentModel from '@/app/dashboard/course/components/CreateAsses
 import EditAssessmentModel from '@/app/dashboard/course/components/EditAssessmentModel';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Course, Assessment } from '@/types/course';
+import { set } from 'react-hook-form';
 
 type CourseWithAssessments = Course & { assessments: Assessment[] };
 
@@ -24,6 +25,7 @@ interface CoursePanelProps {
     selectedCourse?: Course | null;
     setSelectedCourse?: (course: Course | null) => void;
     width?: number;
+    setActiveMode?: (mode: 'view' | 'map' | 'grade') => void;
 }
 
 export default function CoursePanel({
@@ -32,6 +34,7 @@ export default function CoursePanel({
     selectedCourse,
     setSelectedCourse,
     width = 250,
+    setActiveMode,
 }: CoursePanelProps) {
     const [courses, setCourses] = useState<CourseWithAssessments[]>([]);
     const [loading, setLoading] = useState(true);
@@ -218,6 +221,7 @@ export default function CoursePanel({
                                             onClick={() => {
                                                 setSelectedCourse?.(course);
                                                 setSelectedAssessment?.(assessment);
+                                                setActiveMode?.('view');
                                                 console.log('Selected assessment:', assessment);
                                             }}
                                         >

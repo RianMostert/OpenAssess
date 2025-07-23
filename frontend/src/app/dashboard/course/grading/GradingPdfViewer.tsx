@@ -120,7 +120,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                             }}
                         >
                             {pdfReady && (
-                                <div className="flex justify-center py-4 w-full max-w-full overflow-hidden">
+                                <div className="flex justify-center py-4">
                                     <Page
                                         pageNumber={question.page_number}
                                         width={containerWidth ? containerWidth - 32 : 500}
