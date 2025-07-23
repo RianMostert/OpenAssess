@@ -22,7 +22,7 @@ interface PdfViewerProps {
     setEditingQuestion: (question: Question | null) => void;
 }
 
-export default function PdfViewer({
+export default function MappingPdfViewer({
     assessment,
     currentPage,
     setCurrentPage,

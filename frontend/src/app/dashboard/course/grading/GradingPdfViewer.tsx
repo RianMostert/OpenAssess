@@ -27,9 +27,26 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [currentIndex, setCurrentIndex] = useState(0);
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [containerWidth, setContainerWidth] = useState<number | null>(null);
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [pdfReady, setPdfReady] = useState(false);
+
     // const viewerRef = useRef<HTMLDivElement>(null);
 
     const currentAnswer = answers[currentIndex] || null;
+
+    useEffect(() => {
+        const updateWidth = () => {
+            if (pageContainerRef.current) {
+                setContainerWidth(pageContainerRef.current.offsetWidth);
+            }
+        };
+
+        updateWidth();
+        window.addEventListener('resize', updateWidth);
+
+        return () => window.removeEventListener('resize', updateWidth);
+    }, [pageContainerRef]);
+
 
     useEffect(() => {
         const fetchAnswers = async () => {
@@ -46,6 +63,8 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     }, [assessment.id]);
 
     useEffect(() => {
+        let cancelled = false;
+
         const loadPdf = async () => {
             if (!currentAnswer) return;
 
@@ -53,15 +72,21 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${currentAnswer.id}/answer-sheet`);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
-                setPdfUrl(url);
+                if (!cancelled) {
+                    setPdfUrl(url);
+                }
             } catch (err) {
                 console.error('Failed to fetch student PDF', err);
-                setPdfUrl(null);
+                if (!cancelled) setPdfUrl(null);
             }
         };
 
         loadPdf();
+        return () => {
+            cancelled = true;
+        };
     }, [currentAnswer]);
+
 
     const goToNext = () => {
         setCurrentIndex((i) => Math.min(i + 1, answers.length - 1));
@@ -80,37 +105,42 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
             {pdfUrl ? (
                 <>
                     <div
-                        ref={pageContainerRef}
                         className="border rounded relative overflow-auto"
                         style={{ height: 'calc(100vh - 160px)' }}
                     >
                         <Document
                             file={pdfUrl}
+                            onLoadSuccess={({ numPages }) => {
+                                setNumPages(numPages);
+                                setPdfReady(true);
+                            }}
                             onLoadError={(err) => {
-                                console.error('PDF load error:', err);
+                                console.error("PDF load error:", err);
+                                setPdfReady(false);
                             }}
                         >
-                            <div className="flex justify-center py-4">
-                                <Page
-                                    pageNumber={question.page_number}
-                                    width={containerWidth ? containerWidth - 32 : 500}
-                                    renderTextLayer={false}
-                                    renderAnnotationLayer={false}
-                                    className={"border rounded"}
-                                />
-                                {/* Cropped overlay box */}
-                                <div
-                                    className="absolute border-2 border-blue-500 pointer-events-none"
-                                    style={{
-                                        top: question.y,
-                                        left: question.x,
-                                        width: question.width,
-                                        height: question.height,
-                                        zIndex: 10,
-                                    }}
-                                />
-                            </div>
+                            {pdfReady && (
+                                <div className="flex justify-center py-4 w-full max-w-full overflow-hidden">
+                                    <Page
+                                        pageNumber={question.page_number}
+                                        width={containerWidth ? containerWidth - 32 : 500}
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
+                                    />
+                                    <div
+                                        className="absolute border-2 border-blue-500 pointer-events-none"
+                                        style={{
+                                            top: question.y,
+                                            left: question.x,
+                                            width: question.width,
+                                            height: question.height,
+                                            zIndex: 10,
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </Document>
+
                     </div>
 
                     {/* Navigation */}
