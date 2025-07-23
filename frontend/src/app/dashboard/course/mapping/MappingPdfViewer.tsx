@@ -51,7 +51,6 @@ export default function MappingPdfViewer({
         return () => window.removeEventListener('resize', updateWidth);
     }, [pageContainerRef]);
 
-    // Load PDF
     useEffect(() => {
         const fetchPdf = async () => {
             try {
@@ -96,21 +95,13 @@ export default function MappingPdfViewer({
         return () => observer.disconnect();
     }, [pageContainerRef, setCurrentPage]);
 
-    // Scroll-to-page helper
-    const scrollToPage = (page: number) => {
-        const el = document.getElementById(`page-${page}`);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
-
     return (
         <div className="flex flex-col h-full w-full p-4">
             {pdfUrl ? (
                 <>
                     <div
                         ref={pageContainerRef}
-                        className="border rounded relative overflow-auto"
+                        className="border rounded relative overflow-auto w-full"
                         style={{ height: 'calc(100vh - 160px)' }}
                     >
                         <Document

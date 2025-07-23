@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import CreateQuestionFormModel from '@dashboard/course/mapping/CreateQuestionFormModel';
 
 interface Coordinates {
@@ -33,8 +33,15 @@ export default function CreateQuestionController({
     const [finalRect, setFinalRect] = useState<Rect | null>(null);
     const [rect, setRect] = useState<Rect | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [overlayHeight, setOverlayHeight] = useState<number>(0);
 
     const overlayRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (pageContainerRef.current) {
+            setOverlayHeight(pageContainerRef.current.scrollHeight);
+        }
+    }, [pageContainerRef, currentPage]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!pageContainerRef.current) return;
@@ -86,16 +93,17 @@ export default function CreateQuestionController({
 
     return (
         <>
-            {/* Transparent overlay */}
             <div
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 className="absolute top-0 left-0 w-full h-full z-50 cursor-crosshair"
-                style={{ pointerEvents: showModal ? 'none' : 'auto' }}
+                style={{
+                    pointerEvents: showModal ? 'none' : 'auto',
+                    height: `${overlayHeight}px`,
+                }}
             />
 
-            {/* Live drawing preview */}
             {previewRect && (
                 <div
                     className="absolute border border-blue-400 z-40 pointer-events-none"
@@ -108,7 +116,6 @@ export default function CreateQuestionController({
                 />
             )}
 
-            {/* Finalized rectangle (only visible briefly before modal shows) */}
             {finalRect && !showModal && (
                 <div
                     className="absolute border border-blue-400 z-40 pointer-events-none"
@@ -121,7 +128,6 @@ export default function CreateQuestionController({
                 />
             )}
 
-            {/* Form Modal after drawing */}
             {rect && showModal && (
                 <CreateQuestionFormModel
                     open={showModal}
