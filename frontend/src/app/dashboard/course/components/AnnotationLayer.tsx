@@ -66,15 +66,25 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
     const stageRef = useRef<any>(null);
 
     useEffect(() => {
-        if (!rendered) return;
+        const observer = new ResizeObserver(() => {
+            const pageCanvas = document.querySelector(`#page-${page} canvas`);
+            if (pageCanvas) {
+                const { width, height } = pageCanvas.getBoundingClientRect();
+                setDimensions({ width, height });
+            }
+        });
 
-        // Use the actual canvas element
         const pageCanvas = document.querySelector(`#page-${page} canvas`);
         if (pageCanvas) {
-            const { width, height } = pageCanvas.getBoundingClientRect();
-            setDimensions({ width, height });
+            observer.observe(pageCanvas);
         }
-    }, [rendered, page]);
+
+        return () => {
+            if (pageCanvas) {
+                observer.unobserve(pageCanvas);
+            }
+        };
+    }, [page]);
 
     const getPointer = (e: Konva.KonvaEventObject<any>) => stageRef.current?.getPointerPosition();
 
@@ -158,7 +168,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 onTouchStart={handleMouseDown}
                 onTouchMove={handleMouseMove}
                 onTouchEnd={handleMouseUp}
-            // style={{ backgroundColor: 'rgba(255,0,0,0.1)' }}
+                style={{ backgroundColor: 'rgba(255,0,0,0.1)' }}
             >
                 <Layer>
                     {annotations.lines.map(line => (

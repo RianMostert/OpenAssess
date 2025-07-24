@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     QUESTION_PAPER_STORAGE_FOLDER: Path = Path("storage/pdfs/question_papers/")
     ANSWER_SHEET_STORAGE_FOLDER: Path = Path("storage/pdfs/answer_sheets/")
-    ANNOTATION_STORAGE_PATH: Path = Path("storage/jsons/annotations/")
+    ANNOTATION_STORAGE_FOLDER: Path = Path("storage/jsons/annotations/")
 
     model_config = ConfigDict(env_file=".env")
 

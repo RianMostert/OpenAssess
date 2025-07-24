@@ -39,6 +39,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [annotationsByPage, setAnnotationsByPage] = useState<Record<number, AnnotationLayerProps['annotations']>>({});
     const [tool, setTool] = useState<Tool | null>(null);
     const [renderedPage, setRenderedPage] = useState<number | null>(null);
+    const [questionResultIdMap, setQuestionResultIdMap] = useState<Record<string, string>>({});
 
     const currentAnswer = answers[currentIndex] || null;
 
@@ -51,7 +52,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
         updateWidth();
         window.addEventListener('resize', updateWidth);
-
         return () => window.removeEventListener('resize', updateWidth);
     }, [pageContainerRef]);
 
@@ -61,7 +61,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/answer-sheets`);
                 const data = await res.json();
                 setAnswers(data);
-                console.log('Fetched student answers:', data);
             } catch (err) {
                 console.error('Failed to fetch student answers', err);
             }
@@ -73,62 +72,89 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     useEffect(() => {
         let cancelled = false;
 
-        const loadPdf = async () => {
-            if (!currentAnswer) return;
+        const loadPdfAndAnnotations = async () => {
+            if (!currentAnswer || !question) return;
 
             try {
+                // Load PDF
                 const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${currentAnswer.id}/answer-sheet`);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
-                if (!cancelled) {
-                    setPdfUrl(url);
+                if (!cancelled) setPdfUrl(url);
+
+                // Fetch annotation metadata (QuestionResult)
+                const resultRes = await fetchWithAuth(
+                    `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${currentAnswer.student_id}`
+                );
+                if (resultRes.ok) {
+                    const resultData = await resultRes.json();
+                    const resultId = resultData.id;
+                    setQuestionResultIdMap((prev) => ({
+                        ...prev,
+                        [currentAnswer.student_id]: resultId,
+                    }));
+
+                    // Now fetch the annotation file
+                    const annotationRes = await fetchWithAuth(
+                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultId}/annotation`
+                    );
+                    if (annotationRes.ok) {
+                        const annotationsJson = await annotationRes.json();
+                        setAnnotationsByPage((prev) => ({
+                            ...prev,
+                            [question.page_number]: annotationsJson,
+                        }));
+                        setSelectedMark(resultData.mark ?? null);
+                    }
                 }
             } catch (err) {
-                console.error('Failed to fetch student PDF', err);
+                console.error('Error loading PDF or annotations', err);
                 if (!cancelled) setPdfUrl(null);
             }
         };
 
-        loadPdf();
+        loadPdfAndAnnotations();
         return () => {
             cancelled = true;
         };
-    }, [currentAnswer]);
+    }, [currentAnswer, question, assessment.id]);
 
-    const goToNext = () => {
+    const saveAnnotations = async () => {
+        if (!currentAnswer || !question) return;
+
+        const annotations = annotationsByPage[question.page_number];
+        if (!annotations) return;
+
+        const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
+        const formData = new FormData();
+        formData.append('assessment_id', assessment.id);
+        formData.append('question_id', question.id);
+        formData.append('student_id', currentAnswer.student_id);
+        formData.append('mark', (selectedMark ?? 0).toString());
+        formData.append('file', blob, 'annotations.json');
+
+        try {
+            await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/upload-annotation`, {
+                method: 'POST',
+                body: formData,
+            });
+        } catch (err) {
+            console.error('Failed to save annotations', err);
+        }
+    };
+
+    const goToNext = async () => {
+        await saveAnnotations();
         setCurrentIndex((i) => Math.min(i + 1, answers.length - 1));
     };
 
-    const goToPrevious = () => {
+    const goToPrevious = async () => {
+        await saveAnnotations();
         setCurrentIndex((i) => Math.max(i - 1, 0));
     };
 
     const handleGrade = async (mark: number) => {
-        if (!question || !currentAnswer) return;
-
-        try {
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    student_id: currentAnswer.student_id,
-                    assessment_id: assessment.id,
-                    question_id: question.id,
-                    mark,
-                }),
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.detail || 'Failed to submit mark');
-            }
-
-            setSelectedMark(mark);
-            setGradingError(null);
-        } catch (err: any) {
-            console.error('Grade submission error:', err);
-            setGradingError(err.message);
-        }
+        setSelectedMark(mark); // update UI immediately
     };
 
     if (!question) {
@@ -171,16 +197,22 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         renderAnnotationLayer={false}
                                         onRenderSuccess={() => setRenderedPage(question.page_number)}
                                     />
-                                    <AnnotationLayer
-                                        page={question.page_number}
-                                        annotations={annotationsByPage[question.page_number] || { lines: [], texts: [], stickyNotes: [] }}
-                                        setAnnotations={(data) =>
-                                            setAnnotationsByPage((prev) => ({ ...prev, [question.page_number]: data }))
-                                        }
-                                        tool={tool}
-                                        containerRef={pageContainerRef}
-                                        rendered={renderedPage === question.page_number}
-                                    />
+                                    {renderedPage === question.page_number && (
+                                        <AnnotationLayer
+                                            key={`${currentAnswer.student_id}-${question.page_number}`}
+                                            page={question.page_number}
+                                            annotations={annotationsByPage[question.page_number] || { lines: [], texts: [], stickyNotes: [] }}
+                                            setAnnotations={(data) =>
+                                                setAnnotationsByPage((prev) => ({
+                                                    ...prev,
+                                                    [question.page_number]: data,
+                                                }))
+                                            }
+                                            tool={tool}
+                                            containerRef={pageContainerRef}
+                                            rendered={renderedPage === question.page_number}
+                                        />
+                                    )}
                                     <div
                                         className="absolute border-2 border-blue-500 pointer-events-none"
                                         style={{

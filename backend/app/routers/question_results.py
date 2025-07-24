@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from fastapi import (
     APIRouter,
     Depends,
@@ -28,7 +29,7 @@ from app.core.security import has_course_role
 
 router = APIRouter(prefix="/question-results", tags=["Question Results"])
 
-storage_path = settings.ANNOTATION_STORAGE_PATH
+storage_path = settings.ANNOTATION_STORAGE_FOLDER
 storage_path.mkdir(parents=True, exist_ok=True)
 
 
@@ -57,7 +58,7 @@ def upload_annotation(
 ):
     validate_marker_access(db, current_user, assessment_id)
 
-    existing = (
+    question_result = (
         db.query(QuestionResult)
         .filter_by(
             assessment_id=assessment_id,
@@ -67,33 +68,70 @@ def upload_annotation(
         .first()
     )
 
-    if existing:
-        raise HTTPException(status_code=400, detail="Result already exists")
-
     if not file.filename.endswith(".json"):
         raise HTTPException(status_code=400, detail="Only .json files allowed")
 
-    file_id = uuid4()
-    filename = f"{file_id}_{file.filename}"
-    file_path = storage_path / filename
+    course_id = (
+        db.query(Assessment.course_id).filter(Assessment.id == assessment_id).scalar()
+    )
+    if not course_id:
+        raise HTTPException(status_code=404, detail="Course not found")
 
+    question_result_id = question_result.id if question_result else uuid4()
+
+    path = settings.ANNOTATION_STORAGE_FOLDER / str(course_id) / str(assessment_id)
+    os.makedirs(path, exist_ok=True)
+
+    file_path = path / f"{question_result_id}.json"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    db_result = QuestionResult(
-        id=file_id,
-        assessment_id=assessment_id,
-        student_id=student_id,
-        question_id=question_id,
-        marker_id=current_user.id,
-        mark=mark,
-        comment=comment,
-        annotation_file_path=str(file_path),
-    )
-    db.add(db_result)
+    if question_result:
+        question_result.mark = mark
+        question_result.comment = comment
+        question_result.annotation_file_path = str(file_path)
+    else:
+        question_result = QuestionResult(
+            id=question_result_id,
+            assessment_id=assessment_id,
+            student_id=student_id,
+            question_id=question_id,
+            marker_id=current_user.id,
+            mark=mark,
+            comment=comment,
+            annotation_file_path=str(file_path),
+        )
+        db.add(question_result)
+
     db.commit()
-    db.refresh(db_result)
-    return db_result
+    db.refresh(question_result)
+    return question_result
+
+
+@router.get("/", response_model=QuestionResultOut)
+def get_question_result(
+    assessment_id: UUID,
+    question_id: UUID,
+    student_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = (
+        db.query(QuestionResult)
+        .filter_by(
+            assessment_id=assessment_id,
+            question_id=question_id,
+            student_id=student_id,
+        )
+        .first()
+    )
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Question result not found")
+
+    validate_marker_access(db, current_user, assessment_id)
+
+    return result
 
 
 @router.get("/{result_id}/annotation")
@@ -151,19 +189,19 @@ def create_or_update_question_result(
     return db_result
 
 
-@router.get("/{result_id}", response_model=QuestionResultOut)
-def get_question_result(
-    result_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    result = db.query(QuestionResult).filter(QuestionResult.id == result_id).first()
-    if not result:
-        raise HTTPException(status_code=404, detail="Question result not found")
+# @router.get("/{result_id}", response_model=QuestionResultOut)
+# def get_question_result(
+#     result_id: UUID,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user),
+# ):
+#     result = db.query(QuestionResult).filter(QuestionResult.id == result_id).first()
+#     if not result:
+#         raise HTTPException(status_code=404, detail="Question result not found")
 
-    validate_marker_access(db, current_user, result.assessment_id)
+#     validate_marker_access(db, current_user, result.assessment_id)
 
-    return result
+#     return result
 
 
 @router.patch("/{result_id}", response_model=QuestionResultOut)
