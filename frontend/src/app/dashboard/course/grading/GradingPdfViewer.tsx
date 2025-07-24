@@ -38,6 +38,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [gradingError, setGradingError] = useState<string | null>(null);
     const [annotationsByPage, setAnnotationsByPage] = useState<Record<number, AnnotationLayerProps['annotations']>>({});
     const [tool, setTool] = useState<Tool | null>(null);
+    const [renderedPage, setRenderedPage] = useState<number | null>(null);
 
     const currentAnswer = answers[currentIndex] || null;
 
@@ -60,6 +61,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/answer-sheets`);
                 const data = await res.json();
                 setAnswers(data);
+                console.log('Fetched student answers:', data);
             } catch (err) {
                 console.error('Failed to fetch student answers', err);
             }
@@ -146,7 +148,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 <>
                     <div
                         className="border rounded relative overflow-auto"
-                        style={{ height: 'calc(100vh - 160px)' }}
+                        style={{ height: 'calc(100vh - 220px)' }}
                         ref={pageContainerRef}
                     >
                         <Document
@@ -167,6 +169,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         width={containerWidth ? containerWidth - 32 : 500}
                                         renderTextLayer={false}
                                         renderAnnotationLayer={false}
+                                        onRenderSuccess={() => setRenderedPage(question.page_number)}
                                     />
                                     <AnnotationLayer
                                         page={question.page_number}
@@ -176,6 +179,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         }
                                         tool={tool}
                                         containerRef={pageContainerRef}
+                                        rendered={renderedPage === question.page_number}
                                     />
                                     <div
                                         className="absolute border-2 border-blue-500 pointer-events-none"

@@ -47,6 +47,7 @@ export interface AnnotationLayerProps {
     setAnnotations: (annotations: AnnotationLayerProps['annotations']) => void;
     tool: Tool | null;
     containerRef: React.RefObject<HTMLDivElement | null>;
+    rendered: boolean;
 }
 
 const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
@@ -55,6 +56,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
     setAnnotations,
     tool,
     containerRef,
+    rendered,
 }) => {
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentPoints, setCurrentPoints] = useState<number[]>([]);
@@ -64,12 +66,15 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
     const stageRef = useRef<any>(null);
 
     useEffect(() => {
-        const pageEl = document.getElementById(`page-${page}`);
-        if (pageEl) {
-            const { width, height } = pageEl.getBoundingClientRect();
+        if (!rendered) return;
+
+        // Use the actual canvas element
+        const pageCanvas = document.querySelector(`#page-${page} canvas`);
+        if (pageCanvas) {
+            const { width, height } = pageCanvas.getBoundingClientRect();
             setDimensions({ width, height });
         }
-    }, [page]);
+    }, [rendered, page]);
 
     const getPointer = (e: Konva.KonvaEventObject<any>) => stageRef.current?.getPointerPosition();
 
@@ -153,6 +158,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 onTouchStart={handleMouseDown}
                 onTouchMove={handleMouseMove}
                 onTouchEnd={handleMouseUp}
+            // style={{ backgroundColor: 'rgba(255,0,0,0.1)' }}
             >
                 <Layer>
                     {annotations.lines.map(line => (
