@@ -1,10 +1,10 @@
 import { JSX, useState } from 'react';
-import { Button } from './ui/button';
-import { Highlighter, Pencil, StickyNote, Eraser, Undo2, Redo2 } from 'lucide-react';
+import { Button } from '../../../../components/ui/button';
+import { Pencil, StickyNote, Eraser } from 'lucide-react';
 import { Tooltip } from '@radix-ui/react-tooltip';
-import { TooltipProvider } from './ui/tooltip';
+import { TooltipProvider } from '../../../../components/ui/tooltip';
 
-type Tool = 'highlighter' | 'pencil' | 'sticky-note' | 'text-note' | 'eraser' | 'undo' | 'redo';
+type Tool = 'pencil' | 'sticky-note' | 'text-note' | 'eraser' | 'undo' | 'redo';
 
 type Props = {
     tool: Tool | null;
@@ -18,7 +18,6 @@ const toolButtons: { key: Tool; label: string; icon?: JSX.Element }[] = [
     { key: 'eraser', label: 'Eraser', icon: <Eraser className="h-5 w-5" /> },
     { key: 'text-note', label: 'Text Note', icon: <StickyNote className="h-5 w-5" /> },
     { key: 'sticky-note', label: 'Sticky Note', icon: <StickyNote className="h-5 w-5" /> },
-    // { key: 'highlighter', label: 'Highlighter', icon: <Highlighter className="h-5 w-5" /> },
 ];
 
 export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props) {

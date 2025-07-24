@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import TopBar from '@/app/dashboard/TopBar';
 import NavBar from '@/app/dashboard/NavBar';
 import CourseView from '@dashboard/course/CourseView';
-// import SettingsView from '@/pages/SettingsView';
-// import ProfileView from '@/pages/ProfileView';
 import { jwtDecode } from 'jwt-decode';
 
 export default function Home() {

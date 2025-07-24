@@ -3,9 +3,9 @@ import { Document, Page } from 'react-pdf';
 import { GlobalWorkerOptions } from 'pdfjs-dist';
 import { Stage, Layer, Text, Line } from 'react-konva';
 import Konva from 'konva';
-import ToolBar from './pdf-annotator-bar';
+import ToolBar from '../app/dashboard/course/components/PdfAnnotatorBar';
 
-import StickyNote from './sticky-note';
+import StickyNote from '../app/dashboard/course/components/StickyNote';
 
 GlobalWorkerOptions.workerSrc = new URL(
     "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -54,7 +54,7 @@ interface StickyNoteElement {
     page: number;
 }
 
-type Tool = 'highlighter' | 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
+type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
 const PdfAnnotator: React.FC<PdfAnnotatorProps> = ({ file, lines, setLines, texts, setTexts, stickyNotes, setStickyNotes }) => {
     const pdfRef = useRef<HTMLDivElement>(null);

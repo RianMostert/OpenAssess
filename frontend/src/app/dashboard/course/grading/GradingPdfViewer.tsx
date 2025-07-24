@@ -3,6 +3,9 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
 import { Assessment, Question } from '@/types/course';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import PdfAnnotatorBar from '@dashboard/course/components/PdfAnnotatorBar';
+import AnnotationLayer, { AnnotationLayerProps } from '@dashboard/course/components/AnnotationLayer';
+import React from 'react';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -22,6 +25,8 @@ interface GradingPdfViewerProps {
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
+type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
+
 export default function GradingPdfViewer({ assessment, question, pageContainerRef }: GradingPdfViewerProps) {
     const [answers, setAnswers] = useState<UploadedAnswer[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -31,7 +36,8 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [pdfReady, setPdfReady] = useState(false);
     const [selectedMark, setSelectedMark] = useState<number | null>(null);
     const [gradingError, setGradingError] = useState<string | null>(null);
-
+    const [annotationsByPage, setAnnotationsByPage] = useState<Record<number, AnnotationLayerProps['annotations']>>({});
+    const [tool, setTool] = useState<Tool | null>(null);
 
     const currentAnswer = answers[currentIndex] || null;
 
@@ -47,7 +53,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
         return () => window.removeEventListener('resize', updateWidth);
     }, [pageContainerRef]);
-
 
     useEffect(() => {
         const fetchAnswers = async () => {
@@ -88,7 +93,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         };
     }, [currentAnswer]);
 
-
     const goToNext = () => {
         setCurrentIndex((i) => Math.min(i + 1, answers.length - 1));
     };
@@ -125,18 +129,25 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         }
     };
 
-
     if (!question) {
         return <p className="text-muted-foreground p-4">No question selected.</p>;
     }
 
     return (
         <div className="flex flex-col h-full w-full p-4">
+            <PdfAnnotatorBar
+                tool={tool}
+                setTool={setTool}
+                onUndo={() => { }}
+                onRedo={() => { }}
+            />
+
             {pdfUrl ? (
                 <>
                     <div
                         className="border rounded relative overflow-auto"
                         style={{ height: 'calc(100vh - 160px)' }}
+                        ref={pageContainerRef}
                     >
                         <Document
                             file={pdfUrl}
@@ -150,12 +161,21 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                             }}
                         >
                             {pdfReady && (
-                                <div className="flex justify-center py-4">
+                                <div className="relative flex justify-center py-4" id={`page-${question.page_number}`}>
                                     <Page
                                         pageNumber={question.page_number}
                                         width={containerWidth ? containerWidth - 32 : 500}
                                         renderTextLayer={false}
                                         renderAnnotationLayer={false}
+                                    />
+                                    <AnnotationLayer
+                                        page={question.page_number}
+                                        annotations={annotationsByPage[question.page_number] || { lines: [], texts: [], stickyNotes: [] }}
+                                        setAnnotations={(data) =>
+                                            setAnnotationsByPage((prev) => ({ ...prev, [question.page_number]: data }))
+                                        }
+                                        tool={tool}
+                                        containerRef={pageContainerRef}
                                     />
                                     <div
                                         className="absolute border-2 border-blue-500 pointer-events-none"
@@ -167,7 +187,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                             zIndex: 10,
                                         }}
                                     />
-                                    {/* Marks Bar */}
                                     {question.max_marks !== undefined && (
                                         <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-center pr-2">
                                             {Array.from({
@@ -189,10 +208,8 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                 </div>
                             )}
                         </Document>
-
                     </div>
 
-                    {/* Navigation */}
                     <div className="flex items-center justify-center gap-4 mt-4">
                         <Button onClick={goToPrevious} disabled={currentIndex <= 0}>
                             Previous Student
