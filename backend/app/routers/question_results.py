@@ -189,19 +189,19 @@ def create_or_update_question_result(
     return db_result
 
 
-# @router.get("/{result_id}", response_model=QuestionResultOut)
-# def get_question_result(
-#     result_id: UUID,
-#     db: Session = Depends(get_db),
-#     current_user: User = Depends(get_current_user),
-# ):
-#     result = db.query(QuestionResult).filter(QuestionResult.id == result_id).first()
-#     if not result:
-#         raise HTTPException(status_code=404, detail="Question result not found")
+@router.get("/{result_id}", response_model=QuestionResultOut)
+def get_question_result(
+    result_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = db.query(QuestionResult).filter(QuestionResult.id == result_id).first()
+    if not result:
+        raise HTTPException(status_code=404, detail="Question result not found")
 
-#     validate_marker_access(db, current_user, result.assessment_id)
+    validate_marker_access(db, current_user, result.assessment_id)
 
-#     return result
+    return result
 
 
 @router.patch("/{result_id}", response_model=QuestionResultOut)
