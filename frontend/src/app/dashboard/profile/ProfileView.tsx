@@ -1,7 +1,7 @@
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
-export default function LogoutButton() {
+export default function ProfileView() {
     const router = useRouter()
 
     const handleLogout = () => {

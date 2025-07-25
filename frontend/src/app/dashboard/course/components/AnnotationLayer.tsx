@@ -168,7 +168,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 onTouchStart={handleMouseDown}
                 onTouchMove={handleMouseMove}
                 onTouchEnd={handleMouseUp}
-                style={{ backgroundColor: 'rgba(255,0,0,0.1)' }}
+                style={{ backgroundColor: 'rgba(255,0,0,0.1)', pointerEvents: tool ? 'auto' : 'none', }}
             >
                 <Layer>
                     {annotations.lines.map(line => (

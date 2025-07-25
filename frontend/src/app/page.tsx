@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import TopBar from '@/app/dashboard/TopBar';
 import NavBar from '@/app/dashboard/NavBar';
 import CourseView from '@dashboard/course/CourseView';
+import ProfileView from '@dashboard/profile/ProfileView';
 import { jwtDecode } from 'jwt-decode';
 
 export default function Home() {
@@ -56,7 +57,6 @@ export default function Home() {
     return exp < Date.now() / 1000;
   }
 
-  // Function to handle the left sidebar toggle
   const toggleLeftSidebar = () => {
     setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed);
   }
@@ -81,10 +81,9 @@ export default function Home() {
         </div>
 
         {activeNavItem === 'courses' && <CourseView />}
-        {/* {activeNavItem === 'settings' && <SettingsView />}
-          {activeNavItem === 'profile' && <ProfileView />} */}
+        {/* {activeNavItem === 'settings' && <SettingsView />} */}
+        {activeNavItem === 'profile' && <ProfileView />}
       </div>
     </div>
-    // </div >
   );
 }

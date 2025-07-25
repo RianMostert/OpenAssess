@@ -75,6 +75,30 @@ export default function CourseOverview({
         }
     };
 
+    const handleDownloadStudentCSV = async () => {
+        try {
+            const res = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment?.id}/results/download`
+            );
+
+            if (!res.ok) {
+                console.error('Failed to download CSV');
+                return;
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `assessment_${assessment?.id}_results.csv`;
+            a.click();
+            a.remove();
+        } catch (err) {
+            console.error('Error downloading CSV', err);
+        }
+    };
+
     if (!course) {
         return <div className="p-6 text-muted-foreground">No course selected</div>;
     }
@@ -124,6 +148,14 @@ export default function CourseOverview({
                                 className="hidden"
                             />
                         </label>
+
+                        <button
+                            onClick={handleDownloadStudentCSV}
+                            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
+                        >
+                            Download Student CSV
+                        </button>
+
                     </div>
                 </>
             ) : (

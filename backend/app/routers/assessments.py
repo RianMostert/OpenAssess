@@ -1,3 +1,6 @@
+from collections import defaultdict
+import csv
+from io import StringIO
 import os
 from typing import List
 from fastapi import (
@@ -8,7 +11,7 @@ from fastapi import (
     File,
     Form,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from uuid import UUID, uuid4
 from pathlib import Path
@@ -21,6 +24,7 @@ from app.models.question import Question
 from app.models.uploaded_file import UploadedFile
 from app.schemas.uploaded_file import UploadedFileOut
 from app.models.user import User
+from app.models.question_result import QuestionResult
 from app.dependencies import get_current_user
 from app.core.security import has_course_role
 
@@ -166,6 +170,74 @@ def list_student_answer_sheets(
             )
         )
     return results
+
+
+@router.get("/{assessment_id}/results/download", response_class=StreamingResponse)
+def download_assessment_results_csv(assessment_id: UUID, db: Session = Depends(get_db)):
+    questions = (
+        db.query(Question)
+        .filter(Question.assessment_id == assessment_id)
+        .order_by(Question.question_number)
+        .all()
+    )
+
+    if not questions:
+        raise HTTPException(
+            status_code=404, detail="No questions found for this assessment."
+        )
+
+    question_ids = [q.id for q in questions]
+    question_labels = [f"{q.question_number}" for q in questions]
+
+    results = (
+        db.query(QuestionResult, User)
+        .join(User, User.id == QuestionResult.student_id)
+        .filter(QuestionResult.assessment_id == assessment_id)
+        .all()
+    )
+
+    if not results:
+        raise HTTPException(
+            status_code=404, detail="No results found for this assessment."
+        )
+
+    students = defaultdict(
+        lambda: {
+            "first_name": "",
+            "last_name": "",
+            "student_number": "",
+            "marks": {qid: None for qid in question_ids},
+        }
+    )
+
+    for result, user in results:
+        s = students[user.id]
+        s["first_name"] = user.first_name
+        s["last_name"] = user.last_name
+        s["student_number"] = user.student_number
+        s["marks"][result.question_id] = result.mark
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    header = ["student_number", "first_name", "last_name"] + question_labels + ["total"]
+    writer.writerow(header)
+
+    for s in students.values():
+        marks = [(s["marks"].get(qid) or 0) for qid in question_ids]
+        total = sum(marks)
+        row = [s["student_number"], s["first_name"], s["last_name"]] + marks + [total]
+        writer.writerow(row)
+
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename=assessment_{assessment_id}_results.csv"
+        },
+    )
 
 
 @router.post("/", response_model=AssessmentOut)
