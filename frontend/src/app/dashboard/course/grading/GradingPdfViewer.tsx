@@ -42,6 +42,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [questionResultIdMap, setQuestionResultIdMap] = useState<Record<string, string>>({});
 
     const currentAnswer = answers[currentIndex] || null;
+    const highlightRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const updateWidth = () => {
@@ -171,6 +172,23 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         setSelectedMark(mark); // update UI immediately
     };
 
+    const scrollToHighlight = () => {
+        const container = pageContainerRef.current;
+        const highlight = highlightRef.current;
+
+        if (container && highlight) {
+            const containerRect = container.getBoundingClientRect();
+            const highlightRect = highlight.getBoundingClientRect();
+
+            const scrollTopOffset = highlightRect.top - containerRect.top - container.clientHeight / 2 + highlight.clientHeight / 2;
+
+            container.scrollBy({
+                top: scrollTopOffset,
+                behavior: 'smooth',
+            });
+        }
+    };
+
     if (!question) {
         return <p className="text-muted-foreground p-4">No question selected.</p>;
     }
@@ -209,7 +227,18 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         width={containerWidth ? containerWidth - 32 : 500}
                                         renderTextLayer={false}
                                         renderAnnotationLayer={false}
-                                        onRenderSuccess={() => setRenderedPage(question.page_number)}
+                                        onRenderSuccess={() => {
+                                            setRenderedPage(question.page_number);
+                                            scrollToHighlight();
+                                            // Scroll the highlight into view
+                                            // setTimeout(() => {
+                                            //     highlightRef.current?.scrollIntoView({
+                                            //         behavior: 'smooth',
+                                            //         block: 'center',
+                                            //     });
+                                            // }, 100);
+                                        }}
+
                                     />
                                     {renderedPage === question.page_number && (
                                         <AnnotationLayer
@@ -228,6 +257,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         />
                                     )}
                                     <div
+                                        ref={highlightRef}
                                         className="absolute border-2 border-blue-500 pointer-events-none"
                                         style={{
                                             top: question.y,
@@ -238,7 +268,13 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         }}
                                     />
                                     {question.max_marks !== undefined && (
-                                        <div className="absolute right-0 top-0 bottom-0 flex flex-col justify-center pr-2">
+                                        <div
+                                            className="absolute right-0 flex flex-col pr-2"
+                                            style={{
+                                                top: question.y + question.height / 2,
+                                                transform: 'translateY(-50%)',
+                                            }}
+                                        >
                                             {Array.from({
                                                 length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
                                             }).map((_, idx) => {
@@ -247,7 +283,10 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                                     <button
                                                         key={value}
                                                         onClick={() => handleGrade(value)}
-                                                        className="bg-white border border-gray-300 text-sm rounded px-2 py-1 mb-1 hover:bg-blue-100"
+                                                        className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
+                                                            ? 'bg-green-200 border-green-500 font-semibold'
+                                                            : 'bg-white border-gray-300 hover:bg-blue-100'
+                                                            }`}
                                                     >
                                                         {value}
                                                     </button>

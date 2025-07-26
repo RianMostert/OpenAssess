@@ -31,7 +31,7 @@ export default function GradingRightPanel({
     pageContainerRef,
     question,
     onQuestionSelect,
-    width = 250,
+    width = 230,
 }: GradingRightPanelProps) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(false);
