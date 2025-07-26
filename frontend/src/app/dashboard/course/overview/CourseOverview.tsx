@@ -99,6 +99,43 @@ export default function CourseOverview({
         }
     };
 
+    const handleExportAnnotatedPdfs = async () => {
+        if (!course || !assessment) {
+            alert("Course or assessment not available.");
+            return;
+        }
+
+        try {
+            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/export/annotated-pdfs`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    course_id: course.id,
+                    assessment_id: assessment.id,
+                }),
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Export failed");
+            }
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `annotated_pdfs_course_${course.id}_assessment_${assessment.id}.zip`;
+            a.click();
+            a.remove();
+        } catch (err) {
+            console.error("Failed to export PDFs", err);
+            alert("Export failed: " + (err instanceof Error ? err.message : "Unknown error"));
+        }
+    };
+
     if (!course) {
         return <div className="p-6 text-muted-foreground">No course selected</div>;
     }
@@ -154,6 +191,13 @@ export default function CourseOverview({
                             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
                         >
                             Download Student CSV
+                        </button>
+
+                        <button
+                            onClick={handleExportAnnotatedPdfs}
+                            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+                        >
+                            Export Annotated PDFs
                         </button>
 
                     </div>

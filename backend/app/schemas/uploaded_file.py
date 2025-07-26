@@ -26,3 +26,8 @@ class UploadedFileOut(BaseModel):
     uploaded_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExportRequest(BaseModel):
+    course_id: UUID
+    assessment_id: UUID
