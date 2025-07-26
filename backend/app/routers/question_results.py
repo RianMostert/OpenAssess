@@ -79,7 +79,12 @@ def upload_annotation(
 
     question_result_id = question_result.id if question_result else uuid4()
 
-    path = settings.ANNOTATION_STORAGE_FOLDER / str(course_id) / str(assessment_id)
+    path = (
+        settings.ANNOTATION_STORAGE_FOLDER
+        / str(course_id)
+        / str(assessment_id)
+        / str(student_id)
+    )
     os.makedirs(path, exist_ok=True)
 
     file_path = path / f"{question_result_id}.json"
@@ -101,7 +106,7 @@ def upload_annotation(
             comment=comment,
             annotation_file_path=str(file_path),
         )
-        db.add(question_result)
+    db.add(question_result)
 
     db.commit()
     db.refresh(question_result)
@@ -190,7 +195,7 @@ def create_or_update_question_result(
 
 
 @router.get("/{result_id}", response_model=QuestionResultOut)
-def get_question_result(
+def get_question_result_with_id(
     result_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

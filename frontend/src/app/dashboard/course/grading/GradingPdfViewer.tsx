@@ -72,6 +72,15 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     useEffect(() => {
         let cancelled = false;
 
+        setAnnotationsByPage((prev) => ({
+            ...prev,
+            [question?.page_number ?? 1]: { lines: [], texts: [], stickyNotes: [] },
+        }));
+        setSelectedMark(null);
+        setPdfUrl(null);
+        setPdfReady(false);
+        setRenderedPage(null);
+
         const loadPdfAndAnnotations = async () => {
             if (!currentAnswer || !question) return;
 
@@ -94,16 +103,21 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                         [currentAnswer.student_id]: resultId,
                     }));
 
-                    // Now fetch the annotation file
                     const annotationRes = await fetchWithAuth(
                         `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultId}/annotation`
                     );
+                    setAnnotationsByPage((prev) => ({
+                        ...prev,
+                        [question.page_number]: { lines: [], texts: [], stickyNotes: [] },
+                    }));
+
+                    setSelectedMark(null);
+
                     if (annotationRes.ok) {
                         const annotationsJson = await annotationRes.json();
-                        setAnnotationsByPage((prev) => ({
-                            ...prev,
+                        setAnnotationsByPage({
                             [question.page_number]: annotationsJson,
-                        }));
+                        });
                         setSelectedMark(resultData.mark ?? null);
                     }
                 }
@@ -199,9 +213,9 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                     />
                                     {renderedPage === question.page_number && (
                                         <AnnotationLayer
-                                            key={`${currentAnswer.student_id}-${question.page_number}`}
+                                            key={`${currentAnswer.id}-${question.id}-${question.page_number}`}
                                             page={question.page_number}
-                                            annotations={annotationsByPage[question.page_number] || { lines: [], texts: [], stickyNotes: [] }}
+                                            annotations={annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] }}
                                             setAnnotations={(data) =>
                                                 setAnnotationsByPage((prev) => ({
                                                     ...prev,

@@ -187,7 +187,7 @@ def download_assessment_results_csv(assessment_id: UUID, db: Session = Depends(g
         )
 
     question_ids = [q.id for q in questions]
-    question_labels = [f"{q.question_number}" for q in questions]
+    question_labels = [f" {q.question_number}" for q in questions]
 
     results = (
         db.query(QuestionResult, User)
