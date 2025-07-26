@@ -11,6 +11,11 @@ from app.schemas.uploaded_file import ExportRequest
 
 router = APIRouter(prefix="/export", tags=["Export"])
 
+# Hardcoded transform for demo
+SCALE = 0.78
+OFFSET_X = -10
+OFFSET_Y = -30
+
 
 def hex_to_rgb(color):
     NAMED_COLORS = {
@@ -29,12 +34,12 @@ def hex_to_rgb(color):
     return tuple(int(color[i : i + 2], 16) / 255 for i in (0, 2, 4))
 
 
-def flip_y(y, page_height):
-    return page_height - y
+def transform_x(x, page_width):
+    return x * SCALE + OFFSET_X
 
 
-def adjust_x(x, page_width):
-    return x
+def transform_y(y, page_height):
+    return y * SCALE + OFFSET_Y
 
 
 def burn_annotations_to_pdf(pdf_path: str, output_path: str, annotations: list[dict]):
@@ -53,11 +58,12 @@ def burn_annotations_to_pdf(pdf_path: str, output_path: str, annotations: list[d
             stroke_width = line["strokeWidth"]
             for i in range(0, len(points) - 2, 2):
                 p1 = fitz.Point(
-                    adjust_x(points[i], page_width), flip_y(points[i + 1], page_height)
+                    transform_x(points[i], page_width),
+                    transform_y(points[i + 1], page_height),
                 )
                 p2 = fitz.Point(
-                    adjust_x(points[i + 2], page_width),
-                    flip_y(points[i + 3], page_height),
+                    transform_x(points[i + 2], page_width),
+                    transform_y(points[i + 3], page_height),
                 )
                 page.draw_line(p1, p2, color=stroke, width=stroke_width)
                 page.draw_circle(p1, stroke_width / 4, color=stroke)
@@ -72,8 +78,8 @@ def burn_annotations_to_pdf(pdf_path: str, output_path: str, annotations: list[d
             page.insert_textbox(rect, content, fontsize=font_size, color=color, align=0)
 
         for sticky in data.get("stickyNotes", []):
-            x = adjust_x(sticky["x"], page_width)
-            y = flip_y(sticky["y"], page_height)
+            x = transform_x(sticky["x"], page_width)
+            y = transform_y(sticky["y"], page_height)
             content = sticky["text"]
             annot = page.add_text_annot(fitz.Point(x, y), content)
             annot.set_open(True)

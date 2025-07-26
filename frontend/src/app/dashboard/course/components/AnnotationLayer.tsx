@@ -40,6 +40,7 @@ type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 export interface AnnotationLayerProps {
     page: number;
     annotations: {
+        page: number;
         lines: LineElement[];
         texts: TextElement[];
         stickyNotes: StickyNoteElement[];
@@ -169,7 +170,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 onTouchMove={handleMouseMove}
                 onTouchEnd={handleMouseUp}
                 style={{
-                    backgroundColor: 'rgba(255,0,0,0.1)',
+                    // backgroundColor: 'rgba(255,0,0,0.1)',
                     pointerEvents: tool ? 'auto' : 'none',
                 }}
             >

@@ -75,7 +75,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
         setAnnotationsByPage((prev) => ({
             ...prev,
-            [question?.page_number ?? 1]: { lines: [], texts: [], stickyNotes: [] },
+            [question?.page_number ?? 1]: { page: question?.page_number ?? 1, lines: [], texts: [], stickyNotes: [] },
         }));
         setSelectedMark(null);
         setPdfUrl(null);
@@ -109,7 +109,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                     );
                     setAnnotationsByPage((prev) => ({
                         ...prev,
-                        [question.page_number]: { lines: [], texts: [], stickyNotes: [] },
+                        [question.page_number]: { page: question.page_number, lines: [], texts: [], stickyNotes: [] },
                     }));
 
                     setSelectedMark(null);
@@ -230,13 +230,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         onRenderSuccess={() => {
                                             setRenderedPage(question.page_number);
                                             scrollToHighlight();
-                                            // Scroll the highlight into view
-                                            // setTimeout(() => {
-                                            //     highlightRef.current?.scrollIntoView({
-                                            //         behavior: 'smooth',
-                                            //         block: 'center',
-                                            //     });
-                                            // }, 100);
                                         }}
 
                                     />
