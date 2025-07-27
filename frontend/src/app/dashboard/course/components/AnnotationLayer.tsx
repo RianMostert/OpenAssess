@@ -87,6 +87,23 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         };
     }, [page]);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Delete' && selectedId) {
+                setAnnotations({
+                    ...annotations,
+                    stickyNotes: annotations.stickyNotes.filter(note => note.id !== selectedId),
+                    texts: annotations.texts.filter(text => text.id !== selectedId),
+                    lines: annotations.lines,
+                });
+                setSelectedId(null);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedId, annotations, setAnnotations]);
+
     const getPointer = (e: Konva.KonvaEventObject<any>) => stageRef.current?.getPointerPosition();
 
     const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -230,6 +247,36 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                         top: note.y,
                         left: note.x,
                         zIndex: 50,
+                        cursor: 'move',
+                    }}
+                    onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setSelectedId(note.id);
+                        const startX = e.clientX;
+                        const startY = e.clientY;
+
+                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                            const dx = moveEvent.clientX - startX;
+                            const dy = moveEvent.clientY - startY;
+
+                            setAnnotations({
+                                ...annotations,
+                                stickyNotes: annotations.stickyNotes.map((s) =>
+                                    s.id === note.id
+                                        ? { ...s, x: note.x + dx, y: note.y + dy }
+                                        : s
+                                ),
+                            });
+
+                        };
+
+                        const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                        };
+
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
                     }}
                 >
                     <StickyNote
@@ -245,7 +292,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                         onClick={() => setSelectedId(note.id)}
                         isSelected={selectedId === note.id}
                     />
-                </div>
+                </div >
             ))}
         </>
     );

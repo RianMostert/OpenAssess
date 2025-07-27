@@ -73,10 +73,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     useEffect(() => {
         let cancelled = false;
 
-        setAnnotationsByPage((prev) => ({
-            ...prev,
-            [question?.page_number ?? 1]: { page: question?.page_number ?? 1, lines: [], texts: [], stickyNotes: [] },
-        }));
         setSelectedMark(null);
         setPdfUrl(null);
         setPdfReady(false);
@@ -86,19 +82,19 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
             if (!currentAnswer || !question) return;
 
             try {
-                // Load PDF
+
                 const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${currentAnswer.id}/answer-sheet`);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 if (!cancelled) setPdfUrl(url);
 
-                // Fetch annotation metadata (QuestionResult)
                 const resultRes = await fetchWithAuth(
                     `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${currentAnswer.student_id}`
                 );
                 if (resultRes.ok) {
                     const resultData = await resultRes.json();
                     const resultId = resultData.id;
+                    console.log('Loaded question result:', resultData.id);
                     setQuestionResultIdMap((prev) => ({
                         ...prev,
                         [currentAnswer.student_id]: resultId,
@@ -116,6 +112,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
                     if (annotationRes.ok) {
                         const annotationsJson = await annotationRes.json();
+                        console.log('Loaded annotations:', annotationsJson);
                         setAnnotationsByPage({
                             [question.page_number]: annotationsJson,
                         });
@@ -169,7 +166,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     };
 
     const handleGrade = async (mark: number) => {
-        setSelectedMark(mark); // update UI immediately
+        setSelectedMark(mark);
     };
 
     const scrollToHighlight = () => {

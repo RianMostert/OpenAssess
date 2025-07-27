@@ -48,7 +48,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         <Card
             ref={noteRef}
             onClick={toggleExpand}
-            className={`cursor-pointer p-2 transition-all duration-300 ${expanded ? "w-64 h-64" : "w-16 h-16"
+            className={`cursor-pointer p-2 transition-all duration-300 ${expanded ? "w-64 h-64" : "w-10 h-10"
                 } overflow-hidden bg-yellow-100 shadow-xl rounded-2xl border-2 ${isSelected ? "border-blue-500" : "border-transparent"
                 }`}
         >
