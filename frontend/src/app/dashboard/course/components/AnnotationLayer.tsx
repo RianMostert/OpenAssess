@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Line, Text } from 'react-konva';
 import Konva from 'konva';
 import StickyNote from '@dashboard/course/components/StickyNote';
+import TextNote from '@dashboard/course/components/TextNote';
 
 export interface LineElement {
     id: string;
@@ -22,6 +23,8 @@ export interface TextElement {
     fontSize: number;
     fill: string;
     page: number;
+    width?: number;
+    height?: number;
 }
 
 export interface StickyNoteElement {
@@ -119,7 +122,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 tool,
                 x: pos.x,
                 y: pos.y,
-                text: 'New note',
+                text: '',
                 fontSize: 16,
                 fill: '#000000',
                 page,
@@ -215,29 +218,71 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                         />
                     )}
 
-                    {annotations.texts.map(textNote => (
-                        <Text
-                            key={textNote.id}
-                            x={textNote.x}
-                            y={textNote.y}
-                            text={textNote.text}
-                            fontSize={textNote.fontSize}
-                            fill={textNote.fill}
-                            draggable
-                            onDragEnd={(e) => {
-                                const { x, y } = e.target.position();
-                                setAnnotations({
-                                    ...annotations,
-                                    texts: annotations.texts.map(t =>
-                                        t.id === textNote.id ? { ...t, x, y } : t
-                                    ),
-                                });
-                            }}
-                            onClick={() => setSelectedId(textNote.id)}
-                        />
-                    ))}
                 </Layer>
             </Stage>
+
+            {annotations.texts.map(textNote => (
+                <div
+                    key={textNote.id}
+                    style={{
+                        position: 'absolute',
+                        top: textNote.y,
+                        left: textNote.x,
+                        zIndex: 50,
+                        cursor: 'move',
+                    }}
+                    onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setSelectedId(textNote.id);
+                        const startX = e.clientX;
+                        const startY = e.clientY;
+
+                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                            const dx = moveEvent.clientX - startX;
+                            const dy = moveEvent.clientY - startY;
+
+                            setAnnotations({
+                                ...annotations,
+                                texts: annotations.texts.map(t =>
+                                    t.id === textNote.id ? { ...t, x: textNote.x + dx, y: textNote.y + dy } : t
+                                ),
+                            });
+                        };
+
+                        const handleMouseUp = () => {
+                            document.removeEventListener('mousemove', handleMouseMove);
+                            document.removeEventListener('mouseup', handleMouseUp);
+                        };
+
+                        document.addEventListener('mousemove', handleMouseMove);
+                        document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                >
+                    <TextNote
+                        content={textNote.text}
+                        width={textNote.width}
+                        height={textNote.height}
+                        onChange={(val) => {
+                            setAnnotations({
+                                ...annotations,
+                                texts: annotations.texts.map(t =>
+                                    t.id === textNote.id ? { ...t, text: val } : t
+                                ),
+                            });
+                        }}
+                        onResize={(w, h) => {
+                            setAnnotations({
+                                ...annotations,
+                                texts: annotations.texts.map(t =>
+                                    t.id === textNote.id ? { ...t, width: w, height: h } : t
+                                ),
+                            });
+                        }}
+                        onClick={() => setSelectedId(textNote.id)}
+                        isSelected={selectedId === textNote.id}
+                    />
+                </div>
+            ))}
 
             {annotations.stickyNotes.map(note => (
                 <div
