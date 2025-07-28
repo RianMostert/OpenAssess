@@ -105,7 +105,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                     );
                     setAnnotationsByPage((prev) => ({
                         ...prev,
-                        [question.page_number]: { page: question.page_number, lines: [], texts: [], stickyNotes: [] },
+                        [question.page_number]: { grade: selectedMark ?? 0, page: question.page_number, lines: [], texts: [], stickyNotes: [] },
                     }));
 
                     setSelectedMark(null);
@@ -134,8 +134,13 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const saveAnnotations = async () => {
         if (!currentAnswer || !question) return;
 
-        const annotations = annotationsByPage[question.page_number];
-        if (!annotations) return;
+        const rawAnnotations = annotationsByPage[question.page_number];
+        if (!rawAnnotations) return;
+
+        const annotations = {
+            ...rawAnnotations,
+            grade: selectedMark ?? 0,
+        };
 
         const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
         const formData = new FormData();
@@ -154,6 +159,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
             console.error('Failed to save annotations', err);
         }
     };
+
 
     const goToNext = async () => {
         await saveAnnotations();
@@ -218,72 +224,76 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                             }}
                         >
                             {pdfReady && (
-                                <div className="relative flex justify-center py-4" id={`page-${question.page_number}`}>
-                                    <Page
-                                        pageNumber={question.page_number}
-                                        width={containerWidth ? containerWidth - 32 : 500}
-                                        renderTextLayer={false}
-                                        renderAnnotationLayer={false}
-                                        onRenderSuccess={() => {
-                                            setRenderedPage(question.page_number);
-                                            scrollToHighlight();
-                                        }}
-
-                                    />
-                                    {renderedPage === question.page_number && (
-                                        <AnnotationLayer
-                                            key={`${currentAnswer.id}-${question.id}-${question.page_number}`}
-                                            page={question.page_number}
-                                            annotations={annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] }}
-                                            setAnnotations={(data) =>
-                                                setAnnotationsByPage((prev) => ({
-                                                    ...prev,
-                                                    [question.page_number]: data,
-                                                }))
-                                            }
-                                            tool={tool}
-                                            containerRef={pageContainerRef}
-                                            rendered={renderedPage === question.page_number}
-                                        />
-                                    )}
-                                    <div
-                                        ref={highlightRef}
-                                        className="absolute border-2 border-blue-500 pointer-events-none"
-                                        style={{
-                                            top: question.y,
-                                            left: question.x,
-                                            width: question.width,
-                                            height: question.height,
-                                            zIndex: 10,
-                                        }}
-                                    />
-                                    {question.max_marks !== undefined && (
-                                        <div
-                                            className="absolute right-0 flex flex-col pr-2"
-                                            style={{
-                                                top: question.y + question.height / 2,
-                                                transform: 'translateY(-50%)',
+                                <div className="flex justify-center py-4">
+                                    <div className="relative" style={{ width: containerWidth ? containerWidth - 32 : 500 }}>
+                                        <Page
+                                            pageNumber={question.page_number}
+                                            width={containerWidth ? containerWidth - 32 : 500}
+                                            renderTextLayer={false}
+                                            renderAnnotationLayer={false}
+                                            onRenderSuccess={() => {
+                                                setRenderedPage(question.page_number);
+                                                scrollToHighlight();
                                             }}
-                                        >
-                                            {Array.from({
-                                                length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
-                                            }).map((_, idx) => {
-                                                const value = idx * (question.increment || 1);
-                                                return (
-                                                    <button
-                                                        key={value}
-                                                        onClick={() => handleGrade(value)}
-                                                        className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
-                                                            ? 'bg-green-200 border-green-500 font-semibold'
-                                                            : 'bg-white border-gray-300 hover:bg-blue-100'
-                                                            }`}
-                                                    >
-                                                        {value}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                        />
+
+                                        {renderedPage === question.page_number && (
+                                            <AnnotationLayer
+                                                key={`${currentAnswer.id}-${question.id}-${question.page_number}`}
+                                                page={question.page_number}
+                                                annotations={annotationsByPage[question.page_number] ?? { grade: selectedMark, lines: [], texts: [], stickyNotes: [] }}
+                                                setAnnotations={(data) =>
+                                                    setAnnotationsByPage((prev) => ({
+                                                        ...prev,
+                                                        [question.page_number]: data,
+                                                    }))
+                                                }
+                                                tool={tool}
+                                                containerRef={pageContainerRef}
+                                                rendered={renderedPage === question.page_number}
+                                            />
+                                        )}
+
+                                        <div
+                                            ref={highlightRef}
+                                            className="absolute border-2 border-blue-500 pointer-events-none"
+                                            style={{
+                                                top: question.y - 17,
+                                                left: question.x,
+                                                width: question.width,
+                                                height: question.height,
+                                                zIndex: 10,
+                                            }}
+                                        />
+
+                                        {question.max_marks !== undefined && (
+                                            <div
+                                                className="absolute right-0 flex flex-col pr-2"
+                                                style={{
+                                                    top: question.y + question.height / 2,
+                                                    transform: 'translateY(-50%)',
+                                                }}
+                                            >
+                                                {Array.from({
+                                                    length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
+                                                }).map((_, idx) => {
+                                                    const value = idx * (question.increment || 1);
+                                                    return (
+                                                        <button
+                                                            key={value}
+                                                            onClick={() => handleGrade(value)}
+                                                            className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
+                                                                ? 'bg-green-200 border-green-500 font-semibold'
+                                                                : 'bg-white border-gray-300 hover:bg-blue-100'
+                                                                }`}
+                                                        >
+                                                            {value}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </Document>

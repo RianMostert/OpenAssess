@@ -80,7 +80,8 @@ export default function Home() {
           <NavBar activeNavItem={activeNavItem} itemSelected={setActiveNavItem} />
         </div>
 
-        {activeNavItem === 'courses' && <CourseView />}
+        {activeNavItem === 'courses' && <CourseView onToggleCollapse={toggleLeftSidebar} isCollapsed={isLeftSidebarCollapsed} />}
+
         {/* {activeNavItem === 'settings' && <SettingsView />} */}
         {activeNavItem === 'profile' && <ProfileView />}
       </div>

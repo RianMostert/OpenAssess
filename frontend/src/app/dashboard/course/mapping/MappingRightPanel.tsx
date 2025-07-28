@@ -12,7 +12,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Plus } from 'lucide-react';
+import { MoreVertical, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Question } from '@/types/course';
 
@@ -35,6 +35,7 @@ export default function MappingPanel({
 }: MappingPanelProps) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
 
     const fetchQuestions = async () => {
         if (!selectedAssessment) return;
@@ -67,10 +68,6 @@ export default function MappingPanel({
         }
     };
 
-    const handleEdit = (question: Question) => {
-        setEditingQuestion(question);
-    }
-
     useEffect(() => {
         fetchQuestions();
     }, [selectedAssessment]);
@@ -94,68 +91,102 @@ export default function MappingPanel({
     }, []);
 
     if (!selectedAssessment) {
-        return <div className="p-4 text-muted-foreground">Select an assessment to view its questions.</div>;
+        return (
+            <div
+                className="p-4 text-muted-foreground"
+                style={{
+                    width: collapsed ? '40px' : `${width}px`,
+                    minWidth: collapsed ? '40px' : `${width}px`,
+                }}
+            >
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCollapsed(!collapsed)}
+                >
+                    {collapsed ? <ChevronLeft /> : <ChevronRight />}
+                </Button>
+            </div>
+        );
     }
 
     return (
-        <div className="p-4" style={{ width: `${width}px`, minWidth: `${width}px` }}>
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Questions</h2>
-                <Button
-                    onClick={() => {
-                        setCreatingQuestion(true);
-                    }}
-                    variant="ghost"
-                    size="icon"
-                >
-                    <Plus className="w-4 h-4" />
-                </Button>
+        <div
+            className="transition-all duration-300 ease-in-out border-r border-zinc-800 h-full bg-white"
+            style={{
+                width: collapsed ? '40px' : `${width}px`,
+                minWidth: collapsed ? '40px' : `${width}px`,
+                overflow: 'hidden',
+            }}
+        >
+            <div className="flex items-center justify-between mb-4 px-2 pt-2">
+                {!collapsed && <h2 className="text-xl font-semibold">Questions</h2>}
+                <div className="flex gap-1 items-center">
+                    {!collapsed && (
+                        <Button
+                            onClick={() => setCreatingQuestion(true)}
+                            variant="ghost"
+                            size="icon"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCollapsed((prev) => !prev)}
+                    >
+                        {collapsed ? <ChevronLeft /> : <ChevronRight />}
+                    </Button>
+                </div>
             </div>
 
-            {loading ? (
-                <div>Loading questions...</div>
-            ) : (
-                <Accordion type="multiple">
-                    {questions.map((question) => (
-                        <AccordionItem key={question.id} value={question.id}>
-                            <div className="flex items-center justify-between w-full">
-                                <AccordionTrigger className="flex-1 text-left">
-                                    {question.question_number}
-                                </AccordionTrigger>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreVertical className="w-4 h-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            onClick={() => {
-                                                setEditingQuestion(question);
-                                            }}
-                                        >
-                                            Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => handleDelete(question.id)}
-                                            className="text-red-600"
-                                        >
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            <AccordionContent>
-                                <div className="p-2 text-sm space-y-1">
-                                    <p><strong>Max Marks:</strong> {question.max_marks ?? '—'}</p>
-                                    <p><strong>Increment:</strong> {question.increment ?? '—'}</p>
-                                    <p><strong>Memo:</strong> {question.memo ?? '—'}</p>
-                                    <p><strong>Marking Note:</strong> {question.marking_note ?? '—'}</p>
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                </Accordion>
+            {!collapsed && (
+                <>
+                    {loading ? (
+                        <div className="px-2">Loading questions...</div>
+                    ) : (
+                        <Accordion type="multiple">
+                            {questions.map((question) => (
+                                <AccordionItem key={question.id} value={question.id}>
+                                    <div className="flex items-center justify-between w-full">
+                                        <AccordionTrigger className="flex-1 text-left">
+                                            {question.question_number}
+                                        </AccordionTrigger>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem
+                                                    onClick={() => setEditingQuestion(question)}
+                                                >
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={() => handleDelete(question.id)}
+                                                    className="text-red-600"
+                                                >
+                                                    Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                    <AccordionContent>
+                                        <div className="p-2 text-sm space-y-1">
+                                            <p><strong>Max Marks:</strong> {question.max_marks ?? '—'}</p>
+                                            <p><strong>Increment:</strong> {question.increment ?? '—'}</p>
+                                            <p><strong>Memo:</strong> {question.memo ?? '—'}</p>
+                                            <p><strong>Marking Note:</strong> {question.marking_note ?? '—'}</p>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    )}
+                </>
             )}
         </div>
     );

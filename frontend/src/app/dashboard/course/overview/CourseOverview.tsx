@@ -141,7 +141,7 @@ export default function CourseOverview({
     }
 
     return (
-        <div className="p-6 space-y-4 border-zinc-800 border-r">
+        <div className="p-6 space-y-4 border-zinc-800">
             <h1 className="text-2xl font-semibold">{course.title}</h1>
 
             {assessment ? (

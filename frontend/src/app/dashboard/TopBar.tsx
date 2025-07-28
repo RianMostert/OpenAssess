@@ -26,7 +26,7 @@ export default function TopBar({
                 </Button>
             </div>
             <span className="text-lg font-semibold">Assessment Manager</span>
-            <div className="absolute right-4">
+            {/* <div className="absolute right-4">
                 <Button
                     variant="outline"
                     size={"icon"}
@@ -34,7 +34,7 @@ export default function TopBar({
                     title={rightSidebarCollapsed ? "Show Right Sidebar" : "Hide Right Sidebar"}>
                     <PanelRight className={`h-5 w-5 ${rightSidebarCollapsed ? "rotate-180" : ""}`} />
                 </Button>
-            </div>
+            </div> */}
         </div>
     )
 }

@@ -12,7 +12,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Question } from '@/types/course';
 
@@ -35,11 +35,14 @@ export default function GradingRightPanel({
 }: GradingRightPanelProps) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
 
     const fetchQuestions = async () => {
         setLoading(true);
         try {
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/assessments/${selectedAssessment.id}/questions`);
+            const res = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${selectedAssessment.id}/questions`
+            );
             const data: Question[] = await res.json();
             setQuestions(data);
 
@@ -58,48 +61,65 @@ export default function GradingRightPanel({
         fetchQuestions();
     }, [selectedAssessment]);
 
-    if (!question) {
-        return <div className="p-4 text-muted-foreground">No question selected.</div>;
-    }
-
     return (
-        <div className="p-4" style={{ width: `${width}px`, minWidth: `${width}px` }}>
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Question</h2>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="max-h-64 overflow-auto" align="end">
-                        {questions.map((q) => (
-                            <DropdownMenuItem
-                                key={q.id}
-                                onClick={() => onQuestionSelect(q)}
-                                className={q.id === question.id ? 'font-semibold bg-muted' : ''}
-                            >
-                                Question {q.question_number}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+        <div
+            className={`transition-all duration-300 ease-in-out border-l border-zinc-800 h-full bg-white`}
+            style={{
+                width: collapsed ? '40px' : `${width}px`,
+                minWidth: collapsed ? '40px' : `${width}px`,
+                overflow: 'hidden',
+            }}
+        >
+            <div className="flex items-center justify-between mb-4 px-2 pt-2">
+                {!collapsed && <h2 className="text-xl font-semibold">Question</h2>}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setCollapsed((prev) => !prev)}
+                >
+                    {collapsed ? <ChevronLeft /> : <ChevronRight />}
+                </Button>
             </div>
 
-            <Accordion type="single" defaultValue="question" collapsible>
-                <AccordionItem value="question">
-                    <AccordionTrigger className="text-left">Details</AccordionTrigger>
-                    <AccordionContent className="p-2 text-sm space-y-1">
-                        <p><strong>Question #:</strong> {question.question_number}</p>
-                        <p><strong>Max Marks:</strong> {question.max_marks ?? '—'}</p>
-                        <p><strong>Increment:</strong> {question.increment ?? '—'}</p>
-                        <p><strong>Memo:</strong> {question.memo ?? '—'}</p>
-                        <p><strong>Marking Note:</strong> {question.marking_note ?? '—'}</p>
-                        <p><strong>Page:</strong> {question.page_number}</p>
-                        <p><strong>Box:</strong> {`x: ${question.x}, y: ${question.y}, w: ${question.width}, h: ${question.height}`}</p>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+            {!collapsed && question && (
+                <>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full mb-4">
+                                Select Question
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="max-h-64 overflow-auto" align="end">
+                            {questions.map((q) => (
+                                <DropdownMenuItem
+                                    key={q.id}
+                                    onClick={() => onQuestionSelect(q)}
+                                    className={
+                                        q.id === question.id ? 'font-semibold bg-muted' : ''
+                                    }
+                                >
+                                    Question {q.question_number}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Accordion type="single" defaultValue="question" collapsible>
+                        <AccordionItem value="question">
+                            <AccordionTrigger className="text-left">Details</AccordionTrigger>
+                            <AccordionContent className="p-2 text-sm space-y-1">
+                                <p><strong>Question #:</strong> {question.question_number}</p>
+                                <p><strong>Max Marks:</strong> {question.max_marks ?? '—'}</p>
+                                <p><strong>Increment:</strong> {question.increment ?? '—'}</p>
+                                <p><strong>Memo:</strong> {question.memo ?? '—'}</p>
+                                <p><strong>Marking Note:</strong> {question.marking_note ?? '—'}</p>
+                                <p><strong>Page:</strong> {question.page_number}</p>
+                                <p><strong>Box:</strong> {`x: ${question.x}, y: ${question.y}, w: ${question.width}, h: ${question.height}`}</p>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </>
+            )}
         </div>
     );
 }

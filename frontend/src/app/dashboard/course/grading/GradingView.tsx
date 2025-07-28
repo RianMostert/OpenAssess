@@ -22,7 +22,7 @@ export default function GradingLayout({ assessment }: GradingLayoutProps) {
                 />
             </div>
 
-            <div className="w-[250px] h-full overflow-auto border-l border-zinc-800">
+            <div className="h-full overflow-auto">
                 <GradingRightPanel
                     selectedAssessment={assessment}
                     currentPage={currentPage}

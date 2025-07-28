@@ -11,7 +11,6 @@ export interface LineElement {
     stroke: string;
     strokeWidth: number;
     compositeOperation?: string;
-    page: number;
 }
 
 export interface TextElement {
@@ -22,7 +21,6 @@ export interface TextElement {
     text: string;
     fontSize: number;
     fill: string;
-    page: number;
     width?: number;
     height?: number;
 }
@@ -35,7 +33,6 @@ export interface StickyNoteElement {
     text: string;
     fontSize: number;
     fill: string;
-    page: number;
 }
 
 type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
@@ -43,6 +40,7 @@ type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 export interface AnnotationLayerProps {
     page: number;
     annotations: {
+        grade: number;
         page: number;
         lines: LineElement[];
         texts: TextElement[];
@@ -92,7 +90,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Delete' && selectedId) {
+            const isWindowsDelete = e.key === 'Delete';
+            const isMacDelete = e.metaKey && e.key === 'Backspace';
+            if ((isWindowsDelete || isMacDelete) && selectedId) {
                 setAnnotations({
                     ...annotations,
                     stickyNotes: annotations.stickyNotes.filter(note => note.id !== selectedId),
@@ -125,7 +125,6 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 text: '',
                 fontSize: 16,
                 fill: '#000000',
-                page,
             };
             setAnnotations({
                 ...annotations,
@@ -140,7 +139,6 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 text: '',
                 fontSize: 16,
                 fill: '#000000',
-                page,
             };
             setAnnotations({
                 ...annotations,
@@ -165,7 +163,6 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 stroke: tool === 'eraser' ? '#ffffff' : '#ff0000',
                 strokeWidth: tool === 'eraser' ? 10 : 2,
                 compositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over',
-                page,
             };
             setAnnotations({
                 ...annotations,

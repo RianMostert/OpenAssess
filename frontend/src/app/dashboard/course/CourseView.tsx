@@ -6,7 +6,7 @@ import GradingLayout from '@dashboard/course/grading/GradingView';
 
 import { Course, Assessment } from '@/types/course';
 
-export default function CourseView() {
+export default function CourseView({ isCollapsed, onToggleCollapse }: { isCollapsed: boolean, onToggleCollapse: () => void }) {
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
     const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
     const [activeMode, setActiveMode] = useState<'view' | 'map' | 'grade'>('view');
@@ -30,6 +30,8 @@ export default function CourseView() {
                 assessments={[]}
                 setAssessments={() => { }}
                 setActiveMode={setActiveMode}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={onToggleCollapse}
             />
             {activeMode === 'view' && (
                 <CourseOverview

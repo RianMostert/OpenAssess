@@ -28,7 +28,7 @@ export default function MappingLayout({ assessment }: MappingLayoutProps) {
                 />
             </div>
 
-            <div className="w-[250] h-full overflow-auto border-l border-zinc-800">
+            <div className="h-full overflow-auto">
                 <MappingRightPanel
                     selectedAssessment={assessment}
                     currentPage={currentPage}
