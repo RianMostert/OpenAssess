@@ -137,11 +137,11 @@ export default function CourseOverview({
     };
 
     if (!course) {
-        return <div className="p-6 text-muted-foreground">No course selected</div>;
+        return <div className="p-6 text-muted-foreground"></div>;
     }
 
     return (
-        <div className="p-6 space-y-4 border-zinc-800 border-l">
+        <div className="p-6 space-y-4 border-zinc-800 border-r">
             <h1 className="text-2xl font-semibold">{course.title}</h1>
 
             {assessment ? (

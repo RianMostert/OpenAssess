@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
-import CreateQuestionModel from '@dashboard/course/mapping/CreateQuestionModel';
-import EditQuestionModel from '@dashboard/course/mapping/EditQuestionModel';
+import CreateQuestionController from '@dashboard/course/mapping/CreateQuestionController';
+import EditQuestionController from '@dashboard/course/mapping/EditQuestionController';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Assessment, Question } from '@/types/course';
 
@@ -36,7 +36,25 @@ export default function MappingPdfViewer({
     const [pdfError, setPdfError] = useState<string | null>(null);
     const [numPages, setNumPages] = useState<number | null>(null);
     const [containerWidth, setContainerWidth] = useState<number | null>(null);
+    const [questions, setQuestions] = useState<Question[]>([]);
     const observerRef = useRef<IntersectionObserver | null>(null);
+
+    const fetchQuestions = async () => {
+        try {
+            const res = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/questions`
+            );
+            if (!res.ok) throw new Error('Failed to fetch questions');
+            const data = await res.json();
+            setQuestions(data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        fetchQuestions();
+    }, [assessment]);
 
     // Dynamically set width based on container
     useEffect(() => {
@@ -117,31 +135,53 @@ export default function MappingPdfViewer({
                             }}
                         >
                             <div className="flex justify-center py-4" id={`page-${currentPage}`}>
-                                <Page
-                                    pageNumber={currentPage}
-                                    width={containerWidth ? containerWidth - 32 : 500}
-                                    renderTextLayer={false}
-                                    renderAnnotationLayer={false}
-                                />
+                                <div className="relative">
+                                    <Page
+                                        pageNumber={currentPage}
+                                        width={containerWidth ? containerWidth - 32 : 500}
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
+                                    />
+                                    {questions
+                                        .filter((q) => q.page_number === currentPage)
+                                        .map((q) => (
+                                            <div
+                                                key={q.id}
+                                                className="absolute border-2 border-blue-500 cursor-pointer"
+                                                style={{
+                                                    left: `${q.x}px`,
+                                                    top: `${q.y - 17}px`,
+                                                    width: `${q.width}px`,
+                                                    height: `${q.height}px`,
+                                                }}
+                                                onClick={() => setEditingQuestion(q)}
+                                                title={`${q.question_number}`}
+                                            />
+                                        ))}
+                                </div>
                             </div>
                         </Document>
 
                         {creating && (
-                            <CreateQuestionModel
+                            <CreateQuestionController
                                 assessmentId={assessment.id}
                                 currentPage={currentPage}
                                 pageContainerRef={pageContainerRef}
-                                onQuestionCreated={() => setCreatingQuestion(false)}
+                                onQuestionCreated={() => {
+                                    setCreatingQuestion(false);
+                                    fetchQuestions();
+                                }}
                             />
                         )}
 
                         {editing && (
-                            <EditQuestionModel
+                            <EditQuestionController
                                 question={editing}
-                                open={!!editing}
-                                setOpen={(open) => !open && setEditingQuestion(null)}
+                                pageContainerRef={pageContainerRef}
+                                onClose={() => setEditingQuestion(null)}
                                 onUpdated={() => {
                                     setEditingQuestion(null);
+                                    fetchQuestions();
                                 }}
                             />
                         )}
@@ -173,6 +213,5 @@ export default function MappingPdfViewer({
                 <p className="text-sm text-red-500">{pdfError || 'No question paper available.'}</p>
             )}
         </div>
-
     );
 }

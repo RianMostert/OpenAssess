@@ -1,0 +1,181 @@
+import { useEffect, useRef, useState } from 'react';
+import { Question } from '@/types/course';
+import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+
+interface EditQuestionControllerProps {
+    question: Question;
+    pageContainerRef: React.RefObject<HTMLDivElement | null>;
+    onClose: () => void;
+    onUpdated: () => void;
+}
+
+export default function EditQuestionController({
+    question,
+    pageContainerRef,
+    onClose,
+    onUpdated,
+}: EditQuestionControllerProps) {
+    const [drawing, setDrawing] = useState(false);
+    const [startCoord, setStartCoord] = useState<{ x: number; y: number } | null>(null);
+    const [rect, setRect] = useState({
+        x: question.x,
+        y: question.y,
+        width: question.width,
+        height: question.height,
+    });
+    const [formData, setFormData] = useState({
+        question_number: question.question_number,
+        max_marks: question.max_marks,
+        increment: question.increment,
+        memo: question.memo || '',
+        marking_note: question.marking_note || '',
+    });
+
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const [overlayHeight, setOverlayHeight] = useState(0);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (pageContainerRef.current) {
+            setOverlayHeight(pageContainerRef.current.scrollHeight);
+        }
+    }, [pageContainerRef, question.page_number]);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        const pageElement = document.getElementById(`page-${question.page_number}`);
+        if (!pageElement) return;
+        const bounds = pageElement.getBoundingClientRect();
+        const x = e.clientX - bounds.left;
+        const y = e.clientY - bounds.top;
+        setStartCoord({ x, y });
+        setDrawing(true);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!drawing || !startCoord) return;
+
+        const pageElement = document.getElementById(`page-${question.page_number}`);
+        if (!pageElement) return;
+        const bounds = pageElement.getBoundingClientRect();
+        const x2 = e.clientX - bounds.left;
+        const y2 = e.clientY - bounds.top;
+
+        const x = Math.min(startCoord.x, x2);
+        const y = Math.min(startCoord.y, y2);
+        const width = Math.abs(x2 - startCoord.x);
+        const height = Math.abs(y2 - startCoord.y);
+        setRect({ x, y, width, height });
+    };
+
+    const handleMouseUp = () => {
+        setDrawing(false);
+        setStartCoord(null);
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async () => {
+        setLoading(true);
+        try {
+            const payload = {
+                ...formData,
+                x: rect.x,
+                y: rect.y,
+                width: rect.width,
+                height: rect.height,
+            };
+
+            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/questions/${question.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!res.ok) throw new Error('Failed to update question');
+            onUpdated();
+            onClose();
+        } catch (err) {
+            console.error('Update failed', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <>
+            <div
+                ref={overlayRef}
+                className="absolute top-0 left-0 w-full z-50 cursor-crosshair"
+                style={{
+                    height: `${overlayHeight}px`,
+                    pointerEvents: loading ? 'none' : 'auto',
+                }}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+            />
+
+            {/* Draw rectangle */}
+            <div
+                className="absolute border-2 border-red-500 pointer-events-none z-40"
+                style={{
+                    top: rect.y,
+                    left: rect.x,
+                    width: rect.width,
+                    height: rect.height,
+                }}
+            />
+
+            {/* Inline form */}
+            <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-50 w-80 space-y-3">
+                <Input
+                    name="question_number"
+                    placeholder="Question Number"
+                    value={formData.question_number}
+                    onChange={handleChange}
+                />
+                <div className="flex gap-2">
+                    <Input
+                        type="number"
+                        name="max_marks"
+                        placeholder="Max Marks"
+                        value={formData.max_marks || ''}
+                        onChange={handleChange}
+                    />
+                    <Input
+                        type="number"
+                        name="increment"
+                        placeholder="Increment"
+                        value={formData.increment || ''}
+                        onChange={handleChange}
+                    />
+                </div>
+                <Textarea
+                    name="memo"
+                    placeholder="Memo"
+                    value={formData.memo}
+                    onChange={handleChange}
+                />
+                <Textarea
+                    name="marking_note"
+                    placeholder="Marking Note"
+                    value={formData.marking_note}
+                    onChange={handleChange}
+                />
+                <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSubmit} disabled={loading}>
+                        {loading ? 'Saving...' : 'Save'}
+                    </Button>
+                </div>
+            </div>
+        </>
+    );
+}
