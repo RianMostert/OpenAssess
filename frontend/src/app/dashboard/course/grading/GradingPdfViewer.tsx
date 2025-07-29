@@ -36,7 +36,8 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [pdfReady, setPdfReady] = useState(false);
     const [selectedMark, setSelectedMark] = useState<number | null>(null);
     const [gradingError, setGradingError] = useState<string | null>(null);
-    const [annotationsByPage, setAnnotationsByPage] = useState<Record<number, AnnotationLayerProps['annotations']>>({});
+    // const [annotationsByPage, setAnnotationsByPage] = useState<Record<number, AnnotationLayerProps['annotations']>>({});
+    const [annotationsByPage, setAnnotationsByPage] = useState<Record<string, AnnotationLayerProps['annotations']>>({});
     const [tool, setTool] = useState<Tool | null>(null);
     const [renderedPage, setRenderedPage] = useState<number | null>(null);
     const [questionResultIdMap, setQuestionResultIdMap] = useState<Record<string, string>>({});
@@ -77,46 +78,55 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         setPdfUrl(null);
         setPdfReady(false);
         setRenderedPage(null);
+        setAnnotationsByPage({});
 
         const loadPdfAndAnnotations = async () => {
             if (!currentAnswer || !question) return;
 
             try {
-
+                // Load the student's PDF
                 const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${currentAnswer.id}/answer-sheet`);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
                 if (!cancelled) setPdfUrl(url);
 
+                // Load the student's question result
                 const resultRes = await fetchWithAuth(
                     `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${currentAnswer.student_id}`
                 );
+
                 if (resultRes.ok) {
                     const resultData = await resultRes.json();
                     const resultId = resultData.id;
-                    console.log('Loaded question result:', resultData.id);
+
+                    // Cache resultId by student
                     setQuestionResultIdMap((prev) => ({
                         ...prev,
                         [currentAnswer.student_id]: resultId,
                     }));
 
+                    // Fetch annotations
                     const annotationRes = await fetchWithAuth(
                         `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultId}/annotation`
                     );
-                    setAnnotationsByPage((prev) => ({
-                        ...prev,
-                        [question.page_number]: { grade: selectedMark ?? 0, page: question.page_number, lines: [], texts: [], stickyNotes: [] },
-                    }));
-
-                    setSelectedMark(null);
 
                     if (annotationRes.ok) {
                         const annotationsJson = await annotationRes.json();
-                        console.log('Loaded annotations:', annotationsJson);
-                        setAnnotationsByPage({
-                            [question.page_number]: annotationsJson,
-                        });
-                        setSelectedMark(resultData.mark ?? null);
+                        console.log('Annotations loaded:', annotationsJson);
+
+                        if (!cancelled) {
+                            setAnnotationsByPage({
+                                [question.page_number]: annotationsJson,
+                            });
+                            setSelectedMark(resultData.mark ?? null);
+                        }
+                    } else {
+                        if (!cancelled) {
+                            setAnnotationsByPage({
+                                [question.page_number]: { page: question.page_number, lines: [], texts: [], stickyNotes: [] },
+                            });
+                            setSelectedMark(resultData.mark ?? null);
+                        }
                     }
                 }
             } catch (err) {
@@ -129,18 +139,14 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         return () => {
             cancelled = true;
         };
-    }, [currentAnswer, question, assessment.id]);
+    }, [currentAnswer?.id, question?.id, assessment.id]);
+
 
     const saveAnnotations = async () => {
         if (!currentAnswer || !question) return;
 
-        const rawAnnotations = annotationsByPage[question.page_number];
-        if (!rawAnnotations) return;
-
-        const annotations = {
-            ...rawAnnotations,
-            grade: selectedMark ?? 0,
-        };
+        const annotations = annotationsByPage[question.page_number];
+        if (!annotations) return;
 
         const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
         const formData = new FormData();
@@ -159,7 +165,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
             console.error('Failed to save annotations', err);
         }
     };
-
 
     const goToNext = async () => {
         await saveAnnotations();
@@ -224,76 +229,71 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                             }}
                         >
                             {pdfReady && (
-                                <div className="flex justify-center py-4">
-                                    <div className="relative" style={{ width: containerWidth ? containerWidth - 32 : 500 }}>
-                                        <Page
-                                            pageNumber={question.page_number}
-                                            width={containerWidth ? containerWidth - 32 : 500}
-                                            renderTextLayer={false}
-                                            renderAnnotationLayer={false}
-                                            onRenderSuccess={() => {
-                                                setRenderedPage(question.page_number);
-                                                scrollToHighlight();
-                                            }}
+                                <div className="relative" id={`page-${question.page_number}`}>
+                                    <Page
+                                        pageNumber={question.page_number}
+                                        width={containerWidth ? containerWidth - 32 : 500}
+                                        renderTextLayer={false}
+                                        renderAnnotationLayer={false}
+                                        onRenderSuccess={() => {
+                                            setRenderedPage(question.page_number);
+                                            scrollToHighlight();
+                                        }}
+                                    />
+                                    {renderedPage === question.page_number && (
+                                        <AnnotationLayer
+                                            key={`${currentAnswer.id}-${question.id}-${question.page_number}`}
+                                            page={question.page_number}
+                                            annotations={annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] }}
+                                            setAnnotations={(data) =>
+                                                setAnnotationsByPage((prev) => ({
+                                                    ...prev,
+                                                    [question.page_number]: data,
+                                                }))
+                                            }
+                                            tool={tool}
+                                            containerRef={pageContainerRef}
+                                            rendered={renderedPage === question.page_number}
                                         />
-
-                                        {renderedPage === question.page_number && (
-                                            <AnnotationLayer
-                                                key={`${currentAnswer.id}-${question.id}-${question.page_number}`}
-                                                page={question.page_number}
-                                                annotations={annotationsByPage[question.page_number] ?? { grade: selectedMark, lines: [], texts: [], stickyNotes: [] }}
-                                                setAnnotations={(data) =>
-                                                    setAnnotationsByPage((prev) => ({
-                                                        ...prev,
-                                                        [question.page_number]: data,
-                                                    }))
-                                                }
-                                                tool={tool}
-                                                containerRef={pageContainerRef}
-                                                rendered={renderedPage === question.page_number}
-                                            />
-                                        )}
-
+                                    )}
+                                    <div
+                                        ref={highlightRef}
+                                        className="absolute border-2 border-blue-500 pointer-events-none"
+                                        style={{
+                                            top: question.y - 9,
+                                            left: question.x,
+                                            width: question.width + 17,
+                                            height: question.height,
+                                            zIndex: 10,
+                                        }}
+                                    />
+                                    {question.max_marks !== undefined && (
                                         <div
-                                            ref={highlightRef}
-                                            className="absolute border-2 border-blue-500 pointer-events-none"
+                                            className="absolute right-0 flex flex-col pr-2"
                                             style={{
-                                                top: question.y - 17,
-                                                left: question.x,
-                                                width: question.width,
-                                                height: question.height,
-                                                zIndex: 10,
+                                                top: question.y + question.height / 2,
+                                                transform: 'translateY(-50%)',
                                             }}
-                                        />
-
-                                        {question.max_marks !== undefined && (
-                                            <div
-                                                className="absolute right-0 flex flex-col pr-2"
-                                                style={{
-                                                    top: question.y + question.height / 2,
-                                                    transform: 'translateY(-50%)',
-                                                }}
-                                            >
-                                                {Array.from({
-                                                    length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
-                                                }).map((_, idx) => {
-                                                    const value = idx * (question.increment || 1);
-                                                    return (
-                                                        <button
-                                                            key={value}
-                                                            onClick={() => handleGrade(value)}
-                                                            className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
-                                                                ? 'bg-green-200 border-green-500 font-semibold'
-                                                                : 'bg-white border-gray-300 hover:bg-blue-100'
-                                                                }`}
-                                                        >
-                                                            {value}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
+                                        >
+                                            {Array.from({
+                                                length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
+                                            }).map((_, idx) => {
+                                                const value = idx * (question.increment || 1);
+                                                return (
+                                                    <button
+                                                        key={value}
+                                                        onClick={() => handleGrade(value)}
+                                                        className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
+                                                            ? 'bg-green-200 border-green-500 font-semibold'
+                                                            : 'bg-white border-gray-300 hover:bg-blue-100'
+                                                            }`}
+                                                    >
+                                                        {value}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </Document>

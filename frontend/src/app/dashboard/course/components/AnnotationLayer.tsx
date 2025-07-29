@@ -40,7 +40,6 @@ type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 export interface AnnotationLayerProps {
     page: number;
     annotations: {
-        grade: number;
         page: number;
         lines: LineElement[];
         texts: TextElement[];
