@@ -1,4 +1,3 @@
-import type { NextConfig } from "next";
 import { NextConfig as NextJsConfig } from "next";
 
 const nextConfig: NextJsConfig = {

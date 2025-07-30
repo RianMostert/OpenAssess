@@ -36,7 +36,6 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [pdfReady, setPdfReady] = useState(false);
     const [selectedMark, setSelectedMark] = useState<number | null>(null);
     const [gradingError, setGradingError] = useState<string | null>(null);
-    // const [annotationsByPage, setAnnotationsByPage] = useState<Record<number, AnnotationLayerProps['annotations']>>({});
     const [annotationsByPage, setAnnotationsByPage] = useState<Record<string, AnnotationLayerProps['annotations']>>({});
     const [tool, setTool] = useState<Tool | null>(null);
     const [renderedPage, setRenderedPage] = useState<number | null>(null);
@@ -107,7 +106,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
                     // Fetch annotations
                     const annotationRes = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultId}/annotation`
+                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultId}/annotation?ts=${Date.now()}`
                     );
 
                     if (annotationRes.ok) {

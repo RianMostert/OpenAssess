@@ -12,9 +12,9 @@ from app.schemas.uploaded_file import ExportRequest
 router = APIRouter(prefix="/export", tags=["Export"])
 
 # Hardcoded transform for demo
-SCALE = 0.78
-OFFSET_X = -10
-OFFSET_Y = -30
+SCALE = 0.70
+OFFSET_X = -0
+OFFSET_Y = -0
 
 
 def hex_to_rgb(color):
@@ -69,11 +69,11 @@ def burn_annotations_to_pdf(pdf_path: str, output_path: str, annotations: list[d
                 page.draw_circle(p1, stroke_width / 4, color=stroke)
 
         for text in data.get("texts", []):
-            x = text["x"]
-            y = text["y"]
+            x = text["x"] - 65
+            y = text["y"] - 135
             rect = fitz.Rect(x, y, x + 200, y + 1000)
-            color = hex_to_rgb(text["fill"])
-            font_size = text["fontSize"]
+            color = hex_to_rgb("red")
+            font_size = text["fontSize"] - 3
             content = text["text"]
             page.insert_textbox(rect, content, fontsize=font_size, color=color, align=0)
 

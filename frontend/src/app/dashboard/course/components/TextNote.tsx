@@ -52,7 +52,7 @@ const TextNote: React.FC<TextNoteProps> = ({
                 setEditing(true);
                 onClick?.();
             }}
-            className={`text-black whitespace-pre-wrap break-words ${isSelected ? "outline outline-1 outline-blue-400" : ""
+            className={`text-red whitespace-pre-wrap break-words ${isSelected ? "outline outline-1 outline-blue-400" : ""
                 }`}
             style={{
                 cursor: "text",

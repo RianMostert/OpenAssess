@@ -226,6 +226,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                         left: textNote.x,
                         zIndex: 50,
                         cursor: 'move',
+                        color: 'red',
                     }}
                     onMouseDown={(e) => {
                         e.stopPropagation();
