@@ -144,8 +144,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const saveAnnotations = async () => {
         if (!currentAnswer || !question) return;
 
-        const annotations = annotationsByPage[question.page_number];
-        if (!annotations) return;
+        const annotations = annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] };
 
         const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
         const formData = new FormData();
@@ -177,7 +176,28 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
     const handleGrade = async (mark: number) => {
         setSelectedMark(mark);
+        await saveMarkOnly(mark);
     };
+
+    const saveMarkOnly = async (mark: number) => {
+        if (!currentAnswer || !question) return;
+
+        const formData = new FormData();
+        formData.append('assessment_id', assessment.id);
+        formData.append('question_id', question.id);
+        formData.append('student_id', currentAnswer.student_id);
+        formData.append('mark', mark.toString());
+
+        try {
+            await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/update-mark`, {
+                method: 'POST',
+                body: formData,
+            });
+        } catch (err) {
+            console.error('Failed to save mark', err);
+        }
+    };
+
 
     const scrollToHighlight = () => {
         const container = pageContainerRef.current;
