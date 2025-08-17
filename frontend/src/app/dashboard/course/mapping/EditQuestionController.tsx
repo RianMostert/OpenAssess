@@ -4,6 +4,15 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { 
+    pixelsToPercentage, 
+    percentageToPixels,
+    getPageSizeFromComputedStyle,
+    validatePercentageCoordinates,
+    roundPercentageCoordinates,
+    type PixelCoordinates,
+    type PercentageCoordinates 
+} from '@/lib/coordinateUtils';
 
 interface EditQuestionControllerProps {
     question: Question;
@@ -20,12 +29,16 @@ export default function EditQuestionController({
 }: EditQuestionControllerProps) {
     const [drawing, setDrawing] = useState(false);
     const [startCoord, setStartCoord] = useState<{ x: number; y: number } | null>(null);
-    const [rect, setRect] = useState({
+    
+    // Store display coordinates in pixels and data coordinates in percentages
+    const [displayRect, setDisplayRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
+    const [dataRect, setDataRect] = useState({
         x: question.x,
         y: question.y,
         width: question.width,
         height: question.height,
     });
+    
     const [formData, setFormData] = useState({
         question_number: question.question_number,
         max_marks: question.max_marks,
@@ -37,6 +50,29 @@ export default function EditQuestionController({
     const overlayRef = useRef<HTMLDivElement>(null);
     const [overlayHeight, setOverlayHeight] = useState(0);
     const [loading, setLoading] = useState(false);
+
+    // Convert percentage coordinates to pixels for display
+    useEffect(() => {
+        const updateDisplayRect = () => {
+            const pageSize = getPageSizeFromComputedStyle(question.page_number);
+            if (pageSize) {
+                const percentageCoords: PercentageCoordinates = {
+                    x: question.x,
+                    y: question.y,
+                    width: question.width,
+                    height: question.height,
+                };
+                const pixelCoords = percentageToPixels(percentageCoords, pageSize);
+                setDisplayRect(pixelCoords);
+            }
+        };
+
+        updateDisplayRect();
+        
+        // Update display rect when window resizes
+        window.addEventListener('resize', updateDisplayRect);
+        return () => window.removeEventListener('resize', updateDisplayRect);
+    }, [question.page_number, question.x, question.y, question.width, question.height]);
 
     useEffect(() => {
         if (pageContainerRef.current) {
@@ -67,7 +103,18 @@ export default function EditQuestionController({
         const y = Math.min(startCoord.y, y2);
         const width = Math.abs(x2 - startCoord.x);
         const height = Math.abs(y2 - startCoord.y);
-        setRect({ x, y, width, height });
+        
+        // Update both display rect (pixels) and convert to percentage for data
+        setDisplayRect({ x, y, width, height });
+        
+        // Convert to percentages for data storage
+        const pageSize = getPageSizeFromComputedStyle(question.page_number);
+        if (pageSize) {
+            const pixelCoords: PixelCoordinates = { x, y, width, height };
+            const percentageCoords = pixelsToPercentage(pixelCoords, pageSize);
+            const roundedPercentageCoords = roundPercentageCoordinates(percentageCoords);
+            setDataRect(roundedPercentageCoords);
+        }
     };
 
     const handleMouseUp = () => {
@@ -84,10 +131,10 @@ export default function EditQuestionController({
         try {
             const payload = {
                 ...formData,
-                x: rect.x,
-                y: rect.y,
-                width: rect.width,
-                height: rect.height,
+                x: dataRect.x,
+                y: dataRect.y,
+                width: dataRect.width,
+                height: dataRect.height,
             };
 
             const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/questions/${question.id}`, {
@@ -124,10 +171,10 @@ export default function EditQuestionController({
             <div
                 className="absolute border-2 border-red-500 pointer-events-none z-40"
                 style={{
-                    top: rect.y,
-                    left: rect.x,
-                    width: rect.width,
-                    height: rect.height,
+                    top: displayRect.y,
+                    left: displayRect.x,
+                    width: displayRect.width,
+                    height: displayRect.height,
                 }}
             />
 

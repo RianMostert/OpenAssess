@@ -6,6 +6,11 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import PdfAnnotatorBar from '@dashboard/course/components/PdfAnnotatorBar';
 import AnnotationLayer, { AnnotationLayerProps } from '@dashboard/course/components/AnnotationLayer';
 import React from 'react';
+import { 
+    percentageToPixels, 
+    getPageSizeFromComputedStyle,
+    type PercentageCoordinates 
+} from '@/lib/coordinateUtils';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -275,44 +280,67 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                             rendered={renderedPage === question.page_number}
                                         />
                                     )}
-                                    <div
-                                        ref={highlightRef}
-                                        className="absolute border-2 border-blue-500 pointer-events-none"
-                                        style={{
-                                            top: question.y - 9,
-                                            left: question.x,
-                                            width: question.width + 17,
+                                    {(() => {
+                                        // Convert percentage coordinates to pixels for display
+                                        const pageSize = getPageSizeFromComputedStyle(question.page_number);
+                                        if (!pageSize) {
+                                            console.warn(`Could not get page size for page ${question.page_number}`);
+                                            return null;
+                                        }
+
+                                        const percentageCoords: PercentageCoordinates = {
+                                            x: question.x,
+                                            y: question.y,
+                                            width: question.width,
                                             height: question.height,
-                                            zIndex: 10,
-                                        }}
-                                    />
-                                    {question.max_marks !== undefined && (
-                                        <div
-                                            className="absolute right-0 flex flex-col pr-2"
-                                            style={{
-                                                top: question.y + question.height / 2,
-                                                transform: 'translateY(-50%)',
-                                            }}
-                                        >
-                                            {Array.from({
-                                                length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
-                                            }).map((_, idx) => {
-                                                const value = idx * (question.increment || 1);
-                                                return (
-                                                    <button
-                                                        key={value}
-                                                        onClick={() => handleGrade(value)}
-                                                        className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
-                                                            ? 'bg-green-200 border-green-500 font-semibold'
-                                                            : 'bg-white border-gray-300 hover:bg-blue-100'
-                                                            }`}
+                                        };
+
+                                        const pixelCoords = percentageToPixels(percentageCoords, pageSize);
+
+                                        return (
+                                            <>
+                                                <div
+                                                    ref={highlightRef}
+                                                    className="absolute border-2 border-blue-500 pointer-events-none"
+                                                    style={{
+                                                        top: pixelCoords.y,
+                                                        left: pixelCoords.x,
+                                                        width: pixelCoords.width,
+                                                        height: pixelCoords.height,
+                                                        zIndex: 10,
+                                                    }}
+                                                />
+                                                {question.max_marks !== undefined && (
+                                                    <div
+                                                        className="absolute right-0 flex flex-col pr-2"
+                                                        style={{
+                                                            top: pixelCoords.y + pixelCoords.height / 2,
+                                                            transform: 'translateY(-50%)',
+                                                            zIndex: 15,
+                                                        }}
                                                     >
-                                                        {value}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                                                        {Array.from({
+                                                            length: Math.floor((question.max_marks ?? 0) / (question.increment || 1)) + 1,
+                                                        }).map((_, idx) => {
+                                                            const value = idx * (question.increment || 1);
+                                                            return (
+                                                                <button
+                                                                    key={value}
+                                                                    onClick={() => handleGrade(value)}
+                                                                    className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
+                                                                        ? 'bg-green-200 border-green-500 font-semibold'
+                                                                        : 'bg-white border-gray-300 hover:bg-blue-100'
+                                                                        }`}
+                                                                >
+                                                                    {value}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </Document>

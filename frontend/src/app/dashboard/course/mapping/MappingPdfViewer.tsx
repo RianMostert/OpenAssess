@@ -5,6 +5,11 @@ import CreateQuestionController from '@dashboard/course/mapping/CreateQuestionCo
 import EditQuestionController from '@dashboard/course/mapping/EditQuestionController';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Assessment, Question } from '@/types/course';
+import { 
+    percentageToPixels, 
+    getPageSizeFromComputedStyle,
+    type PercentageCoordinates 
+} from '@/lib/coordinateUtils';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -37,7 +42,10 @@ export default function MappingPdfViewer({
     const [numPages, setNumPages] = useState<number | null>(null);
     const [containerWidth, setContainerWidth] = useState<number | null>(null);
     const [questions, setQuestions] = useState<Question[]>([]);
+    const [questionsVersion, setQuestionsVersion] = useState(0); // Force re-render
+    const [isResizing, setIsResizing] = useState(false); // Track if currently resizing
     const observerRef = useRef<IntersectionObserver | null>(null);
+    const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const fetchQuestions = async () => {
         try {
@@ -47,6 +55,7 @@ export default function MappingPdfViewer({
             if (!res.ok) throw new Error('Failed to fetch questions');
             const data = await res.json();
             setQuestions(data);
+            setQuestionsVersion(prev => prev + 1); // Force re-render
         } catch (err) {
             console.error(err);
         }
@@ -56,17 +65,85 @@ export default function MappingPdfViewer({
         fetchQuestions();
     }, [assessment]);
 
-    // Dynamically set width based on container
+    // Force re-render of question boxes when container width changes (but not during active resizing)
+    useEffect(() => {
+        if (containerWidth && questions.length > 0 && !isResizing) {
+            console.log('Triggering question re-render due to width change:', containerWidth);
+            setQuestionsVersion(prev => prev + 1);
+        }
+    }, [containerWidth, isResizing]);
+
+    // Force re-render when page changes
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setQuestionsVersion(prev => prev + 1);
+        }, 100); // Give time for page to render
+        
+        return () => clearTimeout(timer);
+    }, [currentPage]);
+
+    // Additional effect to ensure PDF re-renders when questions change
+    useEffect(() => {
+        if (questions.length > 0) {
+            const timer = setTimeout(() => {
+                setQuestionsVersion(prev => prev + 1);
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [questions.length]);
+
+    // Dynamically set width based on container using ResizeObserver with debouncing
     useEffect(() => {
         const updateWidth = () => {
             if (pageContainerRef.current) {
-                setContainerWidth(pageContainerRef.current.offsetWidth);
+                const newWidth = pageContainerRef.current.offsetWidth;
+                const pdfWidth = Math.max(newWidth * 0.95, 400);
+                console.log('Container width updated:', newWidth, 'PDF width will be:', pdfWidth);
+                setContainerWidth(newWidth);
             }
         };
 
         updateWidth();
+        
+        // Use ResizeObserver to detect container size changes (like sidebar collapse)
+        let resizeObserver: ResizeObserver | null = null;
+        
+        if (pageContainerRef.current) {
+            resizeObserver = new ResizeObserver(() => {
+                console.log('ResizeObserver triggered');
+                
+                // Set resizing state to hide questions during resize
+                setIsResizing(true);
+                
+                // Clear any existing timeout
+                if (resizeTimeoutRef.current) {
+                    clearTimeout(resizeTimeoutRef.current);
+                }
+                
+                // Update width immediately for PDF scaling
+                updateWidth();
+                
+                // Debounce the question re-rendering
+                resizeTimeoutRef.current = setTimeout(() => {
+                    setIsResizing(false);
+                    setQuestionsVersion(prev => prev + 1);
+                }, 300); // Wait 300ms after resize stops
+            });
+            resizeObserver.observe(pageContainerRef.current);
+        }
+
+        // Also listen for window resize as fallback
         window.addEventListener('resize', updateWidth);
-        return () => window.removeEventListener('resize', updateWidth);
+        
+        return () => {
+            window.removeEventListener('resize', updateWidth);
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+            }
+            if (resizeTimeoutRef.current) {
+                clearTimeout(resizeTimeoutRef.current);
+            }
+        };
     }, [pageContainerRef]);
 
     useEffect(() => {
@@ -137,27 +214,64 @@ export default function MappingPdfViewer({
                             <div className="flex justify-center py-4" id={`page-${currentPage}`}>
                                 <div className="relative">
                                     <Page
+                                        key={`page-${currentPage}-${containerWidth}`} // Force re-render on width change
                                         pageNumber={currentPage}
-                                        width={containerWidth ? containerWidth - 32 : 500}
+                                        width={containerWidth ? Math.max(containerWidth * 0.95, 400) : 500}
                                         renderTextLayer={false}
                                         renderAnnotationLayer={false}
+                                        onRenderSuccess={() => {
+                                            // Trigger question re-render after page renders
+                                            setTimeout(() => {
+                                                setQuestionsVersion(prev => prev + 1);
+                                            }, 100);
+                                        }}
                                     />
-                                    {questions
+                                    {!isResizing && questions
                                         .filter((q) => q.page_number === currentPage)
-                                        .map((q) => (
-                                            <div
-                                                key={q.id}
-                                                className="absolute border-2 border-blue-500 cursor-pointer"
-                                                style={{
-                                                    left: `${q.x}px`,
-                                                    top: `${q.y - 17}px`,
-                                                    width: `${q.width}px`,
-                                                    height: `${q.height}px`,
-                                                }}
-                                                onClick={() => setEditingQuestion(q)}
-                                                title={`${q.question_number}`}
-                                            />
-                                        ))}
+                                        .map((q) => {
+                                            // Convert percentage coordinates to pixels for display
+                                            const pageElement = document.querySelector(`#page-${currentPage} .react-pdf__Page`);
+                                            
+                                            if (!pageElement) {
+                                                console.warn(`Could not find page element for page ${currentPage}`);
+                                                return null;
+                                            }
+
+                                            const pageRect = pageElement.getBoundingClientRect();
+                                            const pageSize = {
+                                                width: pageRect.width,
+                                                height: pageRect.height
+                                            };
+
+                                            const percentageCoords: PercentageCoordinates = {
+                                                x: q.x,
+                                                y: q.y,
+                                                width: q.width,
+                                                height: q.height,
+                                            };
+
+                                            const pixelCoords = percentageToPixels(percentageCoords, pageSize);
+
+                                            return (
+                                                <div
+                                                    key={`${q.id}-${questionsVersion}`}
+                                                    className="absolute border-2 border-blue-500 cursor-pointer hover:border-blue-700 hover:bg-blue-100 hover:bg-opacity-20 transition-colors"
+                                                    style={{
+                                                        left: `${pixelCoords.x}px`,
+                                                        top: `${pixelCoords.y}px`,
+                                                        width: `${pixelCoords.width}px`,
+                                                        height: `${pixelCoords.height}px`,
+                                                    }}
+                                                    onClick={() => setEditingQuestion(q)}
+                                                    title={`${q.question_number} - Click to edit`}
+                                                >
+                                                    {/* <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-1 py-0.5 rounded">
+                                                        {q.question_number}
+                                                    </div> */}
+                                                </div>
+                                            );
+                                        })
+                                        .filter(Boolean)}
                                 </div>
                             </div>
                         </Document>

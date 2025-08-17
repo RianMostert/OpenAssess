@@ -1,5 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import CreateQuestionFormModel from '@dashboard/course/mapping/CreateQuestionFormModel';
+import { 
+    pixelsToPercentage, 
+    getPageSizeFromComputedStyle,
+    validatePercentageCoordinates,
+    roundPercentageCoordinates,
+    type PixelCoordinates 
+} from '@/lib/coordinateUtils';
 
 interface Coordinates {
     x: number;
@@ -84,8 +91,46 @@ export default function CreateQuestionController({
     const handleMouseUp = (e: React.MouseEvent) => {
         if (!drawing || !previewRect) return;
 
-        setFinalRect(previewRect);
-        setRect(previewRect)
+        // Get the current page size for percentage conversion
+        const pageSize = getPageSizeFromComputedStyle(currentPage);
+        if (!pageSize) {
+            console.error('Could not get page size for percentage conversion');
+            setDrawing(false);
+            setPreviewRect(null);
+            return;
+        }
+
+        // Convert pixel coordinates to percentages for storage
+        const pixelCoords: PixelCoordinates = {
+            x: previewRect.x,
+            y: previewRect.y,
+            width: previewRect.width,
+            height: previewRect.height,
+        };
+
+        const percentageCoords = pixelsToPercentage(pixelCoords, pageSize);
+        
+        // Validate and round the percentage coordinates
+        if (!validatePercentageCoordinates(percentageCoords)) {
+            console.error('Invalid percentage coordinates:', percentageCoords);
+            setDrawing(false);
+            setPreviewRect(null);
+            return;
+        }
+
+        const roundedPercentageCoords = roundPercentageCoordinates(percentageCoords);
+
+        // Store the percentage coordinates for the form
+        const rectWithPercentages = {
+            ...previewRect,
+            x: roundedPercentageCoords.x,
+            y: roundedPercentageCoords.y,
+            width: roundedPercentageCoords.width,
+            height: roundedPercentageCoords.height,
+        };
+
+        setFinalRect(previewRect); // Keep pixel coords for display
+        setRect(rectWithPercentages); // Use percentage coords for saving
         setPreviewRect(null);
         setDrawing(false);
         setShowModal(true);
