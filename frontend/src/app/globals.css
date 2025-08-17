@@ -118,4 +118,70 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Mobile-first responsive design utilities */
+  html {
+    font-size: 16px; /* Base font size */
+  }
+  
+  /* Smooth scrolling for better UX */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Touch-friendly scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.556 0 0);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.456 0 0);
+  }
+  
+  /* Mobile touch improvements */
+  @media (max-width: 768px) {
+    /* Larger touch targets */
+    button, 
+    [role="button"], 
+    input[type="button"], 
+    input[type="submit"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Better text sizing on mobile */
+    html {
+      font-size: 14px;
+    }
+    
+    /* Prevent zoom on input focus */
+    input, textarea, select {
+      font-size: 16px;
+    }
+  }
+  
+  /* Tablet optimizations */
+  @media (min-width: 768px) and (max-width: 1024px) {
+    html {
+      font-size: 15px;
+    }
+  }
+  
+  /* High DPI displays */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    /* Sharper borders and shadows for retina displays */
+    .border {
+      border-width: 0.5px;
+    }
+  }
 }

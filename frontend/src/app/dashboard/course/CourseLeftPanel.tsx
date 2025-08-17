@@ -27,7 +27,9 @@ interface CoursePanelProps {
     width?: number;
     setActiveMode?: (mode: 'view' | 'map' | 'grade') => void;
     isCollapsed?: boolean;
-    onToggleCollapse?: () => void
+    onToggleCollapse?: () => void;
+    isMobile?: boolean;
+    isTablet?: boolean;
 }
 
 export default function CoursePanel({
@@ -39,6 +41,8 @@ export default function CoursePanel({
     setActiveMode,
     isCollapsed,
     onToggleCollapse,
+    isMobile = false,
+    isTablet = false,
 }: CoursePanelProps) {
     const [courses, setCourses] = useState<CourseWithAssessments[]>([]);
     const [loading, setLoading] = useState(true);
@@ -169,162 +173,327 @@ export default function CoursePanel({
         fetchCourses();
     }, []);
 
-    if (loading) return <div className="p-4 border-zinc-800 border-r">Loading courses...</div>;
+    if (loading) return <div className={`border-zinc-800 border-r ${isMobile ? 'p-2' : 'p-4'}`}>Loading courses...</div>;
+
+    // Mobile: Show as overlay/modal when not collapsed
+    if (isMobile && !isCollapsed) {
+        return (
+            <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={onToggleCollapse}>
+                <div 
+                    className="absolute left-0 top-0 h-full bg-background border-r border-zinc-800 p-4 overflow-y-auto"
+                    style={{ width: `${Math.min(width, window.innerWidth * 0.8)}px` }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold">Your Courses</h2>
+                        <CreateCourseModel onCourseAdded={fetchCourses} />
+                    </div>
+                    {/* Course list content */}
+                    <Accordion type="multiple">
+                        {courses.map((course) => (
+                            <AccordionItem key={course.id} value={course.id}>
+                                <div className="flex items-center justify-between w-full">
+                                    <AccordionTrigger className="flex-1 text-left">
+                                        <span className="text-sm">{course.title}</span>
+                                    </AccordionTrigger>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="sm">
+                                                <MoreVertical className="w-3 h-3" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                addAssessment(course.id);
+                                            }}>
+                                                Add Assignment
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    editCourse(course.id);
+                                                }}
+                                            >
+                                                Edit Course
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => deleteCourse(course.id)}>
+                                                Delete Course
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+
+                                <AccordionContent>
+                                    <div className="flex flex-col gap-2 pl-2">
+                                        {course.assessments.map((assessment) => (
+                                            <div key={assessment.id} className="flex items-center justify-between pr-2">
+                                                <Button
+                                                    variant={selectedAssessment?.id === assessment.id ? "default" : "outline"}
+                                                    className="justify-start flex-1 text-xs"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedCourse?.(course);
+                                                        setSelectedAssessment?.(assessment);
+                                                        setActiveMode?.('view');
+                                                        onToggleCollapse?.(); // Close sidebar on mobile after selection
+                                                    }}
+                                                >
+                                                    {assessment.title}
+                                                </Button>
+
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <MoreVertical className="w-3 h-3" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                setEditingAssessment(assessment);
+                                                                setModalType('editAssessment');
+                                                            }}
+                                                        >
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={async () => {
+                                                                await deleteAssessment(assessment.id, course.id);
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
+                    {/* Modals */}
+                    {modalType === 'editCourse' && editingCourse && (
+                        <EditCourseModel
+                            open={true}
+                            setOpen={(open) => {
+                                if (!open) {
+                                    setModalType(null);
+                                    setEditingCourse(null);
+                                }
+                            }}
+                            courseId={editingCourse.id}
+                            initialTitle={editingCourse.title}
+                            initialCode={editingCourse.code}
+                            onCourseUpdated={() => {
+                                setModalType(null);
+                                fetchCourses();
+                            }}
+                        />
+                    )}
+
+                    {modalType === 'createAssessment' && creatingAssessmentFor && (
+                        <CreateAssessmentModel
+                            open={true}
+                            setOpen={(open) => {
+                                if (!open) {
+                                    setModalType(null);
+                                    setCreatingAssessmentFor(null);
+                                }
+                            }}
+                            courseId={creatingAssessmentFor.id}
+                            onAssessmentCreated={() => {
+                                setModalType(null);
+                                fetchCourses();
+                            }}
+                        />
+                    )}
+
+                    {modalType === 'editAssessment' && editingAssessment && (
+                        <EditAssessmentModel
+                            open={true}
+                            setOpen={(open) => {
+                                if (!open) {
+                                    setModalType(null);
+                                    setEditingAssessment(null);
+                                }
+                            }}
+                            courseId={selectedCourse?.id || ''}
+                            assessmentId={editingAssessment.id}
+                            initialTitle={editingAssessment.title}
+                            onAssessmentUpdated={() => {
+                                fetchCourses();
+                            }}
+                        />
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`transition-all duration-300 ease-in-out border-zinc-800 border-r overflow-hidden`}
             style={{
-                width: isCollapsed ? '0px' : `${width}px`,
-                minWidth: isCollapsed ? '0px' : `${width}px`,
-                padding: isCollapsed ? '0px' : '1rem'
+                width: isCollapsed ? '0px' : `${isTablet ? Math.min(width, 200) : width}px`,
+                minWidth: isCollapsed ? '0px' : `${isTablet ? Math.min(width, 200) : width}px`,
+                padding: isCollapsed ? '0px' : isTablet ? '0.5rem' : '1rem'
             }}>
-            {!isCollapsed && (<>
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold">Your Courses</h2>
-                    <CreateCourseModel onCourseAdded={fetchCourses} />
-                </div>
+            {!isCollapsed && (
+                <>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className={`font-semibold ${isTablet ? 'text-lg' : 'text-xl'}`}>
+                            {isTablet ? 'Courses' : 'Your Courses'}
+                        </h2>
+                        <CreateCourseModel onCourseAdded={fetchCourses} />
+                    </div>
 
-                <Accordion type="multiple">
-                    {courses.map((course) => (
-                        <AccordionItem key={course.id} value={course.id}>
-                            <div className="flex items-center justify-between w-full">
-                                <AccordionTrigger className="flex-1 text-left">
-                                    <span>{course.title}</span>
-                                </AccordionTrigger>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreVertical className="w-4 h-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            addAssessment(course.id);
-                                        }}>
-                                            Add Assignment
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={(e) => {
+                    <Accordion type="multiple">
+                        {courses.map((course) => (
+                            <AccordionItem key={course.id} value={course.id}>
+                                <div className="flex items-center justify-between w-full">
+                                    <AccordionTrigger className="flex-1 text-left">
+                                        <span className={isTablet ? 'text-sm' : 'text-base'}>{course.title}</span>
+                                    </AccordionTrigger>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size={isTablet ? "sm" : "icon"}>
+                                                <MoreVertical className={`${isTablet ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                editCourse(course.id);
-                                            }}
-                                        >
-                                            Edit Course
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => deleteCourse(course.id)}>
-                                            Delete Course
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-
-                            <AccordionContent>
-                                <div className="flex flex-col gap-2 pl-2">
-                                    {course.assessments.map((assessment) => (
-                                        <div key={assessment.id} className="flex items-center justify-between pr-2">
-                                            <Button
-                                                variant={selectedAssessment?.id === assessment.id ? "default" : "outline"}
-                                                className="justify-start flex-1"
-                                                onClick={() => {
-                                                    setSelectedCourse?.(course);
-                                                    setSelectedAssessment?.(assessment);
-                                                    setActiveMode?.('view');
-                                                    console.log('Selected assessment:', assessment);
+                                                addAssessment(course.id);
+                                            }}>
+                                                Add Assignment
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    editCourse(course.id);
                                                 }}
                                             >
-                                                {assessment.title}
-                                            </Button>
-
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem
-                                                        onClick={() => {
-                                                            setEditingAssessment(assessment);
-                                                            setModalType('editAssessment');
-                                                        }}
-                                                    >
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        onClick={async () => {
-                                                            await deleteAssessment(assessment.id, course.id);
-                                                        }}
-                                                    >
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    ))}
-
+                                                Edit Course
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => deleteCourse(course.id)}>
+                                                Delete Course
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
 
-                </Accordion>
-                {modalType === 'editCourse' && editingCourse && (
-                    <EditCourseModel
-                        open={true}
-                        setOpen={(open) => {
-                            if (!open) {
-                                setModalType(null);
-                                setEditingCourse(null);
-                            }
-                        }}
-                        courseId={editingCourse.id}
-                        initialTitle={editingCourse.title}
-                        initialCode={editingCourse.code}
-                        onCourseUpdated={() => {
-                            setModalType(null);
-                            fetchCourses();
-                        }}
-                    />
-                )}
+                                <AccordionContent>
+                                    <div className="flex flex-col gap-2 pl-2">
+                                        {course.assessments.map((assessment) => (
+                                            <div key={assessment.id} className="flex items-center justify-between pr-2">
+                                                <Button
+                                                    variant={selectedAssessment?.id === assessment.id ? "default" : "outline"}
+                                                    className="justify-start flex-1"
+                                                    size={isTablet ? "sm" : "default"}
+                                                    onClick={() => {
+                                                        setSelectedCourse?.(course);
+                                                        setSelectedAssessment?.(assessment);
+                                                        setActiveMode?.('view');
+                                                        console.log('Selected assessment:', assessment);
+                                                    }}
+                                                >
+                                                    <span className={`${isTablet ? 'text-xs' : 'text-sm'} truncate`}>
+                                                        {assessment.title}
+                                                    </span>
+                                                </Button>
 
-                {modalType === 'createAssessment' && creatingAssessmentFor && (
-                    <CreateAssessmentModel
-                        open={true}
-                        setOpen={(open) => {
-                            if (!open) {
-                                setModalType(null);
-                                setCreatingAssessmentFor(null);
-                            }
-                        }}
-                        courseId={creatingAssessmentFor.id}
-                        onAssessmentCreated={() => {
-                            setModalType(null);
-                            fetchCourses();
-                        }}
-                    />
-                )}
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size={isTablet ? "sm" : "icon"}>
+                                                            <MoreVertical className={`${isTablet ? 'w-3 h-3' : 'w-4 h-4'}`} />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem
+                                                            onClick={() => {
+                                                                setEditingAssessment(assessment);
+                                                                setModalType('editAssessment');
+                                                            }}
+                                                        >
+                                                            Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={async () => {
+                                                                await deleteAssessment(assessment.id, course.id);
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        ))}
 
-                {modalType === 'editAssessment' && editingAssessment && (
-                    <EditAssessmentModel
-                        open={true}
-                        setOpen={(open) => {
-                            if (!open) {
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+
+                    </Accordion>
+                    {modalType === 'editCourse' && editingCourse && (
+                        <EditCourseModel
+                            open={true}
+                            setOpen={(open) => {
+                                if (!open) {
+                                    setModalType(null);
+                                    setEditingCourse(null);
+                                }
+                            }}
+                            courseId={editingCourse.id}
+                            initialTitle={editingCourse.title}
+                            initialCode={editingCourse.code}
+                            onCourseUpdated={() => {
                                 setModalType(null);
-                                setEditingAssessment(null);
-                            }
-                        }}
-                        courseId={selectedCourse?.id || ''}
-                        assessmentId={editingAssessment.id}
-                        initialTitle={editingAssessment.title}
-                        onAssessmentUpdated={() => {
-                            fetchCourses();
-                        }}
-                    />
-                )}
-            </>
+                                fetchCourses();
+                            }}
+                        />
+                    )}
+
+                    {modalType === 'createAssessment' && creatingAssessmentFor && (
+                        <CreateAssessmentModel
+                            open={true}
+                            setOpen={(open) => {
+                                if (!open) {
+                                    setModalType(null);
+                                    setCreatingAssessmentFor(null);
+                                }
+                            }}
+                            courseId={creatingAssessmentFor.id}
+                            onAssessmentCreated={() => {
+                                setModalType(null);
+                                fetchCourses();
+                            }}
+                        />
+                    )}
+
+                    {modalType === 'editAssessment' && editingAssessment && (
+                        <EditAssessmentModel
+                            open={true}
+                            setOpen={(open) => {
+                                if (!open) {
+                                    setModalType(null);
+                                    setEditingAssessment(null);
+                                }
+                            }}
+                            courseId={selectedCourse?.id || ''}
+                            assessmentId={editingAssessment.id}
+                            initialTitle={editingAssessment.title}
+                            onAssessmentUpdated={() => {
+                                fetchCourses();
+                            }}
+                        />
+                    )}
+                </>
             )}
         </div >
     );

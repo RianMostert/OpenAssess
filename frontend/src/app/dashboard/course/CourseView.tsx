@@ -6,7 +6,14 @@ import GradingLayout from '@dashboard/course/grading/GradingView';
 
 import { Course, Assessment } from '@/types/course';
 
-export default function CourseView({ isCollapsed, onToggleCollapse }: { isCollapsed: boolean, onToggleCollapse: () => void }) {
+interface CourseViewProps {
+    isCollapsed: boolean;
+    onToggleCollapse: () => void;
+    isMobile?: boolean;
+    isTablet?: boolean;
+}
+
+export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = false, isTablet = false }: CourseViewProps) {
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
     const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
     const [activeMode, setActiveMode] = useState<'view' | 'map' | 'grade'>('view');
@@ -21,7 +28,7 @@ export default function CourseView({ isCollapsed, onToggleCollapse }: { isCollap
     }, [selectedAssessment]);
 
     return (
-        <div className="flex flex-1 h-full w-full">
+        <div className={`flex h-full w-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
             <CourseLeftPanel
                 selectedCourse={selectedCourse}
                 setSelectedCourse={setSelectedCourse}
@@ -32,24 +39,37 @@ export default function CourseView({ isCollapsed, onToggleCollapse }: { isCollap
                 setActiveMode={setActiveMode}
                 isCollapsed={isCollapsed}
                 onToggleCollapse={onToggleCollapse}
+                isMobile={isMobile}
+                isTablet={isTablet}
             />
-            {activeMode === 'view' && (
-                <CourseOverview
-                    course={selectedCourse}
-                    assessment={selectedAssessment}
-                    setActiveMode={setActiveMode}
-                />
-            )}
+            
+            <div className="flex-1 overflow-hidden">
+                {activeMode === 'view' && (
+                    <CourseOverview
+                        course={selectedCourse}
+                        assessment={selectedAssessment}
+                        setActiveMode={setActiveMode}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
+                    />
+                )}
 
-            {activeMode === 'map' && selectedAssessment && (
-                <MappingLayout assessment={selectedAssessment} />
-            )}
+                {activeMode === 'map' && selectedAssessment && (
+                    <MappingLayout 
+                        assessment={selectedAssessment}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
+                    />
+                )}
 
-            {activeMode === 'grade' && selectedAssessment && (
-                <GradingLayout assessment={selectedAssessment} />
-            )}
-
+                {activeMode === 'grade' && selectedAssessment && (
+                    <GradingLayout 
+                        assessment={selectedAssessment}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
+                    />
+                )}
+            </div>
         </div>
-
     );
 }

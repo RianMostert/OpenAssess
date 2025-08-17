@@ -5,12 +5,16 @@ interface CourseOverviewProps {
     course: Course | null;
     assessment: Assessment | null;
     setActiveMode: (mode: 'view' | 'map' | 'grade') => void;
+    isMobile?: boolean;
+    isTablet?: boolean;
 }
 
 export default function CourseOverview({
     course,
     assessment,
     setActiveMode,
+    isMobile = false,
+    isTablet = false,
 }: CourseOverviewProps) {
     const handleStudentCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -137,35 +141,35 @@ export default function CourseOverview({
     };
 
     if (!course) {
-        return <div className="p-6 text-muted-foreground"></div>;
+        return <div className={`${isMobile ? 'p-4' : 'p-6'} text-muted-foreground`}>Select a course to get started</div>;
     }
 
     return (
-        <div className="p-6 space-y-4 border-zinc-800">
-            <h1 className="text-2xl font-semibold">{course.title}</h1>
+        <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 border-zinc-800 overflow-y-auto`}>
+            <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-semibold`}>{course.title}</h1>
 
             {assessment ? (
                 <>
-                    <h2 className="text-xl font-medium text-muted-foreground">
+                    <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-medium text-muted-foreground`}>
                         Assessment: {assessment.title}
                     </h2>
 
-                    <div className="flex gap-2 mt-4 flex-wrap">
+                    <div className={`flex gap-2 mt-4 ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
                         <button
                             onClick={() => setActiveMode('map')}
-                            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                            className={`${isMobile ? 'w-full py-3' : 'px-4 py-2'} bg-blue-500 text-white rounded hover:bg-blue-600 ${isMobile ? 'text-sm' : ''}`}
                         >
                             Mapping Mode
                         </button>
 
                         <button
                             onClick={() => setActiveMode('grade')}
-                            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                            className={`${isMobile ? 'w-full py-3' : 'px-4 py-2'} bg-green-500 text-white rounded hover:bg-green-600 ${isMobile ? 'text-sm' : ''}`}
                         >
                             Grading Mode
                         </button>
 
-                        <label className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer">
+                        <label className={`${isMobile ? 'w-full py-3 text-center' : 'px-4 py-2'} bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer ${isMobile ? 'text-sm' : ''}`}>
                             Upload Student CSV
                             <input
                                 type="file"
@@ -175,7 +179,7 @@ export default function CourseOverview({
                             />
                         </label>
 
-                        <label className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 cursor-pointer">
+                        <label className={`${isMobile ? 'w-full py-3 text-center' : 'px-4 py-2'} bg-purple-500 text-white rounded hover:bg-purple-600 cursor-pointer ${isMobile ? 'text-sm' : ''}`}>
                             Upload Answer Sheet PDFs
                             <input
                                 type="file"
@@ -188,14 +192,14 @@ export default function CourseOverview({
 
                         <button
                             onClick={handleDownloadStudentCSV}
-                            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
+                            className={`${isMobile ? 'w-full py-3' : 'px-4 py-2'} bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer ${isMobile ? 'text-sm' : ''}`}
                         >
                             Download Student CSV
                         </button>
 
                         <button
                             onClick={handleExportAnnotatedPdfs}
-                            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+                            className={`${isMobile ? 'w-full py-3' : 'px-4 py-2'} bg-orange-500 text-white rounded hover:bg-orange-600 ${isMobile ? 'text-sm' : ''}`}
                         >
                             Export Annotated PDFs
                         </button>

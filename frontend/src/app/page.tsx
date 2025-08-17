@@ -7,12 +7,24 @@ import NavBar from '@/app/dashboard/NavBar';
 import CourseView from '@dashboard/course/CourseView';
 import ProfileView from '@dashboard/profile/ProfileView';
 import { jwtDecode } from 'jwt-decode';
+import { useScreenSize } from '@/hooks/use-mobile';
 
 export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(false);
-
   const [activeNavItem, setActiveNavItem] = useState('courses');
+
+  // Screen size detection
+  const { isMobile, isTablet, isDesktop } = useScreenSize();
+
+  // Auto-collapse sidebar on mobile/tablet
+  useEffect(() => {
+    if (isMobile || isTablet) {
+      setIsLeftSidebarCollapsed(true);
+    } else if (isDesktop) {
+      setIsLeftSidebarCollapsed(false);
+    }
+  }, [isMobile, isTablet, isDesktop]);
 
   // Auth
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -67,23 +79,57 @@ export default function Home() {
   if (isAuthenticated === null) return null;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden ">
+    <div className="flex flex-col h-screen overflow-hidden">
       <TopBar
         toggleLeftSidebar={toggleLeftSidebar}
         toggleRightSidebar={toggleRightSidebar}
         leftSidebarCollapsed={isLeftSidebarCollapsed}
         rightSidebarCollapsed={isRightSidebarCollapsed}
+        isMobile={isMobile}
+        isTablet={isTablet}
       />
 
-      <div className="grid flex-1 grid-cols-[auto_1fr]">
-        <div className="flex flex-col border-r border-zinc-800">
-          <NavBar activeNavItem={activeNavItem} itemSelected={setActiveNavItem} />
+      <div className={`flex flex-1 ${isMobile ? 'flex-col' : 'flex-row'}`}>
+        {/* Navigation - Show as bottom bar on mobile, side bar on tablet/desktop */}
+        {isMobile ? (
+          <div className="order-2 border-t border-zinc-800">
+            <NavBar 
+              activeNavItem={activeNavItem} 
+              itemSelected={setActiveNavItem}
+              isMobile={isMobile}
+              isTablet={isTablet}
+            />
+          </div>
+        ) : (
+          <div className={`flex flex-col border-r border-zinc-800 transition-all duration-300 ${
+            isLeftSidebarCollapsed ? 'w-0 overflow-hidden' : isTablet ? 'w-16' : 'w-16'
+          }`}>
+            <NavBar 
+              activeNavItem={activeNavItem} 
+              itemSelected={setActiveNavItem}
+              isMobile={isMobile}
+              isTablet={isTablet}
+            />
+          </div>
+        )}
+
+        {/* Main content area */}
+        <div className={`flex-1 ${isMobile ? 'order-1' : ''}`}>
+          {activeNavItem === 'courses' && (
+            <CourseView 
+              onToggleCollapse={toggleLeftSidebar} 
+              isCollapsed={isLeftSidebarCollapsed}
+              isMobile={isMobile}
+              isTablet={isTablet}
+            />
+          )}
+          {activeNavItem === 'profile' && (
+            <ProfileView 
+              isMobile={isMobile}
+              isTablet={isTablet}
+            />
+          )}
         </div>
-
-        {activeNavItem === 'courses' && <CourseView onToggleCollapse={toggleLeftSidebar} isCollapsed={isLeftSidebarCollapsed} />}
-
-        {/* {activeNavItem === 'settings' && <SettingsView />} */}
-        {activeNavItem === 'profile' && <ProfileView />}
       </div>
     </div>
   );
