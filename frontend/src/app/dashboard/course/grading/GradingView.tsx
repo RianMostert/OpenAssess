@@ -15,7 +15,7 @@ export default function GradingLayout({ assessment, isMobile = false, isTablet =
     const [question, setQuestion] = useState<Question | null>(null);
 
     return (
-        <div className={`flex h-full w-full border-r border-zinc-800 ${isMobile ? 'flex-col' : 'flex-row'}`}>
+        <div className={`flex h-full w-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
             <div className="flex-1 h-full overflow-auto" ref={pageContainerRef}>
                 <GradingPdfViewer
                     assessment={assessment}
@@ -26,19 +26,16 @@ export default function GradingLayout({ assessment, isMobile = false, isTablet =
                 />
             </div>
 
-            <div className={`${isMobile ? 'border-t' : 'border-l'} border-zinc-800 h-full overflow-auto ${
-                isMobile ? 'max-h-1/3' : isTablet ? 'w-80' : 'w-96'
-            }`}>
-                <GradingRightPanel
-                    selectedAssessment={assessment}
-                    currentPage={currentPage}
-                    pageContainerRef={pageContainerRef}
-                    question={question}
-                    onQuestionSelect={(q) => setQuestion(q)}
-                    // isMobile={isMobile}
-                    // isTablet={isTablet}
-                />
-            </div>
+            <GradingRightPanel
+                selectedAssessment={assessment}
+                currentPage={currentPage}
+                pageContainerRef={pageContainerRef}
+                question={question}
+                onQuestionSelect={(q) => setQuestion(q)}
+                width={isTablet ? 300 : 350}
+                // isMobile={isMobile}
+                // isTablet={isTablet}
+            />
         </div>
     );
 }

@@ -1,9 +1,8 @@
 import { Button } from "@components/ui/button"
-import { PanelLeft, PanelRight, Menu } from "lucide-react"
+import { PanelLeft, Menu } from "lucide-react"
 
 interface TopBarProps {
     toggleLeftSidebar: () => void
-    toggleRightSidebar: () => void
     leftSidebarCollapsed: boolean
     rightSidebarCollapsed: boolean
     isMobile?: boolean
@@ -12,9 +11,7 @@ interface TopBarProps {
 
 export default function TopBar({
     toggleLeftSidebar,
-    toggleRightSidebar,
     leftSidebarCollapsed,
-    rightSidebarCollapsed,
     isMobile = false,
     isTablet = false,
 }: TopBarProps) {
@@ -37,15 +34,6 @@ export default function TopBar({
             <span className={`font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
                 Assessment Manager
             </span>
-            {/* <div className="absolute right-4">
-                <Button
-                    variant="outline"
-                    size={"icon"}
-                    onClick={toggleRightSidebar}
-                    title={rightSidebarCollapsed ? "Show Right Sidebar" : "Hide Right Sidebar"}>
-                    <PanelRight className={`h-5 w-5 ${rightSidebarCollapsed ? "rotate-180" : ""}`} />
-                </Button>
-            </div> */}
         </div>
     )
 }

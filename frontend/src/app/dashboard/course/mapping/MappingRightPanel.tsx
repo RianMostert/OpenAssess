@@ -93,26 +93,34 @@ export default function MappingPanel({
     if (!selectedAssessment) {
         return (
             <div
-                className="p-4 text-muted-foreground"
+                className="border-l border-zinc-800 bg-background transition-all duration-300 ease-in-out h-full flex flex-col"
                 style={{
                     width: collapsed ? '40px' : `${width}px`,
                     minWidth: collapsed ? '40px' : `${width}px`,
                 }}
             >
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setCollapsed(!collapsed)}
-                >
-                    {collapsed ? <ChevronLeft /> : <ChevronRight />}
-                </Button>
+                <div className="p-2 flex justify-end">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCollapsed(!collapsed)}
+                        title={collapsed ? "Expand Questions Panel" : "Collapse Questions Panel"}
+                    >
+                        {collapsed ? <ChevronLeft /> : <ChevronRight />}
+                    </Button>
+                </div>
+                {!collapsed && (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground px-4">
+                        <p className="text-center text-sm">Select an assessment to view questions</p>
+                    </div>
+                )}
             </div>
         );
     }
 
     return (
         <div
-            className="transition-all duration-300 ease-in-out border-r border-zinc-800 h-full bg-white"
+            className="transition-all duration-300 ease-in-out border-l border-zinc-800 h-full bg-background"
             style={{
                 width: collapsed ? '40px' : `${width}px`,
                 minWidth: collapsed ? '40px' : `${width}px`,
@@ -135,6 +143,7 @@ export default function MappingPanel({
                         variant="ghost"
                         size="icon"
                         onClick={() => setCollapsed((prev) => !prev)}
+                        title={collapsed ? "Expand Questions Panel" : "Collapse Questions Panel"}
                     >
                         {collapsed ? <ChevronLeft /> : <ChevronRight />}
                     </Button>
@@ -142,9 +151,13 @@ export default function MappingPanel({
             </div>
 
             {!collapsed && (
-                <>
+                <div className="flex-1 overflow-y-auto px-2">
                     {loading ? (
-                        <div className="px-2">Loading questions...</div>
+                        <div className="text-center py-4 text-muted-foreground">Loading questions...</div>
+                    ) : questions.length === 0 ? (
+                        <div className="text-center py-4 text-muted-foreground text-sm">
+                            No questions yet. Click the + button to add one.
+                        </div>
                     ) : (
                         <Accordion type="multiple">
                             {questions.map((question) => (
@@ -186,7 +199,7 @@ export default function MappingPanel({
                             ))}
                         </Accordion>
                     )}
-                </>
+                </div>
             )}
         </div>
     );

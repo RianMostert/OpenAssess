@@ -16,7 +16,7 @@ export default function MappingLayout({ assessment, isMobile = false, isTablet =
     const [editing, setEditing] = useState<Question | null>(null);
 
     return (
-        <div className={`flex h-full w-full border-r border-zinc-800 ${isMobile ? 'flex-col' : 'flex-row'}`}>
+        <div className={`flex h-full w-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
             <div className="flex-1 h-full overflow-auto" ref={pageContainerRef}>
                 <MappingPdfViewer
                     assessment={assessment}
@@ -32,19 +32,16 @@ export default function MappingLayout({ assessment, isMobile = false, isTablet =
                 />
             </div>
 
-            <div className={`${isMobile ? 'border-t' : 'border-l'} border-zinc-800 h-full overflow-auto ${
-                isMobile ? 'max-h-1/3' : isTablet ? 'w-80' : 'w-96'
-            }`}>
-                <MappingRightPanel
-                    selectedAssessment={assessment}
-                    currentPage={currentPage}
-                    pageContainerRef={pageContainerRef}
-                    setCreatingQuestion={setCreating}
-                    setEditingQuestion={setEditing}
-                    // isMobile={isMobile}
-                    // isTablet={isTablet}
-                />
-            </div>
+            <MappingRightPanel
+                selectedAssessment={assessment}
+                currentPage={currentPage}
+                pageContainerRef={pageContainerRef}
+                setCreatingQuestion={setCreating}
+                setEditingQuestion={setEditing}
+                width={isTablet ? 300 : 350}
+                // isMobile={isMobile}
+                // isTablet={isTablet}
+            />
         </div>
     );
 }

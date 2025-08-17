@@ -72,9 +72,6 @@ export default function Home() {
   const toggleLeftSidebar = () => {
     setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed);
   }
-  const toggleRightSidebar = () => {
-    setIsRightSidebarCollapsed(!isRightSidebarCollapsed);
-  }
 
   if (isAuthenticated === null) return null;
 
@@ -82,7 +79,6 @@ export default function Home() {
     <div className="flex flex-col h-screen overflow-hidden">
       <TopBar
         toggleLeftSidebar={toggleLeftSidebar}
-        toggleRightSidebar={toggleRightSidebar}
         leftSidebarCollapsed={isLeftSidebarCollapsed}
         rightSidebarCollapsed={isRightSidebarCollapsed}
         isMobile={isMobile}
