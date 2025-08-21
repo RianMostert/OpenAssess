@@ -193,8 +193,22 @@ export default function CoursePanel({
                         {courses.map((course) => (
                             <AccordionItem key={course.id} value={course.id}>
                                 <div className="flex items-center justify-between w-full">
-                                    <AccordionTrigger className="flex-1 text-left">
+                                    <Button
+                                        variant={selectedCourse?.id === course.id && !selectedAssessment ? "default" : "ghost"}
+                                        className="flex-1 justify-start text-left"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedCourse?.(course);
+                                            setSelectedAssessment?.(null);
+                                            setActiveMode?.('view');
+                                            if (isMobile) onToggleCollapse?.();
+                                        }}
+                                    >
                                         <span className="text-sm">{course.title}</span>
+                                    </Button>
+                                    <AccordionTrigger className="w-8 h-8 p-0 hover:bg-muted rounded">
                                     </AccordionTrigger>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -354,8 +368,21 @@ export default function CoursePanel({
                         {courses.map((course) => (
                             <AccordionItem key={course.id} value={course.id}>
                                 <div className="flex items-center justify-between w-full">
-                                    <AccordionTrigger className="flex-1 text-left">
+                                    <Button
+                                        variant={selectedCourse?.id === course.id && !selectedAssessment ? "default" : "ghost"}
+                                        className="flex-1 justify-start text-left"
+                                        size={isTablet ? "sm" : "default"}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedCourse?.(course);
+                                            setSelectedAssessment?.(null);
+                                            setActiveMode?.('view');
+                                        }}
+                                    >
                                         <span className={isTablet ? 'text-sm' : 'text-base'}>{course.title}</span>
+                                    </Button>
+                                    <AccordionTrigger className={`${isTablet ? 'w-6 h-6' : 'w-8 h-8'} p-0 hover:bg-muted rounded`}>
                                     </AccordionTrigger>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>

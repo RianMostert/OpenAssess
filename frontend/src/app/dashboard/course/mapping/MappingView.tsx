@@ -38,7 +38,7 @@ export default function MappingLayout({ assessment, isMobile = false, isTablet =
                 pageContainerRef={pageContainerRef}
                 setCreatingQuestion={setCreating}
                 setEditingQuestion={setEditing}
-                width={isTablet ? 300 : 350}
+                width={isTablet ? 250 : 300}
                 // isMobile={isMobile}
                 // isTablet={isTablet}
             />

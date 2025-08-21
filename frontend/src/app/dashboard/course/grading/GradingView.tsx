@@ -32,7 +32,7 @@ export default function GradingLayout({ assessment, isMobile = false, isTablet =
                 pageContainerRef={pageContainerRef}
                 question={question}
                 onQuestionSelect={(q) => setQuestion(q)}
-                width={isTablet ? 300 : 350}
+                width={isTablet ? 250 : 300}
                 // isMobile={isMobile}
                 // isTablet={isTablet}
             />

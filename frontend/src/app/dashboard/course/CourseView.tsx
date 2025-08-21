@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import CourseLeftPanel from '@dashboard/course/CourseLeftPanel';
 import CourseOverview from '@dashboard/course/overview/CourseOverview';
+import AssessmentOverview from '@dashboard/course/overview/AssessmentOverview';
 import MappingLayout from '@dashboard/course/mapping/MappingView';
 import GradingLayout from '@dashboard/course/grading/GradingView';
 
@@ -44,14 +45,28 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
             />
             
             <div className="flex-1 overflow-hidden">
-                {activeMode === 'view' && (
+                {activeMode === 'view' && selectedCourse && !selectedAssessment && (
                     <CourseOverview
+                        course={selectedCourse}
+                        isMobile={isMobile}
+                        isTablet={isTablet}
+                    />
+                )}
+
+                {activeMode === 'view' && selectedCourse && selectedAssessment && (
+                    <AssessmentOverview
                         course={selectedCourse}
                         assessment={selectedAssessment}
                         setActiveMode={setActiveMode}
                         isMobile={isMobile}
                         isTablet={isTablet}
                     />
+                )}
+
+                {!selectedCourse && (
+                    <div className={`${isMobile ? 'p-4' : 'p-6'} text-muted-foreground`}>
+                        Select a course to get started
+                    </div>
                 )}
 
                 {activeMode === 'map' && selectedAssessment && (
