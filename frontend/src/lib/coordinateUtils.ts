@@ -89,6 +89,17 @@ export const getPageSize = (pageNumber: number): PageSize | null => {
  * @returns Page size or null if element not found
  */
 export const getPageSizeFromComputedStyle = (pageNumber: number): PageSize | null => {
+  // Use the actual PDF page element for consistency
+  const pdfPageElement = document.querySelector(`#page-${pageNumber} .react-pdf__Page`);
+  if (pdfPageElement) {
+    const rect = pdfPageElement.getBoundingClientRect();
+    return {
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  // Fallback to the page container
   const pageElement = document.getElementById(`page-${pageNumber}`);
   if (!pageElement) {
     console.warn(`Page element page-${pageNumber} not found`);

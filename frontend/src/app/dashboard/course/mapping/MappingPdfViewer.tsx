@@ -65,6 +65,23 @@ export default function MappingPdfViewer({
         fetchQuestions();
     }, [assessment]);
 
+    // Listen for question events to refresh the display
+    useEffect(() => {
+        const handleQuestionChange = () => {
+            fetchQuestions();
+        };
+
+        window.addEventListener('question-created', handleQuestionChange);
+        window.addEventListener('question-updated', handleQuestionChange);
+        window.addEventListener('question-deleted', handleQuestionChange);
+
+        return () => {
+            window.removeEventListener('question-created', handleQuestionChange);
+            window.removeEventListener('question-updated', handleQuestionChange);
+            window.removeEventListener('question-deleted', handleQuestionChange);
+        };
+    }, [assessment]);
+
     // Force re-render of question boxes when container width changes (but not during active resizing)
     useEffect(() => {
         if (containerWidth && questions.length > 0 && !isResizing) {

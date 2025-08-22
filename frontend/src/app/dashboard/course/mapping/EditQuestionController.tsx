@@ -81,7 +81,7 @@ export default function EditQuestionController({
     }, [pageContainerRef, question.page_number]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
-        const pageElement = document.getElementById(`page-${question.page_number}`);
+        const pageElement = document.querySelector(`#page-${question.page_number} .react-pdf__Page`);
         if (!pageElement) return;
         const bounds = pageElement.getBoundingClientRect();
         const x = e.clientX - bounds.left;
@@ -93,7 +93,7 @@ export default function EditQuestionController({
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!drawing || !startCoord) return;
 
-        const pageElement = document.getElementById(`page-${question.page_number}`);
+        const pageElement = document.querySelector(`#page-${question.page_number} .react-pdf__Page`);
         if (!pageElement) return;
         const bounds = pageElement.getBoundingClientRect();
         const x2 = e.clientX - bounds.left;
@@ -146,8 +146,31 @@ export default function EditQuestionController({
             if (!res.ok) throw new Error('Failed to update question');
             onUpdated();
             onClose();
+            // Dispatch event to notify other components
+            window.dispatchEvent(new Event('question-updated'));
         } catch (err) {
             console.error('Update failed', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirm('Are you sure you want to delete this question?')) return;
+        
+        setLoading(true);
+        try {
+            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/questions/${question.id}`, {
+                method: 'DELETE',
+            });
+
+            if (!res.ok) throw new Error('Failed to delete question');
+            onUpdated();
+            onClose();
+            // Dispatch event to notify other components
+            window.dispatchEvent(new Event('question-deleted'));
+        } catch (err) {
+            console.error('Delete failed', err);
         } finally {
             setLoading(false);
         }
@@ -168,15 +191,41 @@ export default function EditQuestionController({
             />
 
             {/* Draw rectangle */}
-            <div
-                className="absolute border-2 border-red-500 pointer-events-none z-40"
-                style={{
-                    top: displayRect.y,
-                    left: displayRect.x,
-                    width: displayRect.width,
-                    height: displayRect.height,
-                }}
-            />
+            {(() => {
+                // Calculate the offset between page container and PDF page
+                const pageContainer = document.getElementById(`page-${question.page_number}`);
+                const pdfPage = document.querySelector(`#page-${question.page_number} .react-pdf__Page`);
+                
+                if (pageContainer && pdfPage) {
+                    const containerRect = pageContainer.getBoundingClientRect();
+                    const pdfRect = pdfPage.getBoundingClientRect();
+                    const offsetX = pdfRect.left - containerRect.left;
+                    const offsetY = pdfRect.top - containerRect.top;
+                    
+                    return (
+                        <div
+                            className="absolute border-2 border-red-500 pointer-events-none z-40"
+                            style={{
+                                top: displayRect.y + offsetY,
+                                left: displayRect.x + offsetX,
+                                width: displayRect.width,
+                                height: displayRect.height,
+                            }}
+                        />
+                    );
+                }
+                return (
+                    <div
+                        className="absolute border-2 border-red-500 pointer-events-none z-40"
+                        style={{
+                            top: displayRect.y,
+                            left: displayRect.x,
+                            width: displayRect.width,
+                            height: displayRect.height,
+                        }}
+                    />
+                );
+            })()}
 
             {/* Inline form */}
             <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-50 w-80 space-y-3">
@@ -214,13 +263,23 @@ export default function EditQuestionController({
                     value={formData.marking_note}
                     onChange={handleChange}
                 />
-                <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={onClose}>
-                        Cancel
+                <div className="flex justify-between gap-2">
+                    <Button 
+                        variant="destructive" 
+                        onClick={handleDelete} 
+                        disabled={loading}
+                        size="sm"
+                    >
+                        {loading ? 'Deleting...' : 'Delete'}
                     </Button>
-                    <Button onClick={handleSubmit} disabled={loading}>
-                        {loading ? 'Saving...' : 'Save'}
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button variant="ghost" onClick={onClose} disabled={loading}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSubmit} disabled={loading}>
+                            {loading ? 'Saving...' : 'Save'}
+                        </Button>
+                    </div>
                 </div>
             </div>
         </>

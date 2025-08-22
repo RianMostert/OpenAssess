@@ -53,7 +53,7 @@ export default function CreateQuestionController({
     const handleMouseDown = (e: React.MouseEvent) => {
         if (!pageContainerRef.current) return;
 
-        const pageElement = document.getElementById(`page-${currentPage}`);
+        const pageElement = document.querySelector(`#page-${currentPage} .react-pdf__Page`);
         if (!pageElement) return;
 
         const rect = pageElement.getBoundingClientRect();
@@ -67,7 +67,7 @@ export default function CreateQuestionController({
     const handleMouseMove = (e: React.MouseEvent) => {
         if (!drawing || !startCoord || !pageContainerRef.current) return;
 
-        const pageElement = document.getElementById(`page-${currentPage}`);
+        const pageElement = document.querySelector(`#page-${currentPage} .react-pdf__Page`);
         if (!pageElement || !startCoord) return;
 
         const rect = pageElement.getBoundingClientRect();
@@ -150,27 +150,61 @@ export default function CreateQuestionController({
             />
 
             {previewRect && (
-                <div
-                    className="absolute border border-blue-400 z-40 pointer-events-none"
-                    style={{
-                        top: previewRect.y,
-                        left: previewRect.x,
-                        width: previewRect.width,
-                        height: previewRect.height,
-                    }}
-                />
+                (() => {
+                    // Calculate the offset between page container and PDF page
+                    const pageContainer = document.getElementById(`page-${currentPage}`);
+                    const pdfPage = document.querySelector(`#page-${currentPage} .react-pdf__Page`);
+                    
+                    if (pageContainer && pdfPage) {
+                        const containerRect = pageContainer.getBoundingClientRect();
+                        const pdfRect = pdfPage.getBoundingClientRect();
+                        const offsetX = pdfRect.left - containerRect.left;
+                        const offsetY = pdfRect.top - containerRect.top;
+                        
+                        return (
+                            <div
+                                className="absolute border border-blue-400 z-40 pointer-events-none"
+                                style={{
+                                    top: previewRect.y + offsetY,
+                                    left: previewRect.x + offsetX,
+                                    width: previewRect.width,
+                                    height: previewRect.height,
+                                    transform: 'translateZ(0)',
+                                }}
+                            />
+                        );
+                    }
+                    return null;
+                })()
             )}
 
             {finalRect && !showModal && (
-                <div
-                    className="absolute border border-blue-400 z-40 pointer-events-none"
-                    style={{
-                        top: finalRect.y,
-                        left: finalRect.x,
-                        width: finalRect.width,
-                        height: finalRect.height,
-                    }}
-                />
+                (() => {
+                    // Calculate the offset between page container and PDF page
+                    const pageContainer = document.getElementById(`page-${currentPage}`);
+                    const pdfPage = document.querySelector(`#page-${currentPage} .react-pdf__Page`);
+                    
+                    if (pageContainer && pdfPage) {
+                        const containerRect = pageContainer.getBoundingClientRect();
+                        const pdfRect = pdfPage.getBoundingClientRect();
+                        const offsetX = pdfRect.left - containerRect.left;
+                        const offsetY = pdfRect.top - containerRect.top;
+                        
+                        return (
+                            <div
+                                className="absolute border border-blue-400 z-40 pointer-events-none"
+                                style={{
+                                    top: finalRect.y + offsetY,
+                                    left: finalRect.x + offsetX,
+                                    width: finalRect.width,
+                                    height: finalRect.height,
+                                    transform: 'translateZ(0)',
+                                }}
+                            />
+                        );
+                    }
+                    return null;
+                })()
             )}
 
             {rect && showModal && (

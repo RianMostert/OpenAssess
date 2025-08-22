@@ -63,6 +63,8 @@ export default function MappingPanel({
             if (!res.ok) throw new Error('Delete failed');
 
             fetchQuestions();
+            // Dispatch event to notify other components
+            window.dispatchEvent(new Event('question-deleted'));
         } catch (err) {
             console.error('Error deleting question:', err);
         }
