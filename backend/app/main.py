@@ -26,6 +26,7 @@ from app.routers import assessments
 from app.routers import uploaded_files
 from app.routers import questions
 from app.routers import question_results
+from app.routers import student_results
 from app.routers import export
 
 app = FastAPI(
@@ -68,6 +69,7 @@ app.include_router(assessments.router, prefix=api_prefix)
 app.include_router(uploaded_files.router, prefix=api_prefix)
 app.include_router(questions.router, prefix=api_prefix)
 app.include_router(question_results.router, prefix=api_prefix)
+app.include_router(student_results.router, prefix=api_prefix)
 app.include_router(export.router, prefix=api_prefix)
 
 

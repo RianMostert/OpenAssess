@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical } from 'lucide-react';
 import CreateCourseModel from '@/app/dashboard/lecturer/course/components/CreateCourseModel';
-import EditCourseModel from '@/app/dashboard/lecturer/course/components/EditCourseModel';
+import EditCourseModel from '@dashboard/lecturer/course/components/EditCourseModel';
 import CreateAssessmentModel from '@/app/dashboard/lecturer/course/components/CreateAssessmentModel';
 import EditAssessmentModel from '@/app/dashboard/lecturer/course/components/EditAssessmentModel';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
