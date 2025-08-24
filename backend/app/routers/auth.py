@@ -29,7 +29,11 @@ def login(
         )
 
     access_token = create_access_token(
-        data={"sub": str(user.id)},
+        data={
+            "sub": str(user.id),
+            "email": user.email,
+            "primary_role_id": user.primary_role_id
+        },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 

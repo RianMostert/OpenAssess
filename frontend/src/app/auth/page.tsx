@@ -69,7 +69,7 @@ export default function AuthPage() {
                         student_number: studentNumber || undefined,
                         password,
                         is_admin: false,
-                        primary_role_id: role === "teacher" ? 1 : 2,
+                        primary_role_id: role === "teacher" ? 1 : 3,
                     }),
                 });
 
