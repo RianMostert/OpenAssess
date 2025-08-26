@@ -95,6 +95,11 @@ export default function EditAssessmentModal({
             setFile(null);
             setOpen(false);
             onAssessmentUpdated?.();
+            
+            // Dispatch event to notify PDF viewer if a new question paper was uploaded
+            if (file) {
+                window.dispatchEvent(new Event('question-paper-updated'));
+            }
         } catch (error) {
             console.error("Error updating assessment:", error);
         } finally {

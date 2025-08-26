@@ -71,16 +71,27 @@ export default function MappingPdfViewer({
             fetchQuestions();
         };
 
+        const handlePdfUpdate = () => {
+            // Clean up old PDF URL to prevent memory leaks
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl);
+            }
+            // Refetch the PDF
+            fetchPdf();
+        };
+
         window.addEventListener('question-created', handleQuestionChange);
         window.addEventListener('question-updated', handleQuestionChange);
         window.addEventListener('question-deleted', handleQuestionChange);
+        window.addEventListener('question-paper-updated', handlePdfUpdate);
 
         return () => {
             window.removeEventListener('question-created', handleQuestionChange);
             window.removeEventListener('question-updated', handleQuestionChange);
             window.removeEventListener('question-deleted', handleQuestionChange);
+            window.removeEventListener('question-paper-updated', handlePdfUpdate);
         };
-    }, [assessment]);
+    }, [assessment, pdfUrl]);
 
     // Force re-render of question boxes when container width changes (but not during active resizing)
     useEffect(() => {
@@ -163,24 +174,39 @@ export default function MappingPdfViewer({
         };
     }, [pageContainerRef]);
 
-    useEffect(() => {
-        const fetchPdf = async () => {
-            try {
-                const res = await fetchWithAuth(
-                    `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/question-paper`
-                );
-                if (!res.ok) throw new Error('PDF not found');
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                setPdfUrl(url);
-            } catch (err) {
-                console.error('Failed to fetch PDF:', err);
+    // Define fetchPdf function outside useEffect so it can be reused
+    const fetchPdf = async () => {
+        try {
+            // Clean up old PDF URL to prevent memory leaks
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl);
                 setPdfUrl(null);
-                setPdfError('Failed to load PDF.');
+            }
+            
+            const res = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/question-paper`
+            );
+            if (!res.ok) throw new Error('PDF not found');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            setPdfUrl(url);
+            setPdfError(null); // Clear any previous errors
+        } catch (err) {
+            console.error('Failed to fetch PDF:', err);
+            setPdfUrl(null);
+            setPdfError('Failed to load PDF.');
+        }
+    };
+
+    useEffect(() => {
+        fetchPdf();
+        
+        // Cleanup function to revoke the PDF URL when component unmounts
+        return () => {
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl);
             }
         };
-
-        fetchPdf();
     }, [assessment]);
 
     // Track visible page

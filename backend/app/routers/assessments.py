@@ -55,10 +55,13 @@ def upload_question_paper(
     os.makedirs(destination_dir, exist_ok=True)
 
     file_path = destination_dir / f"{uuid4()}_{file.filename}"
+    
+    print(f"Uploading question paper to: {file_path}")
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
+    
+    print(f"Question paper uploaded successfully: {file_path}")
     return {"file_path": str(file_path)}
 
 
@@ -131,6 +134,8 @@ def download_question_paper(
         )
 
     file_path = Path(assessment.question_paper_file_path)
+    print(f"Serving question paper: {file_path} (exists: {file_path.exists()})")
+    
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File missing")
 
@@ -313,7 +318,20 @@ def update_assessment(
     if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
         raise HTTPException(status_code=403, detail="Not authorized to update")
 
-    for field, value in update.model_dump(exclude_unset=True).items():
+    # Clean up old question paper file if a new one is being set
+    update_data = update.model_dump(exclude_unset=True)
+    if "question_paper_file_path" in update_data and update_data["question_paper_file_path"]:
+        old_file_path = assessment.question_paper_file_path
+        if old_file_path and old_file_path != update_data["question_paper_file_path"]:
+            try:
+                old_path = Path(old_file_path)
+                if old_path.exists():
+                    old_path.unlink()  # Delete the old file
+                    print(f"Deleted old question paper: {old_file_path}")
+            except Exception as e:
+                print(f"Failed to delete old question paper {old_file_path}: {e}")
+
+    for field, value in update_data.items():
         setattr(assessment, field, value)
     db.commit()
     db.refresh(assessment)

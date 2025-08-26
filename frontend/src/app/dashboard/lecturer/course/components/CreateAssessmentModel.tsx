@@ -101,6 +101,11 @@ export default function CreateAssessmentModal({
             setFile(null);
             setOpen(false);
             onAssessmentCreated?.();
+            
+            // Dispatch event to notify PDF viewer if a question paper was uploaded
+            if (file) {
+                window.dispatchEvent(new Event('question-paper-updated'));
+            }
         } catch (err) {
             console.error('Error:', err);
         } finally {
