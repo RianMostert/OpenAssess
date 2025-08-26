@@ -73,9 +73,25 @@ export default function AuthPage() {
                     }),
                 });
 
-                if (!res.ok) throw new Error("Signup failed");
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    if (res.status === 400 && errorData.detail?.includes("already registered with an active account")) {
+                        alert("This email is already registered with an active account. Please use the login page to sign in.");
+                        setIsLogin(true);
+                        return;
+                    }
+                    throw new Error(errorData.detail || "Signup failed");
+                }
 
-                alert("Signup successful. You can now log in.");
+                const userData = await res.json();
+                
+                // Check if this was an existing student setting their password for the first time
+                if (userData.id) {
+                    alert("Account setup successful! You can now log in with your new password.");
+                } else {
+                    alert("Signup successful. You can now log in.");
+                }
+                
                 setIsLogin(true);
             }
         } catch (err) {
@@ -92,6 +108,14 @@ export default function AuthPage() {
                 <h2 className="text-2xl font-bold mb-6 text-center">
                     {isLogin ? "Login" : "Sign Up"}
                 </h2>
+                {!isLogin && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                        <p className="text-sm text-blue-800">
+                            <strong>Note:</strong> If you're a student and your instructor has already uploaded your details, 
+                            you can use this form to set your password for the first time.
+                        </p>
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {!isLogin && (
                         <>

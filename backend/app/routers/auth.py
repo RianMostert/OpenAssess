@@ -9,6 +9,7 @@ from app.schemas.user import UserCreate, UserOut
 from app.crud.user import create_user
 from app.core.security import (
     verify_password,
+    hash_password,
     create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
@@ -43,7 +44,30 @@ def login(
 @router.post("/signup", response_model=UserOut)
 def signup(user_data: UserCreate, db: Session = Depends(get_db)):
     existing_user = get_user_by_email(db, user_data.email)
+    
     if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        # Check if the existing user has the default password "*"
+        if verify_password("*", existing_user.password_hash):
+            # User exists with default password, allow them to set their password
+            existing_user.password_hash = hash_password(user_data.password)
+            
+            # Update other fields if they were provided during bulk upload but are empty
+            if user_data.first_name and not existing_user.first_name:
+                existing_user.first_name = user_data.first_name
+            if user_data.last_name and not existing_user.last_name:
+                existing_user.last_name = user_data.last_name
+            if user_data.student_number and not existing_user.student_number:
+                existing_user.student_number = user_data.student_number
+                
+            db.commit()
+            db.refresh(existing_user)
+            return existing_user
+        else:
+            # User exists with a real password
+            raise HTTPException(
+                status_code=400, 
+                detail="Email already registered with an active account. Please use the login page."
+            )
 
+    # User doesn't exist, create new user (original behavior)
     return create_user(db, user_data)
