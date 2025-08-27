@@ -45,20 +45,64 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const [tool, setTool] = useState<Tool | null>(null);
     const [renderedPage, setRenderedPage] = useState<number | null>(null);
     const [questionResultIdMap, setQuestionResultIdMap] = useState<Record<string, string>>({});
+    const [isResizing, setIsResizing] = useState(false); // Track if currently resizing
+    const [pdfVersion, setPdfVersion] = useState(0); // Force re-render
 
     const currentAnswer = answers[currentIndex] || null;
     const highlightRef = useRef<HTMLDivElement>(null);
+    const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Dynamically set width based on container using ResizeObserver with debouncing
     useEffect(() => {
         const updateWidth = () => {
             if (pageContainerRef.current) {
-                setContainerWidth(pageContainerRef.current.offsetWidth);
+                const newWidth = pageContainerRef.current.offsetWidth;
+                console.log('Container width updated:', newWidth);
+                setContainerWidth(newWidth);
             }
         };
 
         updateWidth();
+        
+        // Use ResizeObserver to detect container size changes (like sidebar collapse)
+        let resizeObserver: ResizeObserver | null = null;
+        
+        if (pageContainerRef.current) {
+            resizeObserver = new ResizeObserver(() => {
+                console.log('ResizeObserver triggered in GradingPdfViewer');
+                
+                // Set resizing state to potentially hide elements during resize
+                setIsResizing(true);
+                
+                // Clear any existing timeout
+                if (resizeTimeoutRef.current) {
+                    clearTimeout(resizeTimeoutRef.current);
+                }
+                
+                // Update width immediately for PDF scaling
+                updateWidth();
+                
+                // Debounce the re-rendering
+                resizeTimeoutRef.current = setTimeout(() => {
+                    setIsResizing(false);
+                    setPdfVersion(prev => prev + 1);
+                }, 300); // Wait 300ms after resize stops
+            });
+            resizeObserver.observe(pageContainerRef.current);
+        }
+
+        // Also listen for window resize as fallback
         window.addEventListener('resize', updateWidth);
-        return () => window.removeEventListener('resize', updateWidth);
+        
+        return () => {
+            window.removeEventListener('resize', updateWidth);
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+            }
+            if (resizeTimeoutRef.current) {
+                clearTimeout(resizeTimeoutRef.current);
+            }
+        };
     }, [pageContainerRef]);
 
     useEffect(() => {
@@ -255,8 +299,9 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                             {pdfReady && (
                                 <div className="relative" id={`page-${question.page_number}`}>
                                     <Page
+                                        key={`page-${question.page_number}-${containerWidth}-${pdfVersion}`} // Force re-render on width/version change
                                         pageNumber={question.page_number}
-                                        width={containerWidth ? containerWidth - 32 : 500}
+                                        width={containerWidth ? Math.max(containerWidth - 32, 400) : 500}
                                         renderTextLayer={false}
                                         renderAnnotationLayer={false}
                                         onRenderSuccess={() => {
@@ -264,9 +309,9 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                             scrollToHighlight();
                                         }}
                                     />
-                                    {renderedPage === question.page_number && (
+                                    {renderedPage === question.page_number && !isResizing && (
                                         <AnnotationLayer
-                                            key={`${currentAnswer.id}-${question.id}-${question.page_number}`}
+                                            key={`${currentAnswer.id}-${question.id}-${question.page_number}-${pdfVersion}`}
                                             page={question.page_number}
                                             annotations={annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] }}
                                             setAnnotations={(data) =>
@@ -280,7 +325,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                             rendered={renderedPage === question.page_number}
                                         />
                                     )}
-                                    {(() => {
+                                    {!isResizing && (() => {
                                         // Convert percentage coordinates to pixels for display
                                         // Use the actual PDF page element for consistency with mapping
                                         const pdfPageElement = document.querySelector(`#page-${question.page_number} .react-pdf__Page`);
@@ -308,6 +353,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                             <>
                                                 <div
                                                     ref={highlightRef}
+                                                    key={`highlight-${question.id}-${pdfVersion}`}
                                                     className="absolute border-2 border-blue-500 pointer-events-none"
                                                     style={{
                                                         top: pixelCoords.y,
@@ -319,6 +365,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                                 />
                                                 {question.max_marks !== undefined && (
                                                     <div
+                                                        key={`marks-${question.id}-${pdfVersion}`}
                                                         className="absolute right-0 flex flex-col pr-2"
                                                         style={{
                                                             top: pixelCoords.y + pixelCoords.height / 2,
