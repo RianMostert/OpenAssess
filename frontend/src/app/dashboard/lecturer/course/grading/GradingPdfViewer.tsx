@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
 import { Assessment, Question } from '@/types/course';
@@ -51,6 +51,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const currentAnswer = answers[currentIndex] || null;
     const highlightRef = useRef<HTMLDivElement>(null);
     const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Dynamically set width based on container using ResizeObserver with debouncing
     useEffect(() => {
@@ -184,8 +185,13 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         };
 
         loadPdfAndAnnotations();
+        
         return () => {
             cancelled = true;
+            // Clean up PDF URL when switching students
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl);
+            }
         };
     }, [currentAnswer?.id, question?.id, assessment.id]);
 
@@ -208,23 +214,72 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 method: 'POST',
                 body: formData,
             });
+            console.log('Annotations saved automatically');
         } catch (err) {
             console.error('Failed to save annotations', err);
         }
     };
 
+    // Auto-save annotations whenever they change
+    useEffect(() => {
+        if (currentAnswer && question && annotationsByPage[question.page_number]) {
+            // Clear existing timeout
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+            
+            // Debounce the save to avoid excessive API calls
+            saveTimeoutRef.current = setTimeout(() => {
+                saveAnnotations();
+            }, 1000); // Save 1 second after annotations stop changing
+
+            return () => {
+                if (saveTimeoutRef.current) {
+                    clearTimeout(saveTimeoutRef.current);
+                }
+            };
+        }
+    }, [annotationsByPage, currentAnswer?.id, question?.id]);
+
+    // Cleanup effect to save any pending changes on unmount or student change
+    useEffect(() => {
+        return () => {
+            // Clear any pending save timeout and save immediately
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+            // Save any pending annotations when component unmounts or student changes
+            if (currentAnswer && question && annotationsByPage[question.page_number]) {
+                // Call save immediately without timeout
+                const annotations = annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] };
+                const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
+                const formData = new FormData();
+                formData.append('assessment_id', assessment.id);
+                formData.append('question_id', question.id);
+                formData.append('student_id', currentAnswer.student_id);
+                formData.append('mark', (selectedMark ?? 0).toString());
+                formData.append('file', blob, 'annotations.json');
+
+                // Note: This will be a fire-and-forget save since we can't await in cleanup
+                fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/upload-annotation`, {
+                    method: 'POST',
+                    body: formData,
+                }).catch(err => console.error('Failed to save annotations on cleanup', err));
+            }
+        };
+    }, [currentAnswer?.id, question?.id, annotationsByPage, selectedMark, assessment.id]);
+
     const goToNext = async () => {
-        await saveAnnotations();
         setCurrentIndex((i) => Math.min(i + 1, answers.length - 1));
     };
 
     const goToPrevious = async () => {
-        await saveAnnotations();
         setCurrentIndex((i) => Math.max(i - 1, 0));
     };
 
     const handleGrade = async (mark: number) => {
         setSelectedMark(mark);
+        // Save mark immediately when selected
         await saveMarkOnly(mark);
     };
 
@@ -242,6 +297,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 method: 'POST',
                 body: formData,
             });
+            console.log('Mark saved automatically:', mark);
         } catch (err) {
             console.error('Failed to save mark', err);
         }
@@ -264,6 +320,30 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
             });
         }
     };
+
+    // Scroll to highlight whenever the question, student, or PDF version changes
+    useEffect(() => {
+        if (pdfReady && renderedPage === question?.page_number && highlightRef.current) {
+            // Add a small delay to ensure the highlight element is properly positioned
+            const timeoutId = setTimeout(() => {
+                scrollToHighlight();
+            }, 100);
+            
+            return () => clearTimeout(timeoutId);
+        }
+    }, [pdfReady, renderedPage, question?.id, currentAnswer?.id, pdfVersion]);
+
+    // Additional scroll trigger after DOM layout is complete
+    useLayoutEffect(() => {
+        if (pdfReady && renderedPage === question?.page_number && highlightRef.current && !isResizing) {
+            // Use requestAnimationFrame to ensure the layout is complete
+            const rafId = requestAnimationFrame(() => {
+                scrollToHighlight();
+            });
+            
+            return () => cancelAnimationFrame(rafId);
+        }
+    }, [pdfReady, renderedPage, question?.id, currentAnswer?.id, isResizing]);
 
     if (!question) {
         return <p className="text-muted-foreground p-4">No question selected.</p>;
