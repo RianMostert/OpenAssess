@@ -1,4 +1,16 @@
 services:
+  postgres:
+    image: postgres:13
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: mydb
+      POSTGRES_USER: rianmostert
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build: ./backend
     container_name: fastapi-backend
@@ -6,8 +18,16 @@ services:
       - ./backend:/app
     ports:
       - "8000:8000"
-    env_file:
-      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql://rianmostert:password@postgres:5432/mydb
+      - FRONTEND_URL=*
+      - ENV=dev
+      - JSON_STORAGE_PATH=storage/json/
+      - QUESTION_PAPER_STORAGE_FOLDER=storage/pdfs/question_papers/
+      - ANSWER_SHEET_STORAGE_FOLDER=storage/pdfs/answer_sheets/
+      - ANNOTATION_STORAGE_FOLDER=storage/jsons/annotations/
+    depends_on:
+      - postgres
 
   frontend:
     build: ./frontend
@@ -20,3 +40,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - backend
+
+volumes:
+  postgres_data:
