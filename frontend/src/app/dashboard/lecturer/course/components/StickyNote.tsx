@@ -8,6 +8,8 @@ interface StickyNoteProps {
     onChange: (val: string) => void;
     onClick?: () => void;
     isSelected?: boolean;
+    scaleFactor?: number; // New prop for scaling
+    fontSize?: number; // New prop for scaled font size
 }
 
 const StickyNote: React.FC<StickyNoteProps> = ({
@@ -15,9 +17,16 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     onChange,
     onClick,
     isSelected = false,
+    scaleFactor = 1,
+    fontSize = 14,
 }) => {
     const [expanded, setExpanded] = useState(false);
     const noteRef = useRef<HTMLDivElement>(null);
+
+    // Calculate scaled dimensions
+    const collapsedSize = Math.max(24, 40 * scaleFactor); // Minimum 24px, scaled from base 40px
+    const expandedWidth = Math.max(150, 256 * scaleFactor); // Minimum 150px, scaled from base 256px
+    const expandedHeight = Math.max(150, 256 * scaleFactor);
 
     // Detect clicks outside the sticky note
     useEffect(() => {
@@ -48,9 +57,12 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         <Card
             ref={noteRef}
             onClick={toggleExpand}
-            className={`cursor-pointer p-2 transition-all duration-300 ${expanded ? "w-64 h-64" : "w-10 h-10"
-                } overflow-hidden bg-yellow-100 shadow-xl rounded-2xl border-2 ${isSelected ? "border-blue-500" : "border-transparent"
+            className={`cursor-pointer p-2 transition-all duration-300 overflow-hidden bg-yellow-100 shadow-xl rounded-2xl border-2 ${isSelected ? "border-blue-500" : "border-transparent"
                 }`}
+            style={{
+                width: expanded ? `${expandedWidth}px` : `${collapsedSize}px`,
+                height: expanded ? `${expandedHeight}px` : `${collapsedSize}px`,
+            }}
         >
             {expanded ? (
                 <Textarea
@@ -59,11 +71,12 @@ const StickyNote: React.FC<StickyNoteProps> = ({
                     onTouchStart={(e) => e.stopPropagation()}
                     onBlur={() => setExpanded(false)}
                     className="w-full h-full resize-none bg-yellow-100 border-none focus:outline-none"
+                    style={{ fontSize: `${fontSize}px` }}
                     autoFocus
                 />
             ) : (
                 <div className="flex items-center justify-center h-full text-yellow-900">
-                    <Pencil />
+                    <Pencil size={Math.max(12, 16 * scaleFactor)} />
                 </div>
             )}
         </Card>

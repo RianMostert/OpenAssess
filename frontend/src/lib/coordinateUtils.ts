@@ -156,3 +156,139 @@ export const roundPercentageCoordinates = (
     height: Math.round(coords.height * factor) / factor,
   };
 };
+
+/**
+ * Convert annotation line points from pixels to percentage
+ * @param points - Array of pixel coordinates [x1, y1, x2, y2, ...]
+ * @param pageSize - The current page size in pixels
+ * @returns Array of percentage coordinates
+ */
+export const linePointsToPercentage = (
+  points: number[],
+  pageSize: PageSize
+): number[] => {
+  if (pageSize.width === 0 || pageSize.height === 0) {
+    console.warn('Page size is zero, returning original points');
+    return points;
+  }
+
+  const percentagePoints: number[] = [];
+  for (let i = 0; i < points.length; i += 2) {
+    if (i + 1 < points.length) {
+      percentagePoints.push((points[i] / pageSize.width) * 100);
+      percentagePoints.push((points[i + 1] / pageSize.height) * 100);
+    }
+  }
+  return percentagePoints;
+};
+
+/**
+ * Convert annotation line points from percentage to pixels
+ * @param points - Array of percentage coordinates [x1, y1, x2, y2, ...]
+ * @param pageSize - The current page size in pixels
+ * @returns Array of pixel coordinates
+ */
+export const linePointsToPixels = (
+  points: number[],
+  pageSize: PageSize
+): number[] => {
+  const pixelPoints: number[] = [];
+  for (let i = 0; i < points.length; i += 2) {
+    if (i + 1 < points.length) {
+      pixelPoints.push((points[i] / 100) * pageSize.width);
+      pixelPoints.push((points[i + 1] / 100) * pageSize.height);
+    }
+  }
+  return pixelPoints;
+};
+
+/**
+ * Convert annotation position from pixels to percentage
+ * @param position - Pixel position {x, y}
+ * @param pageSize - The current page size in pixels
+ * @returns Percentage position
+ */
+export const positionToPercentage = (
+  position: { x: number; y: number },
+  pageSize: PageSize
+): { x: number; y: number } => {
+  if (pageSize.width === 0 || pageSize.height === 0) {
+    console.warn('Page size is zero, returning original position');
+    return position;
+  }
+
+  return {
+    x: (position.x / pageSize.width) * 100,
+    y: (position.y / pageSize.height) * 100,
+  };
+};
+
+/**
+ * Convert annotation position from percentage to pixels
+ * @param position - Percentage position {x, y}
+ * @param pageSize - The current page size in pixels
+ * @returns Pixel position
+ */
+export const positionToPixels = (
+  position: { x: number; y: number },
+  pageSize: PageSize
+): { x: number; y: number } => {
+  return {
+    x: (position.x / 100) * pageSize.width,
+    y: (position.y / 100) * pageSize.height,
+  };
+};
+
+/**
+ * Calculate scaled font size based on page size
+ * @param baseFontSize - Base font size in pixels
+ * @param pageSize - Current page size
+ * @param referencePageSize - Reference page size (default 595x842 for A4)
+ * @returns Scaled font size
+ */
+export const getScaledFontSize = (
+  baseFontSize: number,
+  pageSize: PageSize,
+  referencePageSize: PageSize = { width: 595, height: 842 }
+): number => {
+  // Calculate scaling factor based on width (could also use average of width/height)
+  const scaleFactor = pageSize.width / referencePageSize.width;
+  return Math.max(8, baseFontSize * scaleFactor); // Minimum font size of 8px
+};
+
+/**
+ * Convert percentage-based dimensions to pixels
+ * @param dimensions - Percentage dimensions {width, height}
+ * @param pageSize - The current page size in pixels
+ * @returns Pixel dimensions
+ */
+export const dimensionsToPixels = (
+  dimensions: { width?: number; height?: number },
+  pageSize: PageSize
+): { width?: number; height?: number } => {
+  return {
+    width: dimensions.width ? (dimensions.width / 100) * pageSize.width : undefined,
+    height: dimensions.height ? (dimensions.height / 100) * pageSize.height : undefined,
+  };
+};
+
+/**
+ * Convert pixel dimensions to percentage
+ * @param dimensions - Pixel dimensions {width, height}
+ * @param pageSize - The current page size in pixels
+ * @returns Percentage dimensions
+ */
+export const dimensionsToPercentage = (
+  dimensions: { width?: number; height?: number },
+  pageSize: PageSize
+): { width?: number; height?: number } => {
+  if (pageSize.width === 0 || pageSize.height === 0) {
+    console.warn('Page size is zero, returning original dimensions');
+    return dimensions;
+  }
+
+  return {
+    width: dimensions.width ? (dimensions.width / pageSize.width) * 100 : undefined,
+    height: dimensions.height ? (dimensions.height / pageSize.height) * 100 : undefined,
+  };
+};

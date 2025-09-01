@@ -53,6 +53,11 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // Helper function to create a unique key for annotations per student per page
+    const getAnnotationKey = (studentId: string, pageNumber: number) => {
+        return `${studentId}-${pageNumber}`;
+    };
+
     // Dynamically set width based on container using ResizeObserver with debouncing
     useEffect(() => {
         const updateWidth = () => {
@@ -164,16 +169,22 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                         console.log('Annotations loaded:', annotationsJson);
 
                         if (!cancelled) {
-                            setAnnotationsByPage({
-                                [question.page_number]: annotationsJson,
-                            });
+                            // Use student-specific key for annotations
+                            const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+                            setAnnotationsByPage(prev => ({
+                                ...prev,
+                                [annotationKey]: annotationsJson,
+                            }));
                             setSelectedMark(resultData.mark ?? null);
                         }
                     } else {
                         if (!cancelled) {
-                            setAnnotationsByPage({
-                                [question.page_number]: { page: question.page_number, lines: [], texts: [], stickyNotes: [] },
-                            });
+                            // Use student-specific key for empty annotations
+                            const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+                            setAnnotationsByPage(prev => ({
+                                ...prev,
+                                [annotationKey]: { page: question.page_number, lines: [], texts: [], stickyNotes: [] },
+                            }));
                             setSelectedMark(resultData.mark ?? null);
                         }
                     }
@@ -199,9 +210,16 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     const saveAnnotations = async () => {
         if (!currentAnswer || !question) return;
 
-        const annotations = annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] };
+        const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+        const annotations = annotationsByPage[annotationKey] ?? { lines: [], texts: [], stickyNotes: [] };
 
-        const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
+        // Ensure the page number is included in the annotation data
+        const annotationsWithPage = {
+            ...annotations,
+            page: question.page_number
+        };
+
+        const blob = new Blob([JSON.stringify(annotationsWithPage)], { type: 'application/json' });
         const formData = new FormData();
         formData.append('assessment_id', assessment.id);
         formData.append('question_id', question.id);
@@ -222,22 +240,25 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
     // Auto-save annotations whenever they change
     useEffect(() => {
-        if (currentAnswer && question && annotationsByPage[question.page_number]) {
-            // Clear existing timeout
-            if (saveTimeoutRef.current) {
-                clearTimeout(saveTimeoutRef.current);
-            }
-            
-            // Debounce the save to avoid excessive API calls
-            saveTimeoutRef.current = setTimeout(() => {
-                saveAnnotations();
-            }, 1000); // Save 1 second after annotations stop changing
-
-            return () => {
+        if (currentAnswer && question) {
+            const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+            if (annotationsByPage[annotationKey]) {
+                // Clear existing timeout
                 if (saveTimeoutRef.current) {
                     clearTimeout(saveTimeoutRef.current);
                 }
-            };
+                
+                // Debounce the save to avoid excessive API calls
+                saveTimeoutRef.current = setTimeout(() => {
+                    saveAnnotations();
+                }, 1000); // Save 1 second after annotations stop changing
+
+                return () => {
+                    if (saveTimeoutRef.current) {
+                        clearTimeout(saveTimeoutRef.current);
+                    }
+                };
+            }
         }
     }, [annotationsByPage, currentAnswer?.id, question?.id]);
 
@@ -249,22 +270,32 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 clearTimeout(saveTimeoutRef.current);
             }
             // Save any pending annotations when component unmounts or student changes
-            if (currentAnswer && question && annotationsByPage[question.page_number]) {
-                // Call save immediately without timeout
-                const annotations = annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] };
-                const blob = new Blob([JSON.stringify(annotations)], { type: 'application/json' });
-                const formData = new FormData();
-                formData.append('assessment_id', assessment.id);
-                formData.append('question_id', question.id);
-                formData.append('student_id', currentAnswer.student_id);
-                formData.append('mark', (selectedMark ?? 0).toString());
-                formData.append('file', blob, 'annotations.json');
+            if (currentAnswer && question) {
+                const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+                if (annotationsByPage[annotationKey]) {
+                    // Call save immediately without timeout
+                    const annotations = annotationsByPage[annotationKey] ?? { lines: [], texts: [], stickyNotes: [] };
+                    
+                    // Ensure the page number is included in the annotation data
+                    const annotationsWithPage = {
+                        ...annotations,
+                        page: question.page_number
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(annotationsWithPage)], { type: 'application/json' });
+                    const formData = new FormData();
+                    formData.append('assessment_id', assessment.id);
+                    formData.append('question_id', question.id);
+                    formData.append('student_id', currentAnswer.student_id);
+                    formData.append('mark', (selectedMark ?? 0).toString());
+                    formData.append('file', blob, 'annotations.json');
 
-                // Note: This will be a fire-and-forget save since we can't await in cleanup
-                fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/upload-annotation`, {
-                    method: 'POST',
-                    body: formData,
-                }).catch(err => console.error('Failed to save annotations on cleanup', err));
+                    // Note: This will be a fire-and-forget save since we can't await in cleanup
+                    fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/upload-annotation`, {
+                        method: 'POST',
+                        body: formData,
+                    }).catch(err => console.error('Failed to save annotations on cleanup', err));
+                }
             }
         };
     }, [currentAnswer?.id, question?.id, annotationsByPage, selectedMark, assessment.id]);
@@ -393,13 +424,14 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                         <AnnotationLayer
                                             key={`${currentAnswer.id}-${question.id}-${question.page_number}-${pdfVersion}`}
                                             page={question.page_number}
-                                            annotations={annotationsByPage[question.page_number] ?? { lines: [], texts: [], stickyNotes: [] }}
-                                            setAnnotations={(data) =>
+                                            annotations={annotationsByPage[getAnnotationKey(currentAnswer.student_id, question.page_number)] ?? { lines: [], texts: [], stickyNotes: [] }}
+                                            setAnnotations={(data) => {
+                                                const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
                                                 setAnnotationsByPage((prev) => ({
                                                     ...prev,
-                                                    [question.page_number]: data,
-                                                }))
-                                            }
+                                                    [annotationKey]: data,
+                                                }));
+                                            }}
                                             tool={tool}
                                             containerRef={pageContainerRef}
                                             rendered={renderedPage === question.page_number}
