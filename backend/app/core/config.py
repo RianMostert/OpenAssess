@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     ANNOTATION_STORAGE_FOLDER: Path = Path("storage/jsons/annotations/")
 
     model_config = ConfigDict(env_file=".env")
+    
+    @property
+    def frontend_origins(self) -> list[str]:
+        """Convert comma-separated FRONTEND_URL to list of origins for CORS"""
+        if self.FRONTEND_URL == "*":
+            return ["*"]
+        return [url.strip() for url in self.FRONTEND_URL.split(",") if url.strip()]
 
 
 settings = Settings()
