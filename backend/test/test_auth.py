@@ -29,7 +29,7 @@ def test_signup_duplicate_email(client, student):
         },
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Email already registered"
+    assert response.json()["detail"] == "Email already registered with an active account. Please use the login page."
 
 
 def test_login_success(client, student):
