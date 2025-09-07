@@ -1,8 +1,12 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from uuid import UUID
+from pathlib import Path
+import tempfile
+import json
 
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
@@ -12,6 +16,7 @@ from app.models.question import Question
 from app.models.question_result import QuestionResult
 from app.models.uploaded_file import UploadedFile
 from app.core.security import has_course_role
+from app.core.config import settings
 
 router = APIRouter(prefix="/student-results", tags=["Student Results"])
 
@@ -23,16 +28,25 @@ def get_my_courses(
 ):
     """Get all courses the current student is enrolled in"""
     if current_user.is_admin:
-        courses = db.query(Course).all()
+        courses_with_teachers = (
+            db.query(Course, User)
+            .join(User, Course.teacher_id == User.id)
+            .all()
+        )
     else:
         course_ids = [r.course_id for r in current_user.course_roles]
-        courses = db.query(Course).filter(Course.id.in_(course_ids)).all()
+        courses_with_teachers = (
+            db.query(Course, User)
+            .join(User, Course.teacher_id == User.id)
+            .filter(Course.id.in_(course_ids))
+            .all()
+        )
     
-    if not courses:
+    if not courses_with_teachers:
         return []
     
     result = []
-    for course in courses:
+    for course, teacher in courses_with_teachers:
         user_role = next(
             (r.role.name for r in current_user.course_roles if r.course_id == course.id),
             None
@@ -42,7 +56,7 @@ def get_my_courses(
             "id": str(course.id),
             "title": course.title,
             "code": course.code,
-            "teacher_name": f"{course.teacher.first_name} {course.teacher.last_name}" if course.teacher else None,
+            "teacher_name": f"{teacher.first_name} {teacher.last_name}" if teacher else None,
             "my_role": user_role,
             "created_at": course.created_at
         })
@@ -258,3 +272,108 @@ def get_annotated_pdf_download_info(
         "download_available": has_annotations,
         "message": "Annotated PDF available for download" if has_annotations else "No annotations available yet"
     }
+
+
+@router.get("/assessments/{assessment_id}/download-annotated-pdf")
+def download_annotated_pdf(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Download annotated PDF for a specific assessment submission"""
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    if not has_course_role(current_user, assessment.course_id, "student", "ta", "teacher") and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
+    
+    uploaded_file = (
+        db.query(UploadedFile)
+        .filter(
+            UploadedFile.assessment_id == assessment_id,
+            UploadedFile.student_id == current_user.id
+        )
+        .first()
+    )
+    
+    if not uploaded_file:
+        raise HTTPException(status_code=404, detail="No submission found for this assessment")
+    
+    # Check if there are any annotations for this student and assessment
+    question_results_with_annotations = (
+        db.query(QuestionResult)
+        .filter(
+            QuestionResult.assessment_id == assessment_id,
+            QuestionResult.student_id == current_user.id,
+            QuestionResult.annotation_file_path.isnot(None)
+        )
+        .all()
+    )
+    
+    if not question_results_with_annotations:
+        raise HTTPException(status_code=404, detail="No annotations available for this assessment")
+    
+    # Get the original PDF file path
+    original_pdf_path = Path(uploaded_file.answer_sheet_file_path)
+    if not original_pdf_path.exists():
+        raise HTTPException(status_code=404, detail="Original answer sheet not found")
+    
+    # Generate annotated PDF using the same logic as the export functionality
+    try:
+        # Collect all annotations for this student
+        annotations = []
+        annotation_folder = (
+            settings.ANNOTATION_STORAGE_FOLDER / 
+            str(assessment.course_id) / 
+            str(assessment_id) / 
+            str(current_user.id)
+        )
+        
+        if annotation_folder.exists():
+            for annotation_file in annotation_folder.glob("*.json"):
+                try:
+                    with open(annotation_file, "r") as f:
+                        data = json.load(f)
+                        
+                        # Try to get page number from the data, or infer from filename
+                        page_number = data.get("page")
+                        if page_number is None:
+                            # Try to extract page number from filename
+                            filename = annotation_file.stem
+                            if "page_" in filename:
+                                try:
+                                    page_number = int(filename.split("page_")[-1])
+                                except (ValueError, IndexError):
+                                    page_number = 1
+                            else:
+                                page_number = 1
+                        
+                        annotations.append({"page": page_number, "data": data})
+                except Exception as e:
+                    print(f"Skipping annotation file {annotation_file}: {e}")
+                    continue
+        
+        if not annotations:
+            raise HTTPException(status_code=404, detail="No valid annotations found")
+        
+        # Create temporary file for the annotated PDF
+        temp_dir = Path(tempfile.mkdtemp())
+        output_pdf_path = temp_dir / f"annotated_{assessment.title}_{current_user.student_number or current_user.id}.pdf"
+        
+        # Import the burn_annotations_to_pdf function from export router
+        from app.routers.export import burn_annotations_to_pdf
+        
+        # Generate the annotated PDF
+        burn_annotations_to_pdf(str(original_pdf_path), str(output_pdf_path), annotations)
+        
+        # Return the file
+        return FileResponse(
+            output_pdf_path,
+            filename=f"annotated_{assessment.title}.pdf",
+            media_type="application/pdf"
+        )
+        
+    except Exception as e:
+        print(f"Error generating annotated PDF: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate annotated PDF")
