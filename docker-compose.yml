@@ -10,6 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/app/db:/docker-entrypoint-initdb.d:ro
 
   backend:
     build: ./backend
@@ -34,12 +35,21 @@ services:
     container_name: nextjs-frontend
     volumes:
       - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - CI=true
     depends_on:
       - backend
+    command: >
+      sh -lc "
+        rm -rf /app/node_modules/* &&
+        pnpm install --frozen-lockfile --force &&
+        pnpm dev
+      "
 
 volumes:
   postgres_data:

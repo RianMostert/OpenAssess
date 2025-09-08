@@ -1,3 +1,7 @@
 .venv
 *.pdf
 */storage
+.env
+.env.*.local
+*.sqlite3
+*.log

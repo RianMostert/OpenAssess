@@ -43,7 +43,7 @@ export default function AuthPage() {
                 body.append("username", email);
                 body.append("password", password);
 
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+                const res = await fetch(`http://localhost:8000/api/v1/auth/login`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/x-www-form-urlencoded",
@@ -57,7 +57,7 @@ export default function AuthPage() {
                 localStorage.setItem("authToken", data.access_token);
                 setTimeout(() => router.push("/"), 100);
             } else {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/signup`, {
+                const res = await fetch(`http://localhost:8000/api/v1/auth/signup`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

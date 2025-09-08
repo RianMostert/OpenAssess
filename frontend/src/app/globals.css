@@ -1,7 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "tw-animate-css";
 
 :root {
   --radius: 0.625rem;
@@ -74,11 +73,12 @@
 
 @layer base {
   * {
-    @apply border-gray-200;
+    border-color: #e5e7eb; /* Tailwind's border-gray-200 */
   }
 
   body {
-    @apply bg-white text-gray-900;
+    background-color: #ffffff;
+    color: #1a202c;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
@@ -103,11 +103,12 @@
   }
   
   ::-webkit-scrollbar-thumb {
-    @apply bg-gray-400 rounded;
+    background-color: #9ca3af; /* Tailwind's bg-gray-400 */
+    border-radius: 0.25rem;    /* Tailwind's rounded */
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-500;
+    background-color: #6b7280; /* Tailwind's bg-gray-500 */
   }
   
   /* Mobile touch improvements */

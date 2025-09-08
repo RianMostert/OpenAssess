@@ -1,16 +1,3 @@
-"""
-Initializes the FastAPI application.
-
-This file:
-- Creates the main FastAPI app instance.
-- Configures CORS settings for frontend access.
-- Registers global dependencies like database startup/shutdown hooks.
-- Includes all API routers (starting with /api/v1).
-- Defines the root endpoint for health checks or landing page.
-
-All app-wide behavior (middleware, metadata, events) is configured here.
-"""
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +16,10 @@ from app.routers import question_results
 from app.routers import student_results
 from app.routers import export
 
+# Import your DB stuff
+from app.db.session import engine
+from app.db.base import Base   # adjust if Base is declared elsewhere
+
 app = FastAPI(
     title="Assesment Management System",
     description="Backend for managing and grading assessment papers using FastAPI",
@@ -36,10 +27,17 @@ app = FastAPI(
     lifespan=register_dependencies(),
 )
 
+# Create tables if they don’t exist
+Base.metadata.create_all(bind=engine)
+
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://100.90.83.38:3000", "http://100.105.155.99:3000"],  # settings.frontend_origins,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://100.90.83.38:3000",
+        "http://100.105.155.99:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,9 +53,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": exc.errors()},
     )
 
-
-# Register DB/session/auth dependencies
-# register_dependencies(app)
 
 api_prefix = "/api/v1"
 
