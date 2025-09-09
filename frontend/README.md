@@ -7,6 +7,7 @@ This is the Next.js + React frontend for the WHK6 application. It provides the w
 Run the frontend using Docker Compose (from the project root):
 
 ```bash
+docker-compose build
 docker-compose up
 ```
 

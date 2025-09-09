@@ -10,7 +10,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/app/db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rianmostert -d mydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build: ./backend
@@ -28,7 +32,8 @@ services:
       - ANSWER_SHEET_STORAGE_FOLDER=storage/pdfs/answer_sheets/
       - ANNOTATION_STORAGE_FOLDER=storage/jsons/annotations/
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   frontend:
     build: ./frontend

@@ -12,6 +12,9 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p storage/json storage/pdfs/question_papers storage/pdfs/answer_sheets storage/jsons/annotations
 
+# Make scripts executable
+RUN chmod +x init_db.py start.sh seed_db.py
+
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["./start.sh"]
