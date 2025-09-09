@@ -251,7 +251,6 @@ def create_assessment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    print("Creating assessment:", assessment.model_dump())
     if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
         raise HTTPException(
             status_code=403, detail="Not authorized to create assessment"

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 export default function AuthPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -15,6 +16,19 @@ export default function AuthPage() {
     const [loading, setLoading] = useState(false);
 
     const router = useRouter();
+
+    // Helper function to get the appropriate API URL
+    const getApiUrl = () => {
+        if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return process.env.NEXT_PUBLIC_API_URL_TAILSCALE || process.env.NEXT_PUBLIC_API_URL_TAILSCALE;
+            }
+            // You can add more conditions here for different environments
+            return process.env.NEXT_PUBLIC_API_URL_TAILSCALE;
+        }
+        return process.env.NEXT_PUBLIC_API_URL_TAILSCALE;
+    };
 
     const toggleMode = () => {
         setIsLogin(!isLogin);
@@ -43,7 +57,8 @@ export default function AuthPage() {
                 body.append("username", email);
                 body.append("password", password);
 
-                const res = await fetch(`http://localhost:8000/api/v1/auth/login`, {
+                const apiUrl = getApiUrl();
+                const res = await fetch(`${apiUrl}/auth/login`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/x-www-form-urlencoded",
@@ -57,7 +72,8 @@ export default function AuthPage() {
                 localStorage.setItem("authToken", data.access_token);
                 setTimeout(() => router.push("/"), 100);
             } else {
-                const res = await fetch(`http://localhost:8000/api/v1/auth/signup`, {
+                const apiUrl = getApiUrl();
+                const res = await fetch(`${apiUrl}/auth/signup`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

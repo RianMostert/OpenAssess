@@ -25,7 +25,7 @@ export default function AddCourseModal({ onCourseAdded }: AddCourseModalProps) {
             const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/me`)
             const user = await userRes.json();
             const teacherId = user.id;
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses`, {
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
