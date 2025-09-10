@@ -392,8 +392,11 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
             {pdfUrl ? (
                 <>
                     <div
-                        className="border rounded relative overflow-auto"
-                        style={{ height: 'calc(100vh - 220px)' }}
+                        className="border rounded relative overflow-auto pdf-container"
+                        style={{ 
+                            height: 'calc(100vh - 220px)',
+                            touchAction: 'pan-x pan-y', // Allow panning but prevent zoom
+                        }}
                         ref={pageContainerRef}
                     >
                         <Document
@@ -493,9 +496,9 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                                                 <button
                                                                     key={value}
                                                                     onClick={() => handleGrade(value)}
-                                                                    className={`text-sm rounded px-2 py-1 mb-1 border ${selectedMark === value
+                                                                    className={`text-sm rounded px-2 py-1 mb-1 border transition-colors touch-manipulation min-h-[44px] min-w-[44px] touch-target ${selectedMark === value
                                                                         ? 'bg-green-200 border-green-500 font-semibold'
-                                                                        : 'bg-white border-gray-300 hover:bg-blue-100'
+                                                                        : 'bg-white border-gray-300 hover:bg-blue-100 active:bg-blue-200'
                                                                         }`}
                                                                 >
                                                                     {value}
@@ -513,13 +516,21 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                     </div>
 
                     <div className="flex items-center justify-center gap-4 mt-4">
-                        <Button onClick={goToPrevious} disabled={currentIndex <= 0}>
+                        <Button 
+                            onClick={goToPrevious} 
+                            disabled={currentIndex <= 0}
+                            className="touch-manipulation min-h-[44px]"
+                        >
                             Previous Student
                         </Button>
                         <p className="text-sm text-muted-foreground">
                             Student {currentIndex + 1} of {answers.length}
                         </p>
-                        <Button onClick={goToNext} disabled={currentIndex >= answers.length - 1}>
+                        <Button 
+                            onClick={goToNext} 
+                            disabled={currentIndex >= answers.length - 1}
+                            className="touch-manipulation min-h-[44px]"
+                        >
                             Next Student
                         </Button>
                     </div>

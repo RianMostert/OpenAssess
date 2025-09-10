@@ -50,29 +50,53 @@ export default function CreateQuestionController({
         }
     }, [pageContainerRef, currentPage]);
 
-    const handleMouseDown = (e: React.MouseEvent) => {
+    // Helper function to get coordinates from mouse or touch event
+    const getEventCoordinates = (e: React.MouseEvent | React.TouchEvent): { clientX: number; clientY: number } => {
+        if ('touches' in e) {
+            // Touch event
+            const touch = e.touches[0] || e.changedTouches[0];
+            return { clientX: touch.clientX, clientY: touch.clientY };
+        } else {
+            // Mouse event
+            return { clientX: e.clientX, clientY: e.clientY };
+        }
+    };
+
+    const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
         if (!pageContainerRef.current) return;
+
+        // Prevent default touch behavior to avoid scrolling
+        if ('touches' in e) {
+            e.preventDefault();
+        }
 
         const pageElement = document.querySelector(`#page-${currentPage} .react-pdf__Page`);
         if (!pageElement) return;
 
+        const { clientX, clientY } = getEventCoordinates(e);
         const rect = pageElement.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
 
         setStartCoord({ x, y });
         setDrawing(true);
     };
 
-    const handleMouseMove = (e: React.MouseEvent) => {
+    const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
         if (!drawing || !startCoord || !pageContainerRef.current) return;
+
+        // Prevent default touch behavior to avoid scrolling
+        if ('touches' in e) {
+            e.preventDefault();
+        }
 
         const pageElement = document.querySelector(`#page-${currentPage} .react-pdf__Page`);
         if (!pageElement || !startCoord) return;
 
+        const { clientX, clientY } = getEventCoordinates(e);
         const rect = pageElement.getBoundingClientRect();
-        const x2 = e.clientX - rect.left;
-        const y2 = e.clientY - rect.top;
+        const x2 = clientX - rect.left;
+        const y2 = clientY - rect.top;
 
         const x = Math.min(startCoord.x, x2);
         const y = Math.min(startCoord.y, y2);
@@ -88,8 +112,13 @@ export default function CreateQuestionController({
         });
     };
 
-    const handleMouseUp = (e: React.MouseEvent) => {
+    const handlePointerUp = (e: React.MouseEvent | React.TouchEvent) => {
         if (!drawing || !previewRect) return;
+
+        // Prevent default touch behavior
+        if ('touches' in e || 'changedTouches' in e) {
+            e.preventDefault();
+        }
 
         // Get the current page size for percentage conversion
         const pageSize = getPageSizeFromComputedStyle(currentPage);
@@ -139,13 +168,17 @@ export default function CreateQuestionController({
     return (
         <>
             <div
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                className="absolute top-0 left-0 w-full h-full z-50 cursor-crosshair"
+                onMouseDown={handlePointerDown}
+                onMouseMove={handlePointerMove}
+                onMouseUp={handlePointerUp}
+                onTouchStart={handlePointerDown}
+                onTouchMove={handlePointerMove}
+                onTouchEnd={handlePointerUp}
+                className="absolute top-0 left-0 w-full h-full z-50 cursor-crosshair drawing-surface"
                 style={{
                     pointerEvents: showModal ? 'none' : 'auto',
                     height: `${overlayHeight}px`,
+                    touchAction: 'none', // Prevent default touch behaviors
                 }}
             />
 

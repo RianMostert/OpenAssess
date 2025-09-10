@@ -239,8 +239,11 @@ export default function MappingPdfViewer({
                 <>
                     <div
                         ref={pageContainerRef}
-                        className="border rounded relative overflow-auto w-full"
-                        style={{ height: 'calc(100vh - 160px)' }}
+                        className="border rounded relative overflow-auto w-full pdf-container"
+                        style={{ 
+                            height: 'calc(100vh - 160px)',
+                            touchAction: 'pan-x pan-y', // Allow panning but prevent zoom for better drawing experience
+                        }}
                     >
                         <Document
                             file={pdfUrl}
@@ -349,6 +352,7 @@ export default function MappingPdfViewer({
                             variant="outline"
                             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                             disabled={currentPage <= 1}
+                            className="touch-manipulation min-h-[44px]"
                         >
                             Previous
                         </Button>
@@ -361,6 +365,7 @@ export default function MappingPdfViewer({
                                 setCurrentPage((prev) => Math.min(prev + 1, numPages || prev))
                             }
                             disabled={currentPage >= (numPages || 0)}
+                            className="touch-manipulation min-h-[44px]"
                         >
                             Next
                         </Button>

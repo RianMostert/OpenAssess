@@ -26,25 +26,25 @@ export interface LineElement {
 export interface TextElement {
     id: string;
     tool: 'text-note';
-    x: number; // Now stored as percentage
-    y: number; // Now stored as percentage
+    x: number;
+    y: number;
     text: string;
     fontSize: number;
     fill: string;
-    width?: number; // Now stored as percentage
-    height?: number; // Now stored as percentage
+    width?: number;
+    height?: number;
 }
 
 export interface StickyNoteElement {
     id: string;
     tool: 'sticky-note';
-    x: number; // Now stored as percentage
-    y: number; // Now stored as percentage
+    x: number;
+    y: number;
     text: string;
     fontSize: number;
     fill: string;
-    width?: number; // Now stored as percentage (for expanded state)
-    height?: number; // Now stored as percentage (for expanded state)
+    width?: number;
+    height?: number; 
 }
 
 type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
@@ -126,10 +126,33 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedId, annotations, setAnnotations]);
 
-    const getPointer = (e: Konva.KonvaEventObject<any>) => stageRef.current?.getPointerPosition();
+    // Helper function to get coordinates from mouse or touch event
+    const getEventCoordinates = (e: any): { x: number; y: number } => {
+        if (e.evt && e.evt.touches && e.evt.touches.length > 0) {
+            // Touch event from Konva
+            const touch = e.evt.touches[0];
+            const stage = stageRef.current;
+            if (stage) {
+                const transform = stage.getAbsoluteTransform().copy();
+                transform.invert();
+                const point = transform.point({
+                    x: touch.clientX - stage.container().getBoundingClientRect().left,
+                    y: touch.clientY - stage.container().getBoundingClientRect().top,
+                });
+                return point;
+            }
+        }
+        // Mouse event or fallback
+        return stageRef.current?.getPointerPosition() || { x: 0, y: 0 };
+    };
 
-    const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-        const pos = getPointer(e);
+    const handlePointerDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+        // Prevent default touch behavior to avoid scrolling
+        if (e.evt && 'touches' in e.evt) {
+            e.evt.preventDefault();
+        }
+
+        const pos = getEventCoordinates(e);
         if (!pos || !tool) return;
 
         const pageSize = getPageSize();
@@ -174,9 +197,15 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         }
     };
 
-    const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const handlePointerMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
         if (!isDrawing || !tool || !['pencil', 'eraser'].includes(tool)) return;
-        const pos = getPointer(e);
+        
+        // Prevent default touch behavior to avoid scrolling
+        if (e.evt && 'touches' in e.evt) {
+            e.evt.preventDefault();
+        }
+
+        const pos = getEventCoordinates(e);
         if (!pos) return;
         
         const pageSize = getPageSize();
@@ -184,7 +213,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         setCurrentPoints(prev => [...prev, percentagePos.x, percentagePos.y]);
     };
 
-    const handleMouseUp = () => {
+    const handlePointerUp = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+        // Prevent default touch behavior
+        if (e.evt && ('touches' in e.evt || 'changedTouches' in e.evt)) {
+            e.evt.preventDefault();
+        }
+
         if (isDrawing && currentPoints.length > 2) {
             const pageSize = getPageSize();
             const scaleFactor = Math.min(pageSize.width / 595, pageSize.height / 842); // Scale based on A4 reference
@@ -214,16 +248,17 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 ref={stageRef}
                 width={dimensions.width}
                 height={dimensions.height}
-                className="absolute top-0 left-0 z-40"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onTouchStart={handleMouseDown}
-                onTouchMove={handleMouseMove}
-                onTouchEnd={handleMouseUp}
+                className="absolute top-0 left-0 z-40 annotation-canvas drawing-surface"
+                onMouseDown={handlePointerDown}
+                onMouseMove={handlePointerMove}
+                onMouseUp={handlePointerUp}
+                onTouchStart={handlePointerDown}
+                onTouchMove={handlePointerMove}
+                onTouchEnd={handlePointerUp}
                 style={{
                     // backgroundColor: 'rgba(255,0,0,0.1)',
                     pointerEvents: tool ? 'auto' : 'none',
+                    touchAction: 'none', // Prevent default touch behaviors like scrolling and zooming
                 }}
             >
                 <Layer>
@@ -292,9 +327,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             const startX = e.clientX;
                             const startY = e.clientY;
 
-                            const handleMouseMove = (moveEvent: MouseEvent) => {
-                                const dx = moveEvent.clientX - startX;
-                                const dy = moveEvent.clientY - startY;
+                            const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+                                const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+                                const clientY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+                                
+                                const dx = clientX - startX;
+                                const dy = clientY - startY;
 
                                 // Convert the movement to percentage
                                 const pageSize = getPageSize();
@@ -313,13 +351,57 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 });
                             };
 
-                            const handleMouseUp = () => {
-                                document.removeEventListener('mousemove', handleMouseMove);
-                                document.removeEventListener('mouseup', handleMouseUp);
+                            const handleEnd = () => {
+                                document.removeEventListener('mousemove', handleMove as EventListener);
+                                document.removeEventListener('mouseup', handleEnd);
+                                document.removeEventListener('touchmove', handleMove as EventListener);
+                                document.removeEventListener('touchend', handleEnd);
                             };
 
-                            document.addEventListener('mousemove', handleMouseMove);
-                            document.addEventListener('mouseup', handleMouseUp);
+                            document.addEventListener('mousemove', handleMove as EventListener);
+                            document.addEventListener('mouseup', handleEnd);
+                            document.addEventListener('touchmove', handleMove as EventListener);
+                            document.addEventListener('touchend', handleEnd);
+                        }}
+                        onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setSelectedId(textNote.id);
+                            const touch = e.touches[0];
+                            const startX = touch.clientX;
+                            const startY = touch.clientY;
+
+                            const handleMove = (moveEvent: TouchEvent) => {
+                                moveEvent.preventDefault(); // Prevent scrolling
+                                const clientX = moveEvent.touches[0].clientX;
+                                const clientY = moveEvent.touches[0].clientY;
+                                
+                                const dx = clientX - startX;
+                                const dy = clientY - startY;
+
+                                // Convert the movement to percentage
+                                const pageSize = getPageSize();
+                                const dxPercent = (dx / pageSize.width) * 100;
+                                const dyPercent = (dy / pageSize.height) * 100;
+
+                                setAnnotations({
+                                    ...annotations,
+                                    texts: annotations.texts.map(t =>
+                                        t.id === textNote.id ? { 
+                                            ...t, 
+                                            x: textNote.x + dxPercent, 
+                                            y: textNote.y + dyPercent 
+                                        } : t
+                                    ),
+                                });
+                            };
+
+                            const handleEnd = () => {
+                                document.removeEventListener('touchmove', handleMove);
+                                document.removeEventListener('touchend', handleEnd);
+                            };
+
+                            document.addEventListener('touchmove', handleMove);
+                            document.addEventListener('touchend', handleEnd);
                         }}
                     >
                         <TextNote
@@ -379,9 +461,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             const startX = e.clientX;
                             const startY = e.clientY;
 
-                            const handleMouseMove = (moveEvent: MouseEvent) => {
-                                const dx = moveEvent.clientX - startX;
-                                const dy = moveEvent.clientY - startY;
+                            const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
+                                const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+                                const clientY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
+                                
+                                const dx = clientX - startX;
+                                const dy = clientY - startY;
 
                                 // Convert the movement to percentage
                                 const pageSize = getPageSize();
@@ -403,13 +488,60 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
 
                             };
 
-                            const handleMouseUp = () => {
-                                document.removeEventListener('mousemove', handleMouseMove);
-                                document.removeEventListener('mouseup', handleMouseUp);
+                            const handleEnd = () => {
+                                document.removeEventListener('mousemove', handleMove as EventListener);
+                                document.removeEventListener('mouseup', handleEnd);
+                                document.removeEventListener('touchmove', handleMove as EventListener);
+                                document.removeEventListener('touchend', handleEnd);
                             };
 
-                            document.addEventListener('mousemove', handleMouseMove);
-                            document.addEventListener('mouseup', handleMouseUp);
+                            document.addEventListener('mousemove', handleMove as EventListener);
+                            document.addEventListener('mouseup', handleEnd);
+                            document.addEventListener('touchmove', handleMove as EventListener);
+                            document.addEventListener('touchend', handleEnd);
+                        }}
+                        onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setSelectedId(note.id);
+                            const touch = e.touches[0];
+                            const startX = touch.clientX;
+                            const startY = touch.clientY;
+
+                            const handleMove = (moveEvent: TouchEvent) => {
+                                moveEvent.preventDefault(); // Prevent scrolling
+                                const clientX = moveEvent.touches[0].clientX;
+                                const clientY = moveEvent.touches[0].clientY;
+                                
+                                const dx = clientX - startX;
+                                const dy = clientY - startY;
+
+                                // Convert the movement to percentage
+                                const pageSize = getPageSize();
+                                const dxPercent = (dx / pageSize.width) * 100;
+                                const dyPercent = (dy / pageSize.height) * 100;
+
+                                setAnnotations({
+                                    ...annotations,
+                                    stickyNotes: annotations.stickyNotes.map((s) =>
+                                        s.id === note.id
+                                            ? { 
+                                                ...s, 
+                                                x: note.x + dxPercent, 
+                                                y: note.y + dyPercent 
+                                            }
+                                            : s
+                                    ),
+                                });
+
+                            };
+
+                            const handleEnd = () => {
+                                document.removeEventListener('touchmove', handleMove);
+                                document.removeEventListener('touchend', handleEnd);
+                            };
+
+                            document.addEventListener('touchmove', handleMove);
+                            document.addEventListener('touchend', handleEnd);
                         }}
                     >
                         <StickyNote

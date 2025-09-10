@@ -111,6 +111,56 @@
     background-color: #6b7280; /* Tailwind's bg-gray-500 */
   }
   
+  /* Touch and stylus optimizations */
+  .touch-manipulation {
+    touch-action: manipulation; /* Improve touch responsiveness */
+  }
+  
+  /* Stylus-specific improvements */
+  @media (pointer: fine) and (hover: hover) {
+    /* Desktop/stylus with precise pointing */
+    .cursor-crosshair {
+      cursor: crosshair;
+    }
+  }
+  
+  @media (pointer: coarse) {
+    /* Touch devices - larger touch targets */
+    button, 
+    [role="button"], 
+    input[type="button"], 
+    input[type="submit"],
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+  
+  /* Apple Pencil and stylus optimizations */
+  @media (pointer: fine) {
+    /* Fine pointer devices like stylus */
+    .annotation-canvas,
+    .drawing-surface {
+      touch-action: none; /* Disable all touch gestures for better drawing */
+    }
+  }
+  
+  /* iPad and tablet specific styles */
+  @media (max-device-width: 1366px) and (orientation: landscape),
+         (max-device-width: 1024px) and (orientation: portrait) {
+    /* iPad optimizations */
+    .pdf-container {
+      /* Prevent pinch-to-zoom during drawing */
+      touch-action: pan-x pan-y;
+    }
+    
+    /* Better button spacing for touch */
+    .toolbar-button {
+      margin: 4px;
+      padding: 12px;
+    }
+  }
+  
   /* Mobile touch improvements */
   @media (max-width: 768px) {
     /* Larger touch targets */
@@ -146,5 +196,21 @@
     .border {
       border-width: 0.5px;
     }
+  }
+  
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* Better focus indicators for keyboard navigation */
+  button:focus-visible,
+  [role="button"]:focus-visible {
+    outline: 2px solid #3b82f6; /* blue-500 */
+    outline-offset: 2px;
   }
 }

@@ -38,24 +38,13 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
                             <Button
                                 variant="outline"
                                 onClick={() => handleToolChange(key)}
-                                className={`transition-colors duration-150 ${selectedTool === key ? 'border-blue-500' : ''}`}
+                                className={`transition-colors duration-150 touch-manipulation min-h-[44px] min-w-[44px] toolbar-button touch-target ${selectedTool === key ? 'border-blue-500 bg-blue-50' : ''}`}
                             >
                                 {/* {icon} */}
                                 {label}
                             </Button>
                         </Tooltip>
                     ))}
-
-                    {/* <Tooltip>
-                        <Button variant="outline" onClick={onUndo}>
-                            Undo
-                        </Button>
-                    </Tooltip>
-                    <Tooltip>
-                        <Button variant="outline" onClick={onRedo}>
-                            Redo
-                        </Button>
-                    </Tooltip> */}
                 </div>
             </div>
         </TooltipProvider>
