@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, DateTime, Text
+from sqlalchemy import Column, String, ForeignKey, DateTime, Text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -16,6 +16,7 @@ class Assessment(Base):
         UUID(as_uuid=True), ForeignKey("course.id", ondelete="CASCADE"), nullable=False
     )
     question_paper_file_path = Column(Text)
+    published = Column(Boolean, default=False, nullable=False)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(

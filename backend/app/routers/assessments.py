@@ -337,6 +337,29 @@ def update_assessment(
     return assessment
 
 
+@router.patch("/{assessment_id}/publish", response_model=AssessmentOut)
+def toggle_assessment_publication(
+    assessment_id: UUID,
+    request: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Publish or unpublish an assessment (makes results visible/invisible to students)"""
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
+        raise HTTPException(status_code=403, detail="Not authorized to publish/unpublish")
+
+    publish = request.get("published", False)
+    assessment.published = publish
+    db.commit()
+    db.refresh(assessment)
+    
+    return assessment
+
+
 @router.delete("/{assessment_id}")
 def delete_assessment(
     assessment_id: UUID,

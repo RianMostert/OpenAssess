@@ -58,6 +58,7 @@ CREATE TABLE "assessment" (
   "title" VARCHAR NOT NULL,
   "course_id" UUID NOT NULL,
   "question_paper_file_path" TEXT,
+  "published" BOOLEAN DEFAULT FALSE,
   "upload_date" TIMESTAMP DEFAULT now(),
   "created_at" TIMESTAMP DEFAULT now(),
   "updated_at" TIMESTAMP DEFAULT now(),

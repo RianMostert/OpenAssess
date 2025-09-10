@@ -28,6 +28,10 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
         }
     }, [selectedAssessment]);
 
+    const handleAssessmentUpdate = (updatedAssessment: Assessment) => {
+        setSelectedAssessment(updatedAssessment);
+    };
+
     return (
         <div className={`flex h-full w-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
             <CourseLeftPanel
@@ -58,6 +62,7 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
                         course={selectedCourse}
                         assessment={selectedAssessment}
                         setActiveMode={setActiveMode}
+                        onAssessmentUpdate={handleAssessmentUpdate}
                         isMobile={isMobile}
                         isTablet={isTablet}
                     />

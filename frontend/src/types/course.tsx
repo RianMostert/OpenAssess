@@ -8,6 +8,7 @@ export interface Course {
 export interface Assessment {
     id: string;
     title: string;
+    published: boolean;
 }
 
 export interface Question {

@@ -74,7 +74,20 @@ def get_my_course_assessments(
     if not has_course_role(current_user, course_id, "student", "ta", "teacher") and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to view this course")
     
-    assessments = db.query(Assessment).filter(Assessment.course_id == course_id).all()
+    # Get the user's role in this course
+    user_role = next(
+        (r.role.name for r in current_user.course_roles if r.course_id == course_id),
+        None
+    )
+    
+    # For students, only show published assessments. For teachers/TAs/admins, show all
+    if user_role == "student" and not current_user.is_admin:
+        assessments = db.query(Assessment).filter(
+            Assessment.course_id == course_id,
+            Assessment.published
+        ).all()
+    else:
+        assessments = db.query(Assessment).filter(Assessment.course_id == course_id).all()
     
     if not assessments:
         return []
@@ -152,6 +165,15 @@ def get_my_assessment_results(
     
     if not has_course_role(current_user, assessment.course_id, "student", "ta", "teacher") and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
+    
+    # Check if student can view this assessment (must be published for students)
+    user_role = next(
+        (r.role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
+        None
+    )
+    
+    if user_role == "student" and not current_user.is_admin and not assessment.published:
+        raise HTTPException(status_code=403, detail="Assessment results are not yet published")
     
     uploaded_file = (
         db.query(UploadedFile)
@@ -244,6 +266,15 @@ def get_annotated_pdf_download_info(
     if not has_course_role(current_user, assessment.course_id, "student", "ta", "teacher") and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
     
+    # Check if student can view this assessment (must be published for students)
+    user_role = next(
+        (r.role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
+        None
+    )
+    
+    if user_role == "student" and not current_user.is_admin and not assessment.published:
+        raise HTTPException(status_code=403, detail="Assessment results are not yet published")
+    
     uploaded_file = (
         db.query(UploadedFile)
         .filter(
@@ -287,6 +318,15 @@ def download_annotated_pdf(
     
     if not has_course_role(current_user, assessment.course_id, "student", "ta", "teacher") and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
+    
+    # Check if student can view this assessment (must be published for students)
+    user_role = next(
+        (r.role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
+        None
+    )
+    
+    if user_role == "student" and not current_user.is_admin and not assessment.published:
+        raise HTTPException(status_code=403, detail="Assessment results are not yet published")
     
     uploaded_file = (
         db.query(UploadedFile)

@@ -8,12 +8,14 @@ class AssessmentCreate(BaseModel):
     title: Optional[str] = None
     course_id: UUID
     question_paper_file_path: Optional[str] = None
+    published: Optional[bool] = False
 
 
 class AssessmentUpdate(BaseModel):
     title: Optional[str] = None
     course_id: Optional[UUID] = None
     question_paper_file_path: Optional[str] = None
+    published: Optional[bool] = None
 
 
 class AssessmentOut(BaseModel):
@@ -21,6 +23,7 @@ class AssessmentOut(BaseModel):
     title: Optional[str]
     course_id: UUID
     question_paper_file_path: Optional[str]
+    published: bool
     upload_date: datetime
     created_at: datetime
     updated_at: Optional[datetime]

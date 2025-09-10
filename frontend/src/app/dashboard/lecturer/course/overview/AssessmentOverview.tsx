@@ -1,10 +1,12 @@
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { Assessment, Course } from "@/types/course";
+import { useState } from "react";
 
 interface AssessmentOverviewProps {
     course: Course;
     assessment: Assessment;
     setActiveMode: (mode: 'view' | 'map' | 'grade') => void;
+    onAssessmentUpdate?: (updatedAssessment: Assessment) => void;
     isMobile?: boolean;
     isTablet?: boolean;
 }
@@ -13,9 +15,47 @@ export default function AssessmentOverview({
     course,
     assessment,
     setActiveMode,
+    onAssessmentUpdate,
     isMobile = false,
     isTablet = false,
 }: AssessmentOverviewProps) {
+    const [isUpdatingPublishStatus, setIsUpdatingPublishStatus] = useState(false);
+    const handleTogglePublishStatus = async () => {
+        if (isUpdatingPublishStatus) return;
+        
+        setIsUpdatingPublishStatus(true);
+        try {
+            const res = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/publish`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        published: !assessment.published,
+                    }),
+                }
+            );
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || "Failed to update publish status");
+            }
+
+            const updatedAssessment = await res.json();
+            onAssessmentUpdate?.(updatedAssessment);
+            
+            const action = updatedAssessment.published ? "published" : "unpublished";
+            alert(`Assessment ${action} successfully`);
+        } catch (err) {
+            console.error("Failed to update publish status", err);
+            alert("Failed to update publish status: " + (err instanceof Error ? err.message : "Unknown error"));
+        } finally {
+            setIsUpdatingPublishStatus(false);
+        }
+    };
+
     const handleAnswerSheetPDFUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0 || !assessment) return;
@@ -113,6 +153,23 @@ export default function AssessmentOverview({
 
             <div className={`flex gap-2 mt-6 ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
                 <button
+                    onClick={handleTogglePublishStatus}
+                    disabled={isUpdatingPublishStatus}
+                    className={`${isMobile ? 'w-full py-3' : 'px-4 py-2'} ${
+                        assessment.published 
+                            ? 'bg-red-500 hover:bg-red-600' 
+                            : 'bg-green-500 hover:bg-green-600'
+                    } text-white rounded disabled:opacity-50 disabled:cursor-not-allowed ${isMobile ? 'text-sm' : ''}`}
+                >
+                    {isUpdatingPublishStatus 
+                        ? 'Updating...' 
+                        : assessment.published 
+                            ? 'Unpublish Results' 
+                            : 'Publish Results'
+                    }
+                </button>
+
+                <button
                     onClick={() => setActiveMode('map')}
                     className={`${isMobile ? 'w-full py-3' : 'px-4 py-2'} bg-blue-500 text-white rounded hover:bg-blue-600 ${isMobile ? 'text-sm' : ''}`}
                 >
@@ -153,10 +210,20 @@ export default function AssessmentOverview({
             </div>
 
             <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-medium mb-2`}>Assessment Details</h3>
+                <div className="flex items-center justify-between mb-2">
+                    <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-medium`}>Assessment Details</h3>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        assessment.published 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                        {assessment.published ? 'Published' : 'Draft'}
+                    </span>
+                </div>
                 <div className="space-y-1 text-sm text-muted-foreground">
                     <p>Assessment ID: {assessment.id}</p>
                     <p>Course: {course.title} ({course.code || 'No code'})</p>
+                    <p>Status: {assessment.published ? 'Results visible to students' : 'Results hidden from students'}</p>
                     {/* Add more assessment details as needed */}
                 </div>
             </div>
