@@ -33,7 +33,7 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
     };
 
     return (
-        <div className={`flex h-full w-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
+        <div className={`flex h-full w-full min-h-0 ${isMobile ? 'flex-col' : 'flex-row'}`}>
             <CourseLeftPanel
                 selectedCourse={selectedCourse}
                 setSelectedCourse={setSelectedCourse}
@@ -48,7 +48,7 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
                 isTablet={isTablet}
             />
             
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden h-full min-h-0">
                 {activeMode === 'view' && selectedCourse && !selectedAssessment && (
                     <CourseOverview
                         course={selectedCourse}
@@ -69,7 +69,7 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
                 )}
 
                 {!selectedCourse && (
-                    <div className={`${isMobile ? 'p-4' : 'p-6'} text-muted-foreground`}>
+                    <div className={`${isMobile ? 'p-4' : 'p-6'} text-muted-foreground h-full flex items-center justify-center`}>
                         Select a course to get started
                     </div>
                 )}

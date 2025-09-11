@@ -101,6 +101,60 @@ def bulk_upload_users(
     return created_users
 
 
+@router.post("/bulk-remove")
+def bulk_remove_users_from_course(
+    file: UploadFile = File(...),
+    course_id: str = Form(...),
+    role_id: int = Form(3),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if file.content_type != "text/csv":
+        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    contents = file.file.read().decode("utf-8")
+    reader = csv.DictReader(io.StringIO(contents))
+
+    removed_count = 0
+    not_found_emails = []
+
+    for row in reader:
+        email = row.get("email")
+        if not email:
+            continue
+
+        # Find the user by email
+        user = db.query(User).filter_by(email=email.strip()).first()
+        if not user:
+            not_found_emails.append(email)
+            continue
+
+        # Find and remove the user-course relationship
+        user_course_link = (
+            db.query(UserCourseRole)
+            .filter_by(
+                user_id=user.id, course_id=course_id, role_id=role_id
+            )
+            .first()
+        )
+        
+        if user_course_link:
+            db.delete(user_course_link)
+            removed_count += 1
+
+    db.commit()
+    
+    response_message = f"Successfully removed {removed_count} user(s) from course"
+    if not_found_emails:
+        response_message += f". Could not find users with emails: {', '.join(not_found_emails)}"
+    
+    return {
+        "message": response_message,
+        "removed_count": removed_count,
+        "not_found_emails": not_found_emails
+    }
+
+
 @router.get("/", response_model=List[UserOut])
 def list_users(
     skip: int = 0,

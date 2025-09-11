@@ -1,5 +1,24 @@
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
-import { Course } from "@/types/course";
+import { Course, Assessment } from "@/types/course";
+import { useState, useEffect } from "react";
+
+interface CourseStats {
+    totalStudents: number;
+    averagePerformance: number;
+    assessments: AssessmentStats[];
+}
+
+interface AssessmentStats {
+    id: string;
+    title: string;
+    published: boolean;
+    totalQuestions: number;
+    totalStudents: number;
+    questionsMarked: number;
+    questionsCompletelyMarked: number;
+    averageScore: number;
+    submissionCount: number;
+}
 
 interface CourseOverviewProps {
     course: Course;
@@ -12,6 +31,53 @@ export default function CourseOverview({
     isMobile = false,
     isTablet = false,
 }: CourseOverviewProps) {
+    const [courseStats, setCourseStats] = useState<CourseStats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchCourseStats();
+    }, [course.id]);
+
+    const fetchCourseStats = async () => {
+        try {
+            setLoading(true);
+            const response = await fetchWithAuth(
+                `${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/stats`
+            );
+            
+            if (response.ok) {
+                const stats = await response.json();
+                setCourseStats(stats);
+            } else {
+                console.error('Failed to fetch course stats');
+                setCourseStats({
+                    totalStudents: 0,
+                    averagePerformance: 0,
+                    assessments: []
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching course stats:', error);
+            setCourseStats({
+                totalStudents: 0,
+                averagePerformance: 0,
+                assessments: []
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getProgressBarColor = (percentage: number) => {
+        if (percentage >= 80) return 'bg-green-500';
+        if (percentage >= 60) return 'bg-yellow-500';
+        return 'bg-red-500';
+    };
+
+    const formatPercentage = (value: number, total: number) => {
+        if (total === 0) return 0;
+        return Math.round((value / total) * 100);
+    };
     const handleStudentCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -35,80 +101,243 @@ export default function CourseOverview({
             const result = await response.json();
             console.log("Created users:", result);
             alert(`Successfully created ${result.length} users`);
+            
+            // Refresh stats after successful upload
+            await fetchCourseStats();
         } catch (err) {
             console.error(err);
             alert(`Error uploading CSV: ${err instanceof Error ? err.message : "Unknown error"}`);
         }
     };
 
-    const handleDownloadStudentList = async () => {
-        try {
-            // Note: This endpoint will need to be created on the backend
-            const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/students/download`
-            );
+    const handleStudentCSVRemove = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-            if (!res.ok) {
-                console.error('Failed to download student list');
-                alert('Failed to download student list. This feature may need backend implementation.');
-                return;
+        // Confirm the action since this removes students from the course
+        const confirmRemove = window.confirm(
+            "Are you sure you want to remove these students from the course? This will remove their access to the course but will not delete their accounts."
+        );
+        
+        if (!confirmRemove) {
+            // Reset the file input
+            e.target.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("course_id", course.id);
+        formData.append("role_id", "3");
+
+        try {
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/bulk-remove`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Remove operation failed");
             }
 
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `course_${course.id}_students.csv`;
-            a.click();
-            a.remove();
+            const result = await response.json();
+            console.log("Remove result:", result);
+            alert(result.message);
+            
+            // Refresh stats after successful removal
+            await fetchCourseStats();
         } catch (err) {
-            console.error('Error downloading student list', err);
-            alert('Error downloading student list. This feature may need backend implementation.');
+            console.error(err);
+            alert(`Error removing students: ${err instanceof Error ? err.message : "Unknown error"}`);
+        } finally {
+            // Reset the file input
+            e.target.value = '';
         }
     };
 
     return (
-        <div className={`${isMobile ? 'p-4' : 'p-6'} space-y-4 border-zinc-800 overflow-y-auto`}>
-            <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-semibold`}>{course.title}</h1>
-            
-            {course.code && (
-                <p className={`${isMobile ? 'text-sm' : 'text-base'} text-muted-foreground`}>
-                    Course Code: {course.code}
-                </p>
+        <div className={`${isMobile ? 'p-4' : 'p-6'} h-full max-h-screen flex flex-col border-zinc-800 overflow-hidden`}>
+            {/* Course Header */}
+            <div className="space-y-2 flex-shrink-0">
+                <h1 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-semibold`}>{course.title}</h1>
+                {course.code && (
+                    <p className={`${isMobile ? 'text-sm' : 'text-base'} text-muted-foreground`}>
+                        Course Code: {course.code}
+                    </p>
+                )}
+            </div>
+
+            {loading ? (
+                <div className="flex items-center justify-center py-8 flex-1">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span className="ml-2">Loading course statistics...</span>
+                </div>
+            ) : (
+                <div className="flex flex-col space-y-6 flex-1 min-h-0 mt-6">
+                    {/* Stats Cards */}
+                    <div className={`grid ${isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-3'} gap-4 flex-shrink-0`}>
+                        <div className="bg-card p-4 rounded-lg border">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-medium text-muted-foreground">Total Students</h3>
+                                <div className="flex gap-1">
+                                    <label className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 cursor-pointer transition-colors">
+                                        + Add
+                                        <input
+                                            type="file"
+                                            accept=".csv"
+                                            onChange={handleStudentCSVUpload}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    <label className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 cursor-pointer transition-colors">
+                                        - Remove
+                                        <input
+                                            type="file"
+                                            accept=".csv"
+                                            onChange={handleStudentCSVRemove}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                            <p className="text-2xl font-bold text-blue-600">{courseStats?.totalStudents || 0}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Upload CSV to add or remove students</p>
+                        </div>
+                        
+                        <div className="bg-card p-4 rounded-lg border">
+                            <h3 className="text-sm font-medium text-muted-foreground">Average Performance</h3>
+                            <p className="text-2xl font-bold text-green-600">
+                                {courseStats?.averagePerformance ? `${courseStats.averagePerformance.toFixed(1)}%` : 'N/A'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">Across all assessments</p>
+                        </div>
+                        
+                        <div className="bg-card p-4 rounded-lg border">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-sm font-medium text-muted-foreground">Total Assessments</h3>
+                            </div>
+                            <p className="text-2xl font-bold text-purple-600">{courseStats?.assessments.length || 0}</p>
+                        </div>
+                    </div>
+
+                    {/* Assessment Progress Table */}
+                    <div className="bg-card rounded-lg border flex flex-col flex-1 min-h-0 max-h-96">
+                        <div className="p-4 border-b flex-shrink-0">
+                            <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold`}>Assessment Progress</h2>
+                        </div>
+                        
+                        {courseStats?.assessments && courseStats.assessments.length > 0 ? (
+                            <div className="flex-1 overflow-auto">
+                                <table className="w-full">
+                                    <thead className="bg-muted/50 sticky top-0 z-10">
+                                        <tr className="border-b">
+                                            <th className="text-left p-3 font-medium">Assessment</th>
+                                            <th className="text-left p-3 font-medium">Status</th>
+                                            <th className="text-left p-3 font-medium">Submissions</th>
+                                            <th className="text-left p-3 font-medium">Questions Marked</th>
+                                            <th className="text-left p-3 font-medium">Fully Marked</th>
+                                            <th className="text-left p-3 font-medium">Average Score</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {courseStats.assessments.map((assessment) => {
+                                            const questionsMarkedPercentage = formatPercentage(
+                                                assessment.questionsMarked,
+                                                assessment.totalQuestions * assessment.totalStudents
+                                            );
+                                            const fullyMarkedPercentage = formatPercentage(
+                                                assessment.questionsCompletelyMarked,
+                                                assessment.totalQuestions * assessment.totalStudents
+                                            );
+                                            const submissionPercentage = formatPercentage(
+                                                assessment.submissionCount,
+                                                assessment.totalStudents
+                                            );
+
+                                            return (
+                                                <tr key={assessment.id} className="border-b hover:bg-muted/30">
+                                                    <td className="p-3">
+                                                        <div>
+                                                            <p className="font-medium">{assessment.title}</p>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {assessment.totalQuestions} questions
+                                                            </p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                            assessment.published 
+                                                                ? 'bg-green-100 text-green-800' 
+                                                                : 'bg-yellow-100 text-yellow-800'
+                                                        }`}>
+                                                            {assessment.published ? 'Published' : 'Draft'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span>{assessment.submissionCount}/{assessment.totalStudents}</span>
+                                                                <span className="text-muted-foreground">{submissionPercentage}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                <div 
+                                                                    className={`h-2 rounded-full ${getProgressBarColor(submissionPercentage)}`}
+                                                                    style={{ width: `${submissionPercentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span>{assessment.questionsMarked}/{assessment.totalQuestions * assessment.totalStudents}</span>
+                                                                <span className="text-muted-foreground">{questionsMarkedPercentage}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                <div 
+                                                                    className={`h-2 rounded-full ${getProgressBarColor(questionsMarkedPercentage)}`}
+                                                                    style={{ width: `${questionsMarkedPercentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center justify-between text-sm">
+                                                                <span>{assessment.questionsCompletelyMarked}/{assessment.totalQuestions * assessment.totalStudents}</span>
+                                                                <span className="text-muted-foreground">{fullyMarkedPercentage}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                <div 
+                                                                    className={`h-2 rounded-full ${getProgressBarColor(fullyMarkedPercentage)}`}
+                                                                    style={{ width: `${fullyMarkedPercentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <span className="font-medium">
+                                                            {assessment.averageScore > 0 ? `${assessment.averageScore.toFixed(1)}%` : 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="p-8 text-center text-muted-foreground flex-1 flex items-center justify-center">
+                                <div>
+                                    <p>No assessments found for this course.</p>
+                                    <p className="text-sm mt-2">Create an assessment to see progress statistics.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
-
-            <div className="mt-6">
-                <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-medium mb-4`}>Student Management</h2>
-                
-                <div className={`flex gap-2 ${isMobile ? 'flex-col' : 'flex-wrap'}`}>
-                    <label className={`${isMobile ? 'w-full py-3 text-center' : 'px-4 py-2'} bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer ${isMobile ? 'text-sm' : ''}`}>
-                        Upload Student CSV
-                        <input
-                            type="file"
-                            accept=".csv"
-                            onChange={handleStudentCSVUpload}
-                            className="hidden"
-                        />
-                    </label>
-
-                    <button
-                        onClick={handleDownloadStudentList}
-                        className={`${isMobile ? 'w-full py-3' : 'px-4 py-2'} bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer ${isMobile ? 'text-sm' : ''}`}
-                    >
-                        Download Student List
-                    </button>
-                </div>
-            </div>
-
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-                <h3 className={`${isMobile ? 'text-sm' : 'text-base'} font-medium mb-2`}>Course Information</h3>
-                <div className="space-y-1 text-sm text-muted-foreground">
-                    <p>Course ID: {course.id}</p>
-                    {course.code && <p>Course Code: {course.code}</p>}
-                    <p>Select an assessment from the sidebar to start grading or mapping.</p>
-                </div>
-            </div>
         </div>
     );
 }
