@@ -559,7 +559,7 @@ def get_assessment_stats(
 
         question_performance.append({
             "question_number": question.question_number,
-            "question_title": f"Question {question.question_number}",
+            "question_title": question.question_number,
             "max_marks": question.max_marks,
             "graded_count": graded_count,
             "ungraded_count": ungraded_count,

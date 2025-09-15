@@ -253,8 +253,8 @@ export default function AssessmentOverview({
                 </div>
             ) : (
                 <div className="flex flex-col space-y-6 flex-1 min-h-0 mt-6">
-                    {/* Grading Completion & Actions Row */}
-                    <div className={`grid ${isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-4'} gap-4 flex-shrink-0`}>
+                    {/* Main Action Cards Row */}
+                    <div className={`grid ${isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-3'} gap-4 flex-shrink-0`}>
                         <div className="bg-card p-4 rounded-lg border">
                             <div className="flex items-center justify-between mb-2">
                                 <h3 className="text-sm font-medium text-muted-foreground">Grading Progress</h3>
@@ -271,22 +271,6 @@ export default function AssessmentOverview({
                             <p className="text-xs text-muted-foreground mt-1">
                                 {assessmentStats?.grading_completion.graded_submissions || 0} of {assessmentStats?.grading_completion.total_submissions || 0} graded
                             </p>
-                        </div>
-
-                        <div className="bg-card p-4 rounded-lg border">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-muted-foreground">Mapping</h3>
-                                <button
-                                    onClick={() => setActiveMode('map')}
-                                    className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
-                                >
-                                    Map
-                                </button>
-                            </div>
-                            <p className="text-2xl font-bold text-purple-600">
-                                {assessmentStats?.question_performance.length || 0}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">Questions mapped</p>
                         </div>
 
                         <div className="bg-card p-4 rounded-lg border">
@@ -312,50 +296,6 @@ export default function AssessmentOverview({
                         <div className="bg-card p-4 rounded-lg border">
                             <div className="flex items-center justify-between mb-2">
                                 <h3 className="text-sm font-medium text-muted-foreground">Publication</h3>
-                                <button
-                                    onClick={handleTogglePublishStatus}
-                                    disabled={isUpdatingPublishStatus}
-                                    className={`px-2 py-1 text-xs rounded transition-colors ${
-                                        assessment.published 
-                                            ? 'bg-red-500 hover:bg-red-600 text-white' 
-                                            : 'bg-green-500 hover:bg-green-600 text-white'
-                                    } disabled:opacity-50`}
-                                >
-                                    {isUpdatingPublishStatus ? 'Wait...' : assessment.published ? 'Hide' : 'Publish'}
-                                </button>
-                            </div>
-                            <p className="text-2xl font-bold text-green-600">
-                                {assessment.published ? 'Live' : 'Draft'}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {assessment.published ? 'Visible to students' : 'Hidden from students'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Grade Distribution Cards */}
-                    <div className={`grid ${isMobile ? 'grid-cols-2' : isTablet ? 'grid-cols-3' : 'grid-cols-4'} gap-4 flex-shrink-0`}>
-                        <div className="bg-card p-4 rounded-lg border">
-                            <h3 className="text-sm font-medium text-muted-foreground">Average Score</h3>
-                            <p className="text-2xl font-bold text-blue-600">
-                                {assessmentStats?.grade_distribution.average_score || 0}%
-                            </p>
-                        </div>
-                        <div className="bg-card p-4 rounded-lg border">
-                            <h3 className="text-sm font-medium text-muted-foreground">Median Score</h3>
-                            <p className="text-2xl font-bold text-green-600">
-                                {assessmentStats?.grade_distribution.median_score || 0}%
-                            </p>
-                        </div>
-                        <div className="bg-card p-4 rounded-lg border">
-                            <h3 className="text-sm font-medium text-muted-foreground">Highest Score</h3>
-                            <p className="text-2xl font-bold text-green-600">
-                                {assessmentStats?.grade_distribution.highest_score || 0}%
-                            </p>
-                        </div>
-                        <div className="bg-card p-4 rounded-lg border">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-muted-foreground">Lowest Score</h3>
                                 <div className="flex gap-1">
                                     <button
                                         onClick={handleDownloadStudentCSV}
@@ -369,15 +309,46 @@ export default function AssessmentOverview({
                                     >
                                         PDFs
                                     </button>
+                                    <button
+                                        onClick={handleTogglePublishStatus}
+                                        disabled={isUpdatingPublishStatus}
+                                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                                            assessment.published 
+                                                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                                                : 'bg-green-500 hover:bg-green-600 text-white'
+                                        } disabled:opacity-50`}
+                                    >
+                                        {isUpdatingPublishStatus ? 'Wait...' : assessment.published ? 'Hide' : 'Publish'}
+                                    </button>
                                 </div>
                             </div>
-                            <p className="text-2xl font-bold text-red-600">
-                                {assessmentStats?.grade_distribution.lowest_score || 0}%
+                            <p className="text-2xl font-bold text-green-600">
+                                {assessment.published ? 'Live' : 'Unpublished'}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                {assessment.published ? 'Visible to students' : 'Hidden from students'}
                             </p>
                         </div>
                     </div>
 
+                    {/* Grade Distribution Cards */}
+                    {/* <div className={`grid ${isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-2'} gap-4 flex-shrink-0`}>
+                        <div className="bg-card p-4 rounded-lg border">
+                            <h3 className="text-sm font-medium text-muted-foreground">Average Grade</h3>
+                            <p className="text-2xl font-bold text-blue-600">
+                                {assessmentStats?.grade_distribution.average_score || 0}%
+                            </p>
+                        </div>
+                        <div className="bg-card p-4 rounded-lg border">
+                            <h3 className="text-sm font-medium text-muted-foreground">Highest Grade</h3>
+                            <p className="text-2xl font-bold text-green-600">
+                                {assessmentStats?.grade_distribution.highest_score || 0}%
+                            </p>
+                        </div>
+                    </div> */}
+
                     {/* Grade Distribution Chart */}
+                    {/*
                     {assessmentStats?.grade_distribution.score_ranges && assessmentStats.grade_distribution.score_ranges.length > 0 && (
                         <div className="bg-card rounded-lg border flex-shrink-0">
                             <div className="p-4 border-b">
@@ -405,11 +376,25 @@ export default function AssessmentOverview({
                             </div>
                         </div>
                     )}
+                    */}
 
                     {/* Question Performance Table - Scrollable */}
                     <div className="bg-card rounded-lg border flex flex-col flex-1 min-h-0 max-h-96">
                         <div className="p-4 border-b flex-shrink-0">
-                            <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold`}>Question-wise Performance</h2>
+                            <div className="flex items-center justify-between">
+                                <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold`}>Question-wise Performance</h2>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm text-muted-foreground">
+                                        {assessmentStats?.question_performance.length || 0} questions
+                                    </span>
+                                    <button
+                                        onClick={() => setActiveMode('map')}
+                                        className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                                    >
+                                        Map Questions
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         
                         {assessmentStats?.question_performance && assessmentStats.question_performance.length > 0 ? (
@@ -417,12 +402,10 @@ export default function AssessmentOverview({
                                 <table className="w-full">
                                     <thead className="bg-muted/50 sticky top-0 z-10">
                                         <tr className="border-b">
-                                            <th className="text-left p-3 font-medium">Question</th>
+                                            <th className="text-left p-3 font-medium">Title</th>
                                             <th className="text-left p-3 font-medium">Max Marks</th>
                                             <th className="text-left p-3 font-medium">Grading Progress</th>
-                                            <th className="text-left p-3 font-medium">Average</th>
-                                            <th className="text-left p-3 font-medium">Highest</th>
-                                            <th className="text-left p-3 font-medium">Lowest</th>
+                                            <th className="text-left p-3 font-medium">Average Grade</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -434,12 +417,7 @@ export default function AssessmentOverview({
                                             return (
                                                 <tr key={index} className="border-b hover:bg-muted/30">
                                                     <td className="p-3">
-                                                        <div>
-                                                            <p className="font-medium">{question.question_title}</p>
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {question.question_number}
-                                                            </p>
-                                                        </div>
+                                                        <p className="font-medium">{question.question_title}</p>
                                                     </td>
                                                     <td className="p-3">
                                                         <span className="font-medium">{question.max_marks}</span>
@@ -463,12 +441,6 @@ export default function AssessmentOverview({
                                                             <p className="font-medium">{question.average_mark}</p>
                                                             <p className="text-sm text-muted-foreground">{question.average_percentage}%</p>
                                                         </div>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <span className="font-medium text-green-600">{question.highest_mark}</span>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <span className="font-medium text-red-600">{question.lowest_mark}</span>
                                                     </td>
                                                 </tr>
                                             );

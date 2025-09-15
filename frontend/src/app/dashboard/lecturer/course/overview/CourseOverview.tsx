@@ -176,7 +176,7 @@ export default function CourseOverview({
             ) : (
                 <div className="flex flex-col space-y-6 flex-1 min-h-0 mt-6">
                     {/* Stats Cards */}
-                    <div className={`grid ${isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-3'} gap-4 flex-shrink-0`}>
+                    <div className={`${isMobile ? 'w-full' : 'max-w-md'} flex-shrink-0`}>
                         <div className="bg-card p-4 rounded-lg border">
                             <div className="flex items-center justify-between mb-2">
                                 <h3 className="text-sm font-medium text-muted-foreground">Total Students</h3>
@@ -204,27 +204,17 @@ export default function CourseOverview({
                             <p className="text-2xl font-bold text-blue-600">{courseStats?.totalStudents || 0}</p>
                             <p className="text-xs text-muted-foreground mt-1">Upload CSV to add or remove students</p>
                         </div>
-                        
-                        <div className="bg-card p-4 rounded-lg border">
-                            <h3 className="text-sm font-medium text-muted-foreground">Average Performance</h3>
-                            <p className="text-2xl font-bold text-green-600">
-                                {courseStats?.averagePerformance ? `${courseStats.averagePerformance.toFixed(1)}%` : 'N/A'}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">Across all assessments</p>
-                        </div>
-                        
-                        <div className="bg-card p-4 rounded-lg border">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-muted-foreground">Total Assessments</h3>
-                            </div>
-                            <p className="text-2xl font-bold text-purple-600">{courseStats?.assessments.length || 0}</p>
-                        </div>
                     </div>
 
                     {/* Assessment Progress Table */}
                     <div className="bg-card rounded-lg border flex flex-col flex-1 min-h-0 max-h-96">
                         <div className="p-4 border-b flex-shrink-0">
-                            <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold`}>Assessment Progress</h2>
+                            <div className="flex items-center justify-between">
+                                <h2 className={`${isMobile ? 'text-lg' : 'text-xl'} font-semibold`}>Assessment Progress</h2>
+                                <span className="text-sm text-muted-foreground">
+                                    {courseStats?.assessments.length || 0} assessments
+                                </span>
+                            </div>
                         </div>
                         
                         {courseStats?.assessments && courseStats.assessments.length > 0 ? (
@@ -234,10 +224,9 @@ export default function CourseOverview({
                                         <tr className="border-b">
                                             <th className="text-left p-3 font-medium">Assessment</th>
                                             <th className="text-left p-3 font-medium">Status</th>
-                                            <th className="text-left p-3 font-medium">Submissions</th>
                                             <th className="text-left p-3 font-medium">Questions Marked</th>
-                                            <th className="text-left p-3 font-medium">Fully Marked</th>
-                                            <th className="text-left p-3 font-medium">Average Score</th>
+                                            <th className="text-left p-3 font-medium">Students Marked</th>
+                                            <th className="text-left p-3 font-medium">Average Grade</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -246,14 +235,14 @@ export default function CourseOverview({
                                                 assessment.questionsMarked,
                                                 assessment.totalQuestions * assessment.totalStudents
                                             );
-                                            const fullyMarkedPercentage = formatPercentage(
-                                                assessment.questionsCompletelyMarked,
-                                                assessment.totalQuestions * assessment.totalStudents
-                                            );
-                                            const submissionPercentage = formatPercentage(
-                                                assessment.submissionCount,
-                                                assessment.totalStudents
-                                            );
+                                            
+                                            // Calculate students marked: students who have all questions marked
+                                            const studentsMarked = assessment.totalQuestions > 0 
+                                                ? Math.floor(assessment.questionsCompletelyMarked / assessment.totalQuestions)
+                                                : 0;
+                                            const studentsMarkedPercentage = assessment.totalStudents > 0 
+                                                ? formatPercentage(studentsMarked, assessment.totalStudents)
+                                                : 0;
 
                                             return (
                                                 <tr key={assessment.id} className="border-b hover:bg-muted/30">
@@ -271,22 +260,8 @@ export default function CourseOverview({
                                                                 ? 'bg-green-100 text-green-800' 
                                                                 : 'bg-yellow-100 text-yellow-800'
                                                         }`}>
-                                                            {assessment.published ? 'Published' : 'Draft'}
+                                                            {assessment.published ? 'Published' : 'Unpublished'}
                                                         </span>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-center justify-between text-sm">
-                                                                <span>{assessment.submissionCount}/{assessment.totalStudents}</span>
-                                                                <span className="text-muted-foreground">{submissionPercentage}%</span>
-                                                            </div>
-                                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                                                <div 
-                                                                    className={`h-2 rounded-full ${getProgressBarColor(submissionPercentage)}`}
-                                                                    style={{ width: `${submissionPercentage}%` }}
-                                                                ></div>
-                                                            </div>
-                                                        </div>
                                                     </td>
                                                     <td className="p-3">
                                                         <div className="space-y-1">
@@ -305,13 +280,13 @@ export default function CourseOverview({
                                                     <td className="p-3">
                                                         <div className="space-y-1">
                                                             <div className="flex items-center justify-between text-sm">
-                                                                <span>{assessment.questionsCompletelyMarked}/{assessment.totalQuestions * assessment.totalStudents}</span>
-                                                                <span className="text-muted-foreground">{fullyMarkedPercentage}%</span>
+                                                                <span>{studentsMarked}/{assessment.totalStudents}</span>
+                                                                <span className="text-muted-foreground">{studentsMarkedPercentage}%</span>
                                                             </div>
                                                             <div className="w-full bg-gray-200 rounded-full h-2">
                                                                 <div 
-                                                                    className={`h-2 rounded-full ${getProgressBarColor(fullyMarkedPercentage)}`}
-                                                                    style={{ width: `${fullyMarkedPercentage}%` }}
+                                                                    className={`h-2 rounded-full ${getProgressBarColor(studentsMarkedPercentage)}`}
+                                                                    style={{ width: `${studentsMarkedPercentage}%` }}
                                                                 ></div>
                                                             </div>
                                                         </div>

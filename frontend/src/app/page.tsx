@@ -182,7 +182,7 @@ export default function Home() {
           )}
 
           {/* Main content area */}
-          <div className={`flex-1 min-h-0 overflow-hidden ${isMobile ? 'order-1' : ''}`}>
+          <div className={`flex-1 min-h-0 ${isMobile ? 'order-1' : ''}`}>
             {activeNavItem === 'courses' && (
               <CourseView 
                 onToggleCollapse={toggleLeftSidebar} 
