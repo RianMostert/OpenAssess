@@ -13,6 +13,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from uuid import UUID, uuid4
 from pathlib import Path
 import shutil
@@ -378,3 +379,209 @@ def delete_assessment(
     db.delete(assessment)
     db.commit()
     return {"message": "Assessment deleted"}
+
+
+@router.get("/{assessment_id}/stats")
+def get_assessment_stats(
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get comprehensive statistics for an assessment"""
+    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
+        raise HTTPException(status_code=403, detail="Not authorized to view stats")
+
+    # Get all questions for this assessment
+    questions = (
+        db.query(Question)
+        .filter(Question.assessment_id == assessment_id)
+        .order_by(Question.question_number)
+        .all()
+    )
+
+    if not questions:
+        return {
+            "grading_completion": {
+                "total_submissions": 0,
+                "graded_submissions": 0,
+                "ungraded_submissions": 0,
+                "completion_percentage": 0
+            },
+            "grade_distribution": {
+                "average_score": 0,
+                "median_score": 0,
+                "highest_score": 0,
+                "lowest_score": 0,
+                "score_ranges": []
+            },
+            "question_performance": []
+        }
+
+    # Get all students who submitted for this assessment
+    submitted_students = (
+        db.query(UploadedFile.student_id)
+        .filter(UploadedFile.assessment_id == assessment_id)
+        .distinct()
+        .all()
+    )
+    submitted_student_ids = [s.student_id for s in submitted_students]
+    total_submissions = len(submitted_student_ids)
+
+    if total_submissions == 0:
+        return {
+            "grading_completion": {
+                "total_submissions": 0,
+                "graded_submissions": 0,
+                "ungraded_submissions": 0,
+                "completion_percentage": 0
+            },
+            "grade_distribution": {
+                "average_score": 0,
+                "median_score": 0,
+                "highest_score": 0,
+                "lowest_score": 0,
+                "score_ranges": []
+            },
+            "question_performance": []
+        }
+
+    # Calculate grading completion
+    fully_graded_students = (
+        db.query(QuestionResult.student_id)
+        .filter(
+            QuestionResult.assessment_id == assessment_id,
+            QuestionResult.mark.isnot(None),
+            QuestionResult.student_id.in_(submitted_student_ids)
+        )
+        .group_by(QuestionResult.student_id)
+        .having(func.count(QuestionResult.question_id) == len(questions))
+        .all()
+    )
+
+    graded_submissions = len(fully_graded_students)
+    ungraded_submissions = total_submissions - graded_submissions
+    completion_percentage = (graded_submissions / total_submissions * 100) if total_submissions > 0 else 0
+
+    # Calculate grade distribution for fully graded students only
+    if graded_submissions > 0:
+        # Get total scores for each fully graded student
+        student_scores = []
+        fully_graded_student_ids = [s.student_id for s in fully_graded_students]
+        
+        for student_id in fully_graded_student_ids:
+            student_total = (
+                db.query(func.sum(QuestionResult.mark))
+                .filter(
+                    QuestionResult.assessment_id == assessment_id,
+                    QuestionResult.student_id == student_id,
+                    QuestionResult.mark.isnot(None)
+                )
+                .scalar()
+            ) or 0
+            
+            # Convert to percentage
+            total_possible = sum(q.max_marks for q in questions)
+            if total_possible > 0:
+                percentage = (student_total / total_possible) * 100
+                student_scores.append(percentage)
+
+        # Calculate statistics
+        if student_scores:
+            average_score = sum(student_scores) / len(student_scores)
+            sorted_scores = sorted(student_scores)
+            median_score = sorted_scores[len(sorted_scores) // 2] if len(sorted_scores) % 2 == 1 else (sorted_scores[len(sorted_scores) // 2 - 1] + sorted_scores[len(sorted_scores) // 2]) / 2
+            highest_score = max(student_scores)
+            lowest_score = min(student_scores)
+
+            # Create score ranges (0-39, 40-49, 50-59, 60-69, 70-79, 80-89, 90-100)
+            score_ranges = [
+                {"range": "0-39", "count": 0},
+                {"range": "40-49", "count": 0},
+                {"range": "50-59", "count": 0},
+                {"range": "60-69", "count": 0},
+                {"range": "70-79", "count": 0},
+                {"range": "80-89", "count": 0},
+                {"range": "90-100", "count": 0}
+            ]
+            
+            for score in student_scores:
+                if score < 40:
+                    score_ranges[0]["count"] += 1
+                elif score < 50:
+                    score_ranges[1]["count"] += 1
+                elif score < 60:
+                    score_ranges[2]["count"] += 1
+                elif score < 70:
+                    score_ranges[3]["count"] += 1
+                elif score < 80:
+                    score_ranges[4]["count"] += 1
+                elif score < 90:
+                    score_ranges[5]["count"] += 1
+                else:
+                    score_ranges[6]["count"] += 1
+        else:
+            average_score = median_score = highest_score = lowest_score = 0
+            score_ranges = []
+    else:
+        average_score = median_score = highest_score = lowest_score = 0
+        score_ranges = []
+
+    # Calculate question-wise performance
+    question_performance = []
+    for question in questions:
+        # Get all results for this question from submitted students
+        question_results = (
+            db.query(QuestionResult)
+            .filter(
+                QuestionResult.assessment_id == assessment_id,
+                QuestionResult.question_id == question.id,
+                QuestionResult.student_id.in_(submitted_student_ids),
+                QuestionResult.mark.isnot(None)
+            )
+            .all()
+        )
+
+        graded_count = len(question_results)
+        ungraded_count = total_submissions - graded_count
+        
+        if question_results:
+            marks = [qr.mark for qr in question_results]
+            avg_mark = sum(marks) / len(marks)
+            max_mark = max(marks)
+            min_mark = min(marks)
+            avg_percentage = (avg_mark / question.max_marks * 100) if question.max_marks > 0 else 0
+        else:
+            avg_mark = max_mark = min_mark = avg_percentage = 0
+
+        question_performance.append({
+            "question_number": question.question_number,
+            "question_title": f"Question {question.question_number}",
+            "max_marks": question.max_marks,
+            "graded_count": graded_count,
+            "ungraded_count": ungraded_count,
+            "average_mark": round(avg_mark, 2) if avg_mark else 0,
+            "average_percentage": round(avg_percentage, 1) if avg_percentage else 0,
+            "highest_mark": max_mark if max_mark else 0,
+            "lowest_mark": min_mark if min_mark else 0
+        })
+
+    return {
+        "grading_completion": {
+            "total_submissions": total_submissions,
+            "graded_submissions": graded_submissions,
+            "ungraded_submissions": ungraded_submissions,
+            "completion_percentage": round(completion_percentage, 1)
+        },
+        "grade_distribution": {
+            "average_score": round(average_score, 1) if average_score else 0,
+            "median_score": round(median_score, 1) if median_score else 0,
+            "highest_score": round(highest_score, 1) if highest_score else 0,
+            "lowest_score": round(lowest_score, 1) if lowest_score else 0,
+            "score_ranges": score_ranges
+        },
+        "question_performance": question_performance
+    }
