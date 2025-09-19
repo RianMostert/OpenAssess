@@ -27,7 +27,11 @@ from app.schemas.uploaded_file import UploadedFileOut
 from app.models.user import User
 from app.models.question_result import QuestionResult
 from app.dependencies import get_current_user
-from app.core.security import has_course_role
+from app.core.security import (
+    has_course_role,
+    can_create_assessments,
+    can_manage_assessments,
+)
 
 
 from app.dependencies import get_db
@@ -74,8 +78,8 @@ def upload_assessment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not has_course_role(current_user, course_id, "teacher", "ta"):
-        raise HTTPException(status_code=403, detail="Not authorized to upload")
+    if not can_create_assessments(current_user, course_id):
+        raise HTTPException(status_code=403, detail="Not authorized to create assessments")
 
     file_id = uuid4()
     filename = f"{file_id}_{file.filename}"
@@ -252,9 +256,9 @@ def create_assessment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
+    if not can_create_assessments(current_user, assessment.course_id):
         raise HTTPException(
-            status_code=403, detail="Not authorized to create assessment"
+            status_code=403, detail="Only course conveners can create assessments"
         )
 
     db_assessment = Assessment(**assessment.model_dump())
@@ -315,8 +319,8 @@ def update_assessment(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
-        raise HTTPException(status_code=403, detail="Not authorized to update")
+    if not can_manage_assessments(current_user, assessment.course_id):
+        raise HTTPException(status_code=403, detail="Only course conveners can modify assessments")
 
     # Clean up old question paper file if a new one is being set
     update_data = update.model_dump(exclude_unset=True)
@@ -350,8 +354,8 @@ def toggle_assessment_publication(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
-        raise HTTPException(status_code=403, detail="Not authorized to publish/unpublish")
+    if not can_manage_assessments(current_user, assessment.course_id):
+        raise HTTPException(status_code=403, detail="Only course conveners can publish/unpublish assessments")
 
     publish = request.get("published", False)
     assessment.published = publish
@@ -371,9 +375,9 @@ def delete_assessment(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not (current_user.is_admin or assessment.course.teacher_id == current_user.id):
+    if not can_manage_assessments(current_user, assessment.course_id):
         raise HTTPException(
-            status_code=403, detail="Only course teacher or admin can delete"
+            status_code=403, detail="Only course conveners can delete assessments"
         )
 
     db.delete(assessment)

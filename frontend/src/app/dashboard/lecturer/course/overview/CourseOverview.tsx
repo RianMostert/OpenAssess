@@ -24,18 +24,22 @@ interface CourseOverviewProps {
     course: Course;
     isMobile?: boolean;
     isTablet?: boolean;
+    userRole?: 'convener' | 'facilitator' | 'student'; // Add role prop
 }
 
 export default function CourseOverview({
     course,
     isMobile = false,
     isTablet = false,
+    userRole = 'facilitator', // Default to facilitator
 }: CourseOverviewProps) {
     const [courseStats, setCourseStats] = useState<CourseStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [actualUserRole, setActualUserRole] = useState<'convener' | 'facilitator' | 'student'>(userRole);
 
     useEffect(() => {
         fetchCourseStats();
+        fetchUserRole();
     }, [course.id]);
 
     const fetchCourseStats = async () => {
@@ -65,6 +69,19 @@ export default function CourseOverview({
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchUserRole = async () => {
+        try {
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/my-role`);
+            if (response.ok) {
+                const roleData = await response.json();
+                setActualUserRole(roleData.role === 'convener' ? 'convener' : roleData.role === 'teacher' ? 'facilitator' : 'student');
+            }
+        } catch (error) {
+            console.error('Error fetching user role:', error);
+            // Keep default role if fetch fails
         }
     };
 
@@ -156,6 +173,104 @@ export default function CourseOverview({
         }
     };
 
+    const handleFacilitatorCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("role_name", "teacher"); // Default to teacher role
+
+        try {
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/facilitators/bulk-upload`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Facilitator upload failed");
+            }
+
+            const result = await response.json();
+            console.log("Facilitator upload result:", result);
+            
+            let message = result.message;
+            if (result.skipped && result.skipped.length > 0) {
+                message += `\nSkipped: ${result.skipped.length}`;
+            }
+            if (result.errors && result.errors.length > 0) {
+                message += `\nErrors: ${result.errors.length}`;
+                console.error("Upload errors:", result.errors);
+            }
+            
+            alert(message);
+            
+            // Refresh stats after successful upload
+            await fetchCourseStats();
+        } catch (err) {
+            console.error(err);
+            alert(`Error uploading facilitators: ${err instanceof Error ? err.message : "Unknown error"}`);
+        } finally {
+            // Reset the file input
+            e.target.value = '';
+        }
+    };
+
+    const handleFacilitatorCSVRemove = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Confirm the action since this removes facilitators from the course
+        const confirmRemove = window.confirm(
+            "Are you sure you want to remove these facilitators from the course? This will remove their teaching access to the course."
+        );
+        
+        if (!confirmRemove) {
+            // Reset the file input
+            e.target.value = '';
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/facilitators/bulk-remove`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || "Facilitator removal failed");
+            }
+
+            const result = await response.json();
+            console.log("Facilitator removal result:", result);
+            
+            let message = result.message;
+            if (result.not_found && result.not_found.length > 0) {
+                message += `\nNot found: ${result.not_found.length}`;
+            }
+            if (result.errors && result.errors.length > 0) {
+                message += `\nErrors: ${result.errors.length}`;
+                console.error("Removal errors:", result.errors);
+            }
+            
+            alert(message);
+            
+            // Refresh stats after successful removal
+            await fetchCourseStats();
+        } catch (err) {
+            console.error(err);
+            alert(`Error removing facilitators: ${err instanceof Error ? err.message : "Unknown error"}`);
+        } finally {
+            // Reset the file input
+            e.target.value = '';
+        }
+    };
+
     return (
         <div className={`${isMobile ? 'p-4' : 'p-6'} h-full max-h-screen flex flex-col border-zinc-800 overflow-hidden`}>
             {/* Course Header */}
@@ -176,33 +291,73 @@ export default function CourseOverview({
             ) : (
                 <div className="flex flex-col space-y-6 flex-1 min-h-0 mt-6">
                     {/* Stats Cards */}
-                    <div className={`${isMobile ? 'w-full' : 'max-w-md'} flex-shrink-0`}>
-                        <div className="bg-card p-4 rounded-lg border">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-muted-foreground">Total Students</h3>
-                                <div className="flex gap-1">
-                                    <label className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 cursor-pointer transition-colors">
-                                        + Add
-                                        <input
-                                            type="file"
-                                            accept=".csv"
-                                            onChange={handleStudentCSVUpload}
-                                            className="hidden"
-                                        />
-                                    </label>
-                                    <label className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 cursor-pointer transition-colors">
-                                        - Remove
-                                        <input
-                                            type="file"
-                                            accept=".csv"
-                                            onChange={handleStudentCSVRemove}
-                                            className="hidden"
-                                        />
-                                    </label>
+                    <div className={`${isMobile ? 'w-full' : 'max-w-full'} flex-shrink-0`}>
+                        <div className={`grid ${actualUserRole === 'convener' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                            {/* Student Management Card */}
+                            <div className="bg-card p-4 rounded-lg border">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-medium text-muted-foreground">Total Students</h3>
+                                    {actualUserRole === 'convener' && (
+                                        <div className="flex gap-1">
+                                            <label className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 cursor-pointer transition-colors">
+                                                + Add
+                                                <input
+                                                    type="file"
+                                                    accept=".csv"
+                                                    onChange={handleStudentCSVUpload}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                            <label className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 cursor-pointer transition-colors">
+                                                - Remove
+                                                <input
+                                                    type="file"
+                                                    accept=".csv"
+                                                    onChange={handleStudentCSVRemove}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
+                                <p className="text-2xl font-bold text-blue-600">{courseStats?.totalStudents || 0}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {actualUserRole === 'convener' ? 'Upload CSV to add or remove students' : 'Enrolled students in this course'}
+                                </p>
                             </div>
-                            <p className="text-2xl font-bold text-blue-600">{courseStats?.totalStudents || 0}</p>
-                            <p className="text-xs text-muted-foreground mt-1">Upload CSV to add or remove students</p>
+
+                            {/* Facilitator Management Card - Only visible to conveners */}
+                            {actualUserRole === 'convener' && (
+                                <div className="bg-card p-4 rounded-lg border">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h3 className="text-sm font-medium text-muted-foreground">Manage Facilitators</h3>
+                                        <div className="flex gap-1">
+                                            <label className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 cursor-pointer transition-colors">
+                                                + Add
+                                                <input
+                                                    type="file"
+                                                    accept=".csv"
+                                                    onChange={handleFacilitatorCSVUpload}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                            <label className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 cursor-pointer transition-colors">
+                                                - Remove
+                                                <input
+                                                    type="file"
+                                                    accept=".csv"
+                                                    onChange={handleFacilitatorCSVRemove}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <p className="text-2xl font-bold text-green-600">Teachers & TAs</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Upload CSV with email, first_name, last_name to manage course facilitators
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
 

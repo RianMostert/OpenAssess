@@ -31,9 +31,10 @@ def seed_roles(db: Session) -> dict:
     
     # Define default roles
     default_roles = [
-        {"id": 1, "name": "student"},
-        {"id": 2, "name": "lecturer"},
-        {"id": 3, "name": "admin"},
+        {"id": 1, "name": "teacher"},   # Teachers can create courses
+        {"id": 2, "name": "ta"},        # TAs assist teachers  
+        {"id": 3, "name": "student"},   # Students take courses
+        {"id": 4, "name": "admin"},     # System admins
     ]
     
     role_map = {}

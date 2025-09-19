@@ -18,12 +18,6 @@ ERASER_DEFAULT_WIDTH_PERCENT = 1.5 # Default width when no eraser data available
 ERASER_SCALE_FACTOR = 0.7          # Scale factor for converting pixel width to percentage
 ASSUMED_PAGE_WIDTH_PX = 600        # Assumed page width in pixels for conversion
 
-# Hardcoded transform for demo - these are no longer needed with percentage coordinates
-# SCALE = 0.70
-# OFFSET_X = -0
-# OFFSET_Y = -0
-
-
 def hex_to_rgb(color):
     NAMED_COLORS = {
         "black": "#000000",

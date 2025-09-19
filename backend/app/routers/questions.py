@@ -7,7 +7,7 @@ from app.models.question import Question
 from app.models.assessment import Assessment
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.core.security import has_course_role
+from app.core.security import has_course_role, can_manage_assessments
 
 router = APIRouter(prefix="/questions", tags=["Questions"])
 
@@ -24,8 +24,8 @@ def create_question(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
-        raise HTTPException(status_code=403, detail="Not authorized to create question")
+    if not can_manage_assessments(current_user, assessment.course_id):
+        raise HTTPException(status_code=403, detail="Only course conveners can create questions")
 
     db_question = Question(**question.model_dump())
     db.add(db_question)
@@ -75,8 +75,8 @@ def update_question(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
-        raise HTTPException(status_code=403, detail="Not authorized to update question")
+    if not can_manage_assessments(current_user, assessment.course_id):
+        raise HTTPException(status_code=403, detail="Only course conveners can update questions")
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(question, field, value)
@@ -101,8 +101,8 @@ def delete_question(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
-        raise HTTPException(status_code=403, detail="Not authorized to delete question")
+    if not can_manage_assessments(current_user, assessment.course_id):
+        raise HTTPException(status_code=403, detail="Only course conveners can delete questions")
 
     db.delete(question)
     db.commit()

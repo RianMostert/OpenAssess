@@ -47,6 +47,52 @@ def has_course_role(user: User, course_id: UUID, *roles: str) -> bool:
     )
 
 
+def is_course_convener(user: User, course_id: UUID) -> bool:
+    """Check if user is the convener (owner) of a course."""
+    if user.is_admin:
+        return True
+    
+    return any(
+        r.course_id == course_id and r.is_convener 
+        for r in user.course_roles
+    )
+
+
+def is_course_facilitator(user: User, course_id: UUID) -> bool:
+    """Check if user is a facilitator (teacher/ta) in a course."""
+    return has_course_role(user, course_id, "teacher", "ta")
+
+
+def can_manage_course_users(user: User, course_id: UUID) -> bool:
+    """Check if user can add/remove other users from a course."""
+    return user.is_admin or is_course_convener(user, course_id)
+
+
+def can_manage_course_settings(user: User, course_id: UUID) -> bool:
+    """Check if user can modify course settings."""
+    return user.is_admin or is_course_convener(user, course_id)
+
+
+def can_create_assessments(user: User, course_id: UUID) -> bool:
+    """Check if user can create assessments in a course. Only conveners can create assessments."""
+    return user.is_admin or is_course_convener(user, course_id)
+
+
+def can_manage_assessments(user: User, course_id: UUID) -> bool:
+    """Check if user can modify/delete assessments in a course. Only conveners can manage assessments."""
+    return user.is_admin or is_course_convener(user, course_id)
+
+
+def can_grade_assessments(user: User, course_id: UUID) -> bool:
+    """Check if user can grade assessments in a course. Conveners and facilitators can grade."""
+    return user.is_admin or is_course_convener(user, course_id) or is_course_facilitator(user, course_id)
+
+
+def can_view_course_data(user: User, course_id: UUID) -> bool:
+    """Check if user can view course data (assessments, submissions, etc.)."""
+    return user.is_admin or has_course_role(user, course_id, "teacher", "ta", "student")
+
+
 def is_course_teacher(user: User, course_id: UUID) -> bool:
     return has_course_role(user, course_id, "teacher")
 
@@ -56,4 +102,4 @@ def is_course_teacher_or_ta(user: User, course_id: UUID) -> bool:
 
 
 def can_create_course(user: User) -> bool:
-    return user.is_admin or user.primary_role_id == 1
+    return user.is_admin or user.primary_role_id == 1  # Teachers can create courses

@@ -40,9 +40,9 @@ export default function ProfileView({ isMobile = false, isTablet = false }: Prof
 
     const getRoleName = (roleId?: number) => {
         switch (roleId) {
-            case 1:
+            case 4:
                 return "Administrator"
-            case 2:
+            case 1:
                 return "Lecturer"
             case 3:
                 return "Student"

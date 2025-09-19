@@ -24,7 +24,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.models.assessment import Assessment
 from app.dependencies import get_current_user
-from app.core.security import has_course_role
+from app.core.security import has_course_role, is_course_convener
 
 
 router = APIRouter(prefix="/uploaded-files", tags=["Uploaded Files"])
@@ -44,8 +44,8 @@ def bulk_upload_answer_sheets(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not (current_user.is_admin or assessment.course.teacher_id == current_user.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    if not is_course_convener(current_user, assessment.course_id):
+        raise HTTPException(status_code=403, detail="Only course conveners can bulk upload files")
 
     course_id = assessment.course_id
     uploaded_files = []
@@ -103,13 +103,13 @@ def upload_file(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    is_course_teacher = assessment.course.teacher_id == current_user.id
+    is_course_staff = has_course_role(current_user, assessment.course_id, "teacher", "ta")
     is_target_student = current_user.id == student_id
 
-    if not (current_user.is_admin or is_course_teacher or is_target_student):
+    if not (current_user.is_admin or is_course_staff or is_target_student):
         raise HTTPException(
             status_code=403,
-            detail="Only the student or the course's teacher can upload",
+            detail="Only the student or course staff can upload",
         )
 
     existing = (
@@ -218,13 +218,13 @@ def update_uploaded_file(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    is_course_teacher = assessment.course.teacher_id == current_user.id
+    is_course_staff = has_course_role(current_user, assessment.course_id, "teacher", "ta")
     is_target_student = file.student_id == current_user.id
 
-    if not (current_user.is_admin or is_course_teacher or is_target_student):
+    if not (current_user.is_admin or is_course_staff or is_target_student):
         raise HTTPException(
             status_code=403,
-            detail="Only the student or the course's teacher can update",
+            detail="Only the student or course staff can update",
         )
 
     for field, value in update.model_dump(exclude_unset=True).items():
@@ -250,13 +250,13 @@ def delete_uploaded_file(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    is_course_teacher = assessment.course.teacher_id == current_user.id
+    is_course_staff = has_course_role(current_user, assessment.course_id, "teacher", "ta")
     is_target_student = file.student_id == current_user.id
 
-    if not (current_user.is_admin or is_course_teacher or is_target_student):
+    if not (current_user.is_admin or is_course_staff or is_target_student):
         raise HTTPException(
             status_code=403,
-            detail="Only the student or the course's teacher can delete",
+            detail="Only the student or course staff can delete",
         )
 
     file_path = Path(file.answer_sheet_file_path)
