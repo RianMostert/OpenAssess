@@ -42,6 +42,9 @@ class Question(Base):
     question_results = relationship(
         "QuestionResult", back_populates="question", cascade="all, delete-orphan"
     )
+    mark_queries = relationship(
+        "MarkQuery", back_populates="question", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         UniqueConstraint(

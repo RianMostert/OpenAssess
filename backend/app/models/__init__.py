@@ -6,3 +6,4 @@ from .assessment import Assessment
 from .question import Question
 from .question_result import QuestionResult
 from .uploaded_file import UploadedFile
+from .mark_query import MarkQuery

@@ -33,3 +33,6 @@ class Assessment(Base):
     question_results = relationship(
         "QuestionResult", back_populates="assessment", cascade="all, delete-orphan"
     )
+    mark_queries = relationship(
+        "MarkQuery", back_populates="assessment", cascade="all, delete-orphan"
+    )
