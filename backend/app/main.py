@@ -15,6 +15,8 @@ from app.routers import questions
 from app.routers import question_results
 from app.routers import student_results
 from app.routers import export
+from app.routers import student_queries
+from app.routers import mark_queries
 
 # Import your DB stuff
 from app.db.session import engine
@@ -66,6 +68,8 @@ app.include_router(questions.router, prefix=api_prefix)
 app.include_router(question_results.router, prefix=api_prefix)
 app.include_router(student_results.router, prefix=api_prefix)
 app.include_router(export.router, prefix=api_prefix)
+app.include_router(student_queries.router, prefix=f"{api_prefix}/student-queries", tags=["student-queries"])
+app.include_router(mark_queries.router, prefix=f"{api_prefix}/mark-queries", tags=["mark-queries"])
 
 
 @app.get("/")

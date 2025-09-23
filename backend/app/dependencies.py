@@ -58,3 +58,59 @@ def require_course_role(required_role: str):
         return user
 
     return role_checker
+
+
+def require_lecturer_or_ta_access():
+    """Dependency that requires either teacher or ta role for a course"""
+    def role_checker(
+        course_id: UUID,
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ):
+        role_entry = (
+            db.query(UserCourseRole)
+            .join(Role)
+            .filter(
+                UserCourseRole.user_id == user.id,
+                UserCourseRole.course_id == course_id,
+                Role.name.in_(['teacher', 'ta'])
+            )
+            .first()
+        )
+
+        if not role_entry:
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Lecturer or TA role required for this course."
+            )
+
+        return user
+
+    return role_checker
+
+
+def validate_course_access(db: Session, user: User, course_id: UUID):
+    """
+    Validate that a user has access to a course (teacher or TA).
+    Raises HTTPException if access is denied.
+    Note: Use require_lecturer_or_ta_access() dependency when course_id is available in path.
+    """
+    # Check if user has teacher or TA role for this course
+    role_entry = (
+        db.query(UserCourseRole)
+        .join(Role)
+        .filter(
+            UserCourseRole.user_id == user.id,
+            UserCourseRole.course_id == course_id,
+            Role.name.in_(['teacher', 'ta'])
+        )
+        .first()
+    )
+    
+    if not role_entry:
+        raise HTTPException(
+            status_code=403, 
+            detail="Access denied. Lecturer or TA role required for this course."
+        )
+    
+    return True
