@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import QueryModal from '@/app/dashboard/lecturer/course/components/QueryModal';
 
 interface StudentDashboardProps {
     isMobile?: boolean;
@@ -44,6 +45,19 @@ interface AssessmentWithCourse extends Assessment {
     course_code: string;
 }
 
+interface MarkQuery {
+    id: string;
+    assessment_id: string;
+    question_id?: string;
+    query_type: 'regrade' | 'clarification' | 'technical_issue';
+    status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'resolved';
+    requested_change: string;
+    reviewer_response?: string;
+    created_at: string;
+    assessment_title?: string;
+    question_number?: string;
+}
+
 export default function StudentDashboard({ 
     isMobile = false, 
     isTablet = false 
@@ -53,6 +67,11 @@ export default function StudentDashboard({
     const [assessments, setAssessments] = useState<AssessmentWithCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [assessmentsLoading, setAssessmentsLoading] = useState(false);
+    
+    // Query-related state
+    const [queries, setQueries] = useState<MarkQuery[]>([]);
+    const [queryModalOpen, setQueryModalOpen] = useState(false);
+    const [selectedAssessment, setSelectedAssessment] = useState<AssessmentWithCourse | null>(null);
 
     useEffect(() => {
         const token = localStorage.getItem('authToken');
@@ -72,6 +91,7 @@ export default function StudentDashboard({
     const fetchStudentData = async () => {
         try {
             await fetchStudentCourses();
+            await fetchStudentQueries();
         } catch (error) {
             console.error('Error fetching student data:', error);
         } finally {
@@ -158,9 +178,55 @@ export default function StudentDashboard({
         );
     };
 
+    const fetchStudentQueries = async () => {
+        try {
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/student-queries/my-queries`);
+            if (response.ok) {
+                const queriesData = await response.json();
+                setQueries(queriesData);
+            } else {
+                console.error('Failed to fetch queries');
+            }
+        } catch (error) {
+            console.error('Error fetching queries:', error);
+        }
+    };
+
     const handleQueryMark = (assessmentId: string) => {
-        // Placeholder for future functionality
-        alert(`Query mark functionality coming soon for assessment: ${assessmentId}`);
+        const assessment = assessments.find(a => a.assessment_id === assessmentId);
+        if (assessment) {
+            setSelectedAssessment(assessment);
+            setQueryModalOpen(true);
+        }
+    };
+
+    const handleQuerySubmitted = () => {
+        // Refresh queries after submission
+        fetchStudentQueries();
+    };
+
+    const getQueryStatusBadge = (status: MarkQuery['status']) => {
+        const statusConfig = {
+            pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
+            under_review: { label: 'Under Review', className: 'bg-blue-100 text-blue-800' },
+            approved: { label: 'Approved', className: 'bg-green-100 text-green-800' },
+            rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
+            resolved: { label: 'Resolved', className: 'bg-gray-100 text-gray-800' }
+        };
+
+        const config = statusConfig[status];
+        return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+                {config.label}
+            </span>
+        );
+    };
+
+    const hasActiveQuery = (assessmentId: string) => {
+        return queries.some(q => 
+            q.assessment_id === assessmentId && 
+            ['pending', 'under_review'].includes(q.status)
+        );
     };
 
     const handleDownloadPdf = async (assessmentId: string) => {
@@ -365,29 +431,47 @@ export default function StudentDashboard({
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <button
-                                                    onClick={() => handleQueryMark(assessment.assessment_id)}
-                                                    className="text-blue-600 hover:text-blue-900 flex items-center space-x-1"
-                                                    title="Query this mark"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <span>Query</span>
-                                                </button>
-                                                {assessment.has_annotated_pdf && (
-                                                    <button
-                                                        onClick={() => handleDownloadPdf(assessment.assessment_id)}
-                                                        className="text-purple-600 hover:text-purple-900 flex items-center space-x-1"
-                                                        title="Download annotated PDF"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        <span>PDF</span>
-                                                    </button>
-                                                )}
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <div className="flex flex-col space-y-2">
+                                                    <div className="flex space-x-2">
+                                                        <button
+                                                            onClick={() => handleQueryMark(assessment.assessment_id)}
+                                                            disabled={hasActiveQuery(assessment.assessment_id)}
+                                                            className={`flex items-center space-x-1 ${
+                                                                hasActiveQuery(assessment.assessment_id)
+                                                                    ? 'text-gray-400 cursor-not-allowed'
+                                                                    : 'text-blue-600 hover:text-blue-900'
+                                                            }`}
+                                                            title={hasActiveQuery(assessment.assessment_id) ? "Query already submitted" : "Query this mark"}
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span>Query</span>
+                                                        </button>
+                                                        {assessment.has_annotated_pdf && (
+                                                            <button
+                                                                onClick={() => handleDownloadPdf(assessment.assessment_id)}
+                                                                className="text-purple-600 hover:text-purple-900 flex items-center space-x-1"
+                                                                title="Download annotated PDF"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                </svg>
+                                                                <span>PDF</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {/* Show active queries */}
+                                                    {queries
+                                                        .filter(q => q.assessment_id === assessment.assessment_id)
+                                                        .map(query => (
+                                                            <div key={query.id} className="text-xs">
+                                                                {getQueryStatusBadge(query.status)}
+                                                            </div>
+                                                        ))
+                                                    }
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -396,6 +480,20 @@ export default function StudentDashboard({
                         </div>
                     )}
                 </div>
+
+                {/* Query Modal */}
+                {selectedAssessment && (
+                    <QueryModal
+                        isOpen={queryModalOpen}
+                        onClose={() => {
+                            setQueryModalOpen(false);
+                            setSelectedAssessment(null);
+                        }}
+                        assessmentId={selectedAssessment.assessment_id}
+                        assessmentTitle={selectedAssessment.title}
+                        onQuerySubmitted={handleQuerySubmitted}
+                    />
+                )}
             </div>
         </div>
     );
