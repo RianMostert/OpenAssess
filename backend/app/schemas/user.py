@@ -12,7 +12,7 @@ class UserCreate(BaseModel):
     student_number: Optional[str] = None
     password: str
     is_admin: Optional[bool] = False
-    primary_role_id: int
+    primary_role_id: Optional[int] = 3  # Default to student (id=3)
 
 
 class UserUpdate(BaseModel):
@@ -22,9 +22,17 @@ class UserUpdate(BaseModel):
     student_number: Optional[str] = None
     password: Optional[str] = None
     is_admin: Optional[bool] = None
+    primary_role_id: Optional[int] = None
 
 
-class RoleOut(BaseModel):
+class PrimaryRoleOut(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CourseRoleOut(BaseModel):
     id: int
     name: str
 
@@ -33,7 +41,7 @@ class RoleOut(BaseModel):
 
 class UserCourseRoleOut(BaseModel):
     course_id: UUID
-    role: RoleOut
+    course_role: CourseRoleOut
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,7 +53,8 @@ class UserOut(BaseModel):
     email: EmailStr
     student_number: Optional[str]
     is_admin: bool
-    primary_role: Optional[RoleOut]
+    primary_role_id: int
+    primary_role: Optional[PrimaryRoleOut] = None
     created_at: datetime
     updated_at: Optional[datetime]
 

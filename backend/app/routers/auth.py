@@ -35,7 +35,7 @@ def login(
             "email": user.email,
             "first_name": user.first_name,
             "last_name": user.last_name,
-            "primary_role_id": user.primary_role_id
+            "primary_role_id": user.primary_role_id,
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )

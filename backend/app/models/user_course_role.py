@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, Boolean
+from sqlalchemy import Column, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -18,13 +18,15 @@ class UserCourseRole(Base):
         ForeignKey("course.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    role_id = Column(
+    
+    # Reference to course_role table
+    course_role_id = Column(
         Integer,
-        ForeignKey("role.id", ondelete="CASCADE"),
-        primary_key=True,
+        ForeignKey("course_role.id", ondelete="CASCADE"),
+        nullable=False,
+        default=3  # Default to student (id=3)
     )
-    is_convener = Column(Boolean, default=False, nullable=False)
 
     user = relationship("User", back_populates="course_roles")
     course = relationship("Course", back_populates="user_roles")
-    role = relationship("Role", back_populates="user_course_roles")
+    course_role = relationship("CourseRole", back_populates="user_course_roles")

@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
-from app.models.role import Role
+from app.models.primary_role import PrimaryRole
+from app.models.course_role import CourseRole
 from app.models.user_course_role import UserCourseRole
 import uuid
 
@@ -62,16 +63,9 @@ def delete_user(db: Session, user_id: uuid.UUID):
 
 
 def create_user_with_default_role(db: Session, user_data: UserCreate):
+    """Create user with default student role. 
+    Note: Course roles are now assigned per course, not globally."""
     user = create_user(db, user_data)
-
-    student_role = db.query(Role).filter(Role.name == "student").first()
-    if student_role:
-        user_course_role = UserCourseRole(
-            user_id=user.id,
-            course_id=None,
-            role_id=student_role.id,
-        )
-        db.add(user_course_role)
-        db.commit()
-        db.refresh(user)
+    # Primary role is already set in create_user via primary_role_id
+    # Course roles are assigned when user enrolls in specific courses
     return user

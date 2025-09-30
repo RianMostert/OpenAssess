@@ -4,7 +4,15 @@ from passlib.context import CryptContext
 from uuid import UUID
 
 from app.models.user import User
-# from app.models import Role
+
+# Role ID constants
+PRIMARY_ROLE_ADMINISTRATOR = 1
+PRIMARY_ROLE_STAFF = 2 
+PRIMARY_ROLE_STUDENT = 3
+
+COURSE_ROLE_CONVENER = 1
+COURSE_ROLE_FACILITATOR = 2
+COURSE_ROLE_STUDENT = 3
 
 # Token config
 SECRET_KEY = "super-secret-key"
@@ -37,69 +45,84 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def is_admin_or_self(user: User, target_user_id: UUID) -> bool:
-    return user.is_admin or user.id == target_user_id
+def has_admin_access(user: User) -> bool:
+    """Check if user has administrator access."""
+    return user.primary_role_id == PRIMARY_ROLE_ADMINISTRATOR
 
 
-def has_course_role(user: User, course_id: UUID, *roles: str) -> bool:
-    return user.is_admin or any(
-        r.course_id == course_id and r.role.name in roles for r in user.course_roles
-    )
+def can_create_courses(user: User) -> bool:
+    """Check if user can create courses. Admins and staff can create courses."""
+    return user.primary_role_id in [PRIMARY_ROLE_ADMINISTRATOR, PRIMARY_ROLE_STAFF]
+
+
+def get_course_role_id(user: User, course_id: UUID) -> int | None:
+    """Get user's role ID in a specific course."""
+    for course_role in user.course_roles:
+        if str(course_role.course_id) == str(course_id):
+            return course_role.course_role_id
+    return None
 
 
 def is_course_convener(user: User, course_id: UUID) -> bool:
-    """Check if user is the convener (owner) of a course."""
-    if user.is_admin:
+    """Check if user is a convener of the course."""
+    if has_admin_access(user):
         return True
     
-    return any(
-        r.course_id == course_id and r.is_convener 
-        for r in user.course_roles
-    )
+    course_role_id = get_course_role_id(user, course_id)
+    return course_role_id == COURSE_ROLE_CONVENER
 
 
 def is_course_facilitator(user: User, course_id: UUID) -> bool:
-    """Check if user is a facilitator (teacher/ta) in a course."""
-    return has_course_role(user, course_id, "teacher", "ta")
+    """Check if user is a facilitator in the course."""
+    course_role_id = get_course_role_id(user, course_id)
+    return course_role_id == COURSE_ROLE_FACILITATOR
 
 
-def can_manage_course_users(user: User, course_id: UUID) -> bool:
-    """Check if user can add/remove other users from a course."""
-    return user.is_admin or is_course_convener(user, course_id)
+def is_course_student(user: User, course_id: UUID) -> bool:
+    """Check if user is enrolled as a student in the course."""
+    course_role_id = get_course_role_id(user, course_id)
+    return course_role_id == COURSE_ROLE_STUDENT
 
 
-def can_manage_course_settings(user: User, course_id: UUID) -> bool:
-    """Check if user can modify course settings."""
-    return user.is_admin or is_course_convener(user, course_id)
+def can_manage_course(user: User, course_id: UUID) -> bool:
+    """Check if user can manage course settings and membership."""
+    return has_admin_access(user) or is_course_convener(user, course_id)
 
 
 def can_create_assessments(user: User, course_id: UUID) -> bool:
-    """Check if user can create assessments in a course. Only conveners can create assessments."""
-    return user.is_admin or is_course_convener(user, course_id)
+    """Check if user can create assessments. Only conveners can create assessments."""
+    return has_admin_access(user) or is_course_convener(user, course_id)
 
 
 def can_manage_assessments(user: User, course_id: UUID) -> bool:
-    """Check if user can modify/delete assessments in a course. Only conveners can manage assessments."""
-    return user.is_admin or is_course_convener(user, course_id)
+    """Check if user can modify/delete assessments. Only conveners can manage assessments."""
+    return has_admin_access(user) or is_course_convener(user, course_id)
 
 
 def can_grade_assessments(user: User, course_id: UUID) -> bool:
-    """Check if user can grade assessments in a course. Conveners and facilitators can grade."""
-    return user.is_admin or is_course_convener(user, course_id) or is_course_facilitator(user, course_id)
+    """Check if user can grade assessments. Both conveners and facilitators can grade."""
+    return (has_admin_access(user) or 
+            is_course_convener(user, course_id) or 
+            is_course_facilitator(user, course_id))
 
 
-def can_view_course_data(user: User, course_id: UUID) -> bool:
-    """Check if user can view course data (assessments, submissions, etc.)."""
-    return user.is_admin or has_course_role(user, course_id, "teacher", "ta", "student")
+def can_view_course_statistics(user: User, course_id: UUID) -> bool:
+    """Check if user can view course statistics. Conveners and facilitators can view stats."""
+    return (has_admin_access(user) or 
+            is_course_convener(user, course_id) or 
+            is_course_facilitator(user, course_id))
 
 
-def is_course_teacher(user: User, course_id: UUID) -> bool:
-    return has_course_role(user, course_id, "teacher")
+def can_export_results(user: User, course_id: UUID) -> bool:
+    """Check if user can export complete course results. Only conveners can export all results.""" 
+    return has_admin_access(user) or is_course_convener(user, course_id)
 
 
-def is_course_teacher_or_ta(user: User, course_id: UUID) -> bool:
-    return has_course_role(user, course_id, "teacher", "ta")
+def can_access_course(user: User, course_id: UUID) -> bool:
+    """Check if user has any access to the course (student, facilitator, or convener)."""
+    return (has_admin_access(user) or 
+            get_course_role_id(user, course_id) is not None)
 
-
-def can_create_course(user: User) -> bool:
-    return user.is_admin or user.primary_role_id == 1  # Teachers can create courses
+def is_admin_or_self(current_user: User, user_id: UUID) -> bool:
+    """Check if the current user is an admin or the user themselves."""
+    return current_user.is_admin or str(current_user.id) == str(user_id)

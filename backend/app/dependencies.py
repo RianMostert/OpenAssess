@@ -19,7 +19,8 @@ from uuid import UUID
 
 from app.models.user import User
 from app.models.user_course_role import UserCourseRole
-from app.models.role import Role
+from app.models.primary_role import PrimaryRole
+from app.models.course_role import CourseRole
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException
 from app.core.auth import get_current_user
@@ -35,7 +36,8 @@ def register_dependencies():
     return lifespan
 
 
-def require_course_role(required_role: str):
+def require_course_role(required_role_id: int):
+    """Factory function that creates a dependency requiring specific course role"""
     def role_checker(
         course_id: UUID,
         user: User = Depends(get_current_user),
@@ -43,11 +45,39 @@ def require_course_role(required_role: str):
     ):
         role_entry = (
             db.query(UserCourseRole)
-            .join(Role)
             .filter(
                 UserCourseRole.user_id == user.id,
                 UserCourseRole.course_id == course_id,
-                Role.name == required_role,
+                UserCourseRole.course_role_id == required_role_id,
+            )
+            .first()
+        )
+
+        if not role_entry:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        return user
+
+    return role_checker
+
+
+def require_lecturer_or_facilitator_access():
+    """Dependency that requires either convener or facilitator role for a course"""
+    def role_checker(
+        course_id: UUID,
+        user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ):
+        # Check if user is admin
+        if user.primary_role_id == 1:  # Administrator
+            return user
+        
+        role_entry = (
+            db.query(UserCourseRole)
+            .filter(
+                UserCourseRole.user_id == user.id,
+                UserCourseRole.course_id == course_id,
+                UserCourseRole.course_role_id.in_([1, 2])  # Convener or Facilitator
             )
             .first()
         )
@@ -67,13 +97,16 @@ def require_lecturer_or_ta_access():
         user: User = Depends(get_current_user),
         db: Session = Depends(get_db),
     ):
+        # Check if user is admin
+        if user.primary_role_id == 1:  # Administrator
+            return user
+            
         role_entry = (
             db.query(UserCourseRole)
-            .join(Role)
             .filter(
                 UserCourseRole.user_id == user.id,
                 UserCourseRole.course_id == course_id,
-                Role.name.in_(['teacher', 'ta'])
+                UserCourseRole.course_role_id.in_([1, 2])  # Convener or Facilitator
             )
             .first()
         )
@@ -81,7 +114,7 @@ def require_lecturer_or_ta_access():
         if not role_entry:
             raise HTTPException(
                 status_code=403, 
-                detail="Access denied. Lecturer or TA role required for this course."
+                detail="Access denied. Convener or Facilitator role required for this course."
             )
 
         return user
@@ -91,18 +124,21 @@ def require_lecturer_or_ta_access():
 
 def validate_course_access(db: Session, user: User, course_id: UUID):
     """
-    Validate that a user has access to a course (teacher or TA).
+    Validate that a user has access to a course (convener or facilitator).
     Raises HTTPException if access is denied.
-    Note: Use require_lecturer_or_ta_access() dependency when course_id is available in path.
+    Note: Use require_lecturer_or_facilitator_access() dependency when course_id is available in path.
     """
-    # Check if user has teacher or TA role for this course
+    # Check if user is admin
+    if user.primary_role_id == 1:  # Administrator
+        return
+        
+    # Check if user has convener or facilitator role for this course
     role_entry = (
         db.query(UserCourseRole)
-        .join(Role)
         .filter(
             UserCourseRole.user_id == user.id,
             UserCourseRole.course_id == course_id,
-            Role.name.in_(['teacher', 'ta'])
+            UserCourseRole.course_role_id.in_([1, 2])  # Convener or Facilitator
         )
         .first()
     )
@@ -110,7 +146,7 @@ def validate_course_access(db: Session, user: User, course_id: UUID):
     if not role_entry:
         raise HTTPException(
             status_code=403, 
-            detail="Access denied. Lecturer or TA role required for this course."
+            detail="Access denied. Convener or Facilitator role required for this course."
         )
     
     return True

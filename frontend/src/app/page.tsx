@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { jwtDecode } from 'jwt-decode';
 import { useScreenSize } from '@/hooks/use-mobile';
+import { 
+  UserInfo, 
+  getRoleDisplayName, 
+  isStudent, 
+  canAccessLecturerDashboard 
+} from '@/types/auth';
 
 // Import Lecturer Components
 import LecturerTopBar from '@/app/dashboard/lecturer/TopBar';
@@ -14,19 +20,12 @@ import LecturerProfileView from '@dashboard/lecturer/profile/ProfileView';
 // Import Student Components
 import StudentDashboard from '@/app/dashboard/student/StudentDashboard';
 
-interface DecodedToken {
-  sub: string;
-  exp: number;
-  primary_role_id?: number;
-  email?: string;
-}
-
 export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const [activeNavItem, setActiveNavItem] = useState('courses');
   const [userRole, setUserRole] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [userInfo, setUserInfo] = useState<DecodedToken | null>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
 
   // Screen size detection
   const { isMobile, isTablet, isDesktop } = useScreenSize();
@@ -52,9 +51,9 @@ export default function Home() {
     }
 
     try {
-      const decoded: DecodedToken = jwtDecode(token);
+      const decoded: UserInfo = jwtDecode(token);
       setUserInfo(decoded);
-      setUserRole(decoded.primary_role_id || null);
+      setUserRole(decoded.primary_role_id);
       setIsAuthenticated(true);
 
       const exp = getTokenExpiration(token);
@@ -75,7 +74,7 @@ export default function Home() {
 
   function getTokenExpiration(token: string): number | null {
     try {
-      const decoded: DecodedToken = jwtDecode(token);
+      const decoded: UserInfo = jwtDecode(token);
       return decoded.exp;
     } catch {
       return null;
@@ -104,8 +103,8 @@ export default function Home() {
     );
   }
 
-  // Student Dashboard (role_id: 3)
-  if (userRole === 3) {
+  // Student Dashboard (role: "student")
+  if (isStudent(userRole)) {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
         {/* Simple Student Header */}
@@ -116,7 +115,7 @@ export default function Home() {
                 Assessment Portal
               </h1>
               <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                Student
+                {getRoleDisplayName(userRole)}
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -145,8 +144,8 @@ export default function Home() {
     );
   }
 
-  // Lecturer Dashboard (role_id: 1 = teacher, role_id: 2 = ta)
-  if (userRole === 1 || userRole === 2) {
+  // Lecturer Dashboard (role: "staff" or "administrator")
+  if (canAccessLecturerDashboard(userRole)) {
     return (
       <div className="flex flex-col h-screen overflow-hidden">
         <LecturerTopBar
@@ -211,7 +210,7 @@ export default function Home() {
           Access Error
         </h2>
         <p className="text-gray-600 mb-6">
-          Your account role ({userRole || 'unknown'}) is not supported in this interface.
+          Your account role ({getRoleDisplayName(userRole)}) is not supported in this interface.
           Please contact your administrator.
         </p>
         <button

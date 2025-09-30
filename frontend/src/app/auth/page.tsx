@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
 
 export default function AuthPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -85,7 +84,7 @@ export default function AuthPage() {
                         student_number: studentNumber || undefined,
                         password,
                         is_admin: false,
-                        primary_role_id: role === "teacher" ? 1 : 3,
+                        primary_role_id: role === "staff" ? 2 : 3,
                     }),
                 });
 
@@ -174,11 +173,11 @@ export default function AuthPage() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setRole("teacher")}
-                                        className={`px-3 py-1 rounded-xl border ${role === "teacher" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+                                        onClick={() => setRole("staff")}
+                                        className={`px-3 py-1 rounded-xl border ${role === "staff" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
                                         disabled={loading}
                                     >
-                                        Teacher
+                                        Staff
                                     </button>
                                 </div>
                             </div>

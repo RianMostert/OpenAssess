@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.user_course_role import UserCourseRole
-from app.models.role import Role
+from app.models.primary_role import PrimaryRole
+from app.models.course_role import CourseRole
 from app.models.course import Course
 from app.models.user import User
 from sqlalchemy.exc import IntegrityError
@@ -8,7 +9,7 @@ from fastapi import HTTPException, status
 
 
 def assign_role_to_user(db: Session, user_id, course_id, role_name: str):
-    role = db.query(Role).filter(Role.name == role_name).first()
+    role = db.query(PrimaryRole).filter(PrimaryRole.name == role_name).first()
     if not role:
         raise HTTPException(status_code=400, detail=f"Role '{role_name}' not found.")
 
@@ -48,7 +49,7 @@ def get_user_roles_in_course(db: Session, user_id, course_id):
 
 
 def remove_user_role(db: Session, user_id, course_id, role_name: str):
-    role = db.query(Role).filter(Role.name == role_name).first()
+    role = db.query(PrimaryRole).filter(PrimaryRole.name == role_name).first()
     if not role:
         raise HTTPException(status_code=400, detail=f"Role '{role_name}' not found.")
 
