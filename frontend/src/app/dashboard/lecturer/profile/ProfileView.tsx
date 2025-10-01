@@ -14,7 +14,8 @@ interface UserInfo {
     email?: string;
     first_name?: string;
     last_name?: string;
-    primary_role_id?: number;
+    primary_role_id?: number;  // Keep for backward compatibility
+    primary_role?: string;     // New enum value
 }
 
 export default function ProfileView({ isMobile = false, isTablet = false }: ProfileViewProps) {
@@ -38,12 +39,27 @@ export default function ProfileView({ isMobile = false, isTablet = false }: Prof
         router.push("/auth")
     }
 
-    const getRoleName = (roleId?: number) => {
+    const getRoleName = (roleId?: number, roleEnum?: string) => {
+        // Check new enum values first
+        if (roleEnum) {
+            switch (roleEnum) {
+                case 'administrator':
+                    return "Administrator"
+                case 'staff':
+                    return "Staff"
+                case 'student':
+                    return "Student"
+                default:
+                    return roleEnum.charAt(0).toUpperCase() + roleEnum.slice(1)
+            }
+        }
+        
+        // Use the new role ID system
         switch (roleId) {
-            case 4:
-                return "Administrator"
             case 1:
-                return "Lecturer"
+                return "Administrator"
+            case 2:
+                return "Staff"
             case 3:
                 return "Student"
             default:
@@ -105,7 +121,7 @@ export default function ProfileView({ isMobile = false, isTablet = false }: Prof
                         <div>
                             <label className="text-sm font-medium text-gray-500">Role</label>
                             <p className="text-gray-900">
-                                {getRoleName(userInfo?.primary_role_id)}
+                                {getRoleName(userInfo?.primary_role_id, userInfo?.primary_role)}
                             </p>
                         </div>
                         

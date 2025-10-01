@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, String, Float, Text, DateTime, CheckConstraint
+from sqlalchemy import Column, ForeignKey, String, Text, DateTime, CheckConstraint, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -17,11 +17,8 @@ class MarkQuery(Base):
         ForeignKey("assessment.id", ondelete="CASCADE"),
         nullable=False,
     )
-    question_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("question.id", ondelete="CASCADE"),
-        nullable=True,  # NULL for full assessment queries
-    )
+    question_id = Column(UUID(as_uuid=True), ForeignKey("question.id", ondelete="CASCADE"), nullable=True)
+    batch_id = Column(UUID(as_uuid=True), nullable=True, index=True) 
     current_mark = Column(Float, nullable=True)
     requested_change = Column(Text, nullable=False)
     query_type = Column(String, nullable=False)
@@ -39,16 +36,16 @@ class MarkQuery(Base):
     student = relationship("User", foreign_keys=[student_id])
     reviewer = relationship("User", foreign_keys=[reviewer_id])
     assessment = relationship("Assessment", back_populates="mark_queries")
-    question = relationship("Question", back_populates="mark_queries")
+    question = relationship("Question", foreign_keys=[question_id])
 
     # Constraints
     __table_args__ = (
         CheckConstraint(
-            "query_type IN ('regrade', 'clarification', 'technical_issue')",
-            name="check_query_type"
-        ),
-        CheckConstraint(
             "status IN ('pending', 'under_review', 'approved', 'rejected', 'resolved')",
             name="check_status"
+        ),
+        CheckConstraint(
+            "query_type IN ('regrade', 'clarification', 'technical_issue')",
+            name="check_query_type"
         ),
     )

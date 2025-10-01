@@ -15,7 +15,7 @@ from app.models.assessment import Assessment
 from app.models.question import Question
 from app.models.question_result import QuestionResult
 from app.models.uploaded_file import UploadedFile
-from app.core.security import has_course_role
+from app.core.security import can_access_course, has_admin_access
 from app.core.config import settings
 
 router = APIRouter(prefix="/student-results", tags=["Student Results"])
@@ -48,7 +48,7 @@ def get_my_courses(
     result = []
     for course, teacher in courses_with_teachers:
         user_role = next(
-            (r.role.name for r in current_user.course_roles if r.course_id == course.id),
+            (r.course_role.name for r in current_user.course_roles if r.course_id == course.id),
             None
         )
         
@@ -71,12 +71,12 @@ def get_my_course_assessments(
     current_user: User = Depends(get_current_user),
 ):
     """Get all assessments for a course with the student's status and results"""
-    if not has_course_role(current_user, course_id, "student", "ta", "teacher") and not current_user.is_admin:
+    if not can_access_course(current_user, course_id) and not has_admin_access(current_user):
         raise HTTPException(status_code=403, detail="Not authorized to view this course")
     
     # Get the user's role in this course
     user_role = next(
-        (r.role.name for r in current_user.course_roles if r.course_id == course_id),
+        (r.course_role.name for r in current_user.course_roles if r.course_id == course_id),
         None
     )
     
@@ -163,12 +163,12 @@ def get_my_assessment_results(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     
-    if not has_course_role(current_user, assessment.course_id, "student", "ta", "teacher") and not current_user.is_admin:
+    if not can_access_course(current_user, assessment.course_id) and not has_admin_access(current_user):
         raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
     
     # Check if student can view this assessment (must be published for students)
     user_role = next(
-        (r.role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
+        (r.course_role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
         None
     )
     
@@ -263,12 +263,12 @@ def get_annotated_pdf_download_info(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     
-    if not has_course_role(current_user, assessment.course_id, "student", "ta", "teacher") and not current_user.is_admin:
+    if not can_access_course(current_user, assessment.course_id) and not has_admin_access(current_user):
         raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
     
     # Check if student can view this assessment (must be published for students)
     user_role = next(
-        (r.role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
+        (r.course_role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
         None
     )
     
@@ -316,12 +316,12 @@ def download_annotated_pdf(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     
-    if not has_course_role(current_user, assessment.course_id, "student", "ta", "teacher") and not current_user.is_admin:
+    if not can_access_course(current_user, assessment.course_id) and not has_admin_access(current_user):
         raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
     
     # Check if student can view this assessment (must be published for students)
     user_role = next(
-        (r.role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
+        (r.course_role.name for r in current_user.course_roles if r.course_id == assessment.course_id),
         None
     )
     

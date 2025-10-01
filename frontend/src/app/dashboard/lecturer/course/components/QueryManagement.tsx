@@ -8,9 +8,10 @@ interface MarkQuery {
     student_id: string;
     assessment_id: string;
     question_id?: string;
+    batch_id?: string;
     current_mark?: number;
     requested_change: string;
-    query_type: 'regrade' | 'clarification' | 'technical_issue';
+    query_type: string;
     status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'resolved';
     reviewer_id?: string;
     reviewer_response?: string;
@@ -18,38 +19,53 @@ interface MarkQuery {
     created_at: string;
     updated_at?: string;
     student_name?: string;
+    student_number?: string;
     assessment_title?: string;
     question_number?: string;
 }
 
 interface QueryManagementProps {
     courseId: string;
+    assessmentId?: string; // Optional - if provided, filter to specific assessment
     isMobile?: boolean;
     isTablet?: boolean;
 }
 
-export default function QueryManagement({ courseId, isMobile = false, isTablet = false }: QueryManagementProps) {
+export default function QueryManagement({ courseId, assessmentId, isMobile = false, isTablet = false }: QueryManagementProps) {
     const [queries, setQueries] = useState<MarkQuery[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedQuery, setSelectedQuery] = useState<MarkQuery | null>(null);
     const [responseModalOpen, setResponseModalOpen] = useState(false);
     const [responseText, setResponseText] = useState('');
-    const [newMark, setNewMark] = useState<string>('');
+    const [newMarks, setNewMarks] = useState<{[key: string]: string}>({});
     const [responseStatus, setResponseStatus] = useState<'approved' | 'rejected' | 'resolved'>('approved');
     const [submitting, setSubmitting] = useState(false);
     const [filterStatus, setFilterStatus] = useState<string>('pending');
 
     useEffect(() => {
         fetchQueries();
-    }, [courseId, filterStatus]);
+    }, [courseId, assessmentId, filterStatus]);
 
     const fetchQueries = async () => {
         try {
             setLoading(true);
-            const statusParam = filterStatus !== 'all' ? `?status=${filterStatus}` : '';
-            const response = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/mark-queries/course/${courseId}${statusParam}`
-            );
+            let url = `${process.env.NEXT_PUBLIC_API_URL}/mark-queries/course/${courseId}`;
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            if (filterStatus !== 'all') {
+                params.append('status', filterStatus);
+            }
+            if (assessmentId) {
+                params.append('assessment_id', assessmentId);
+            }
+            
+            const queryString = params.toString();
+            if (queryString) {
+                url += `?${queryString}`;
+            }
+            
+            const response = await fetchWithAuth(url);
             
             if (response.ok) {
                 const data = await response.json();
@@ -67,7 +83,12 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
     const handleRespondToQuery = (query: MarkQuery) => {
         setSelectedQuery(query);
         setResponseText('');
-        setNewMark(query.current_mark?.toString() || '');
+        // Initialize new marks with empty value for the single question
+        const initialMarks: {[key: string]: string} = {};
+        if (query.question_id) {
+            initialMarks[query.question_id] = '';
+        }
+        setNewMarks(initialMarks);
         setResponseStatus('approved');
         setResponseModalOpen(true);
     };
@@ -83,7 +104,12 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
             const responseData = {
                 status: responseStatus,
                 reviewer_response: responseText.trim(),
-                new_mark: responseStatus === 'approved' && newMark ? parseFloat(newMark) : null
+                new_marks: responseStatus === 'approved' ? 
+                    Object.fromEntries(
+                        Object.entries(newMarks)
+                            .filter(([_, value]) => value.trim() !== '')
+                            .map(([key, value]) => [key, parseFloat(value)])
+                    ) : null
             };
 
             const response = await fetchWithAuth(
@@ -150,21 +176,6 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
         );
     };
 
-    const getQueryTypeBadge = (type: MarkQuery['query_type']) => {
-        const config = {
-            regrade: { label: 'Regrade', className: 'bg-purple-100 text-purple-800' },
-            clarification: { label: 'Clarification', className: 'bg-blue-100 text-blue-800' },
-            technical_issue: { label: 'Technical Issue', className: 'bg-orange-100 text-orange-800' }
-        };
-
-        const typeConfig = config[type];
-        return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${typeConfig.className}`}>
-                {typeConfig.label}
-            </span>
-        );
-    };
-
     return (
         <div className="bg-white rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
@@ -172,7 +183,10 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
                     <div>
                         <h2 className="text-xl font-semibold text-gray-900">Mark Queries</h2>
                         <p className="text-gray-600 text-sm mt-1">
-                            Student queries and appeals for marks
+                            {assessmentId 
+                                ? 'Student queries and appeals for this assessment' 
+                                : 'Student queries and appeals for marks'
+                            }
                         </p>
                     </div>
                     <select
@@ -213,9 +227,8 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student Number</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assessment</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mark</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
@@ -227,31 +240,30 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
                                 <tr key={query.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm font-medium text-gray-900">
-                                            {query.student_name || 'Unknown Student'}
+                                            {query.student_number || 'Unknown Student'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                        <td className="p-3 whitespace-nowrap">
                                         <div>
-                                            <div className="text-sm font-medium text-gray-900">
-                                                {query.assessment_title}
-                                            </div>
-                                            {query.question_number && (
-                                                <div className="text-sm text-gray-500">
-                                                    Question {query.question_number}
-                                                </div>
-                                            )}
+                                            <p className="font-medium">{query.assessment_title}</p>
+                                            <p className="text-sm text-gray-500">
+                                                {query.question_number ? `Question ${query.question_number}` : 'Assessment-wide'}
+                                            </p>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {getQueryTypeBadge(query.query_type)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    <td className="p-3 whitespace-nowrap">
                                         {getStatusBadge(query.status)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {query.current_mark !== null ? query.current_mark : 'Ungraded'}
-                                        {query.new_mark !== null && query.new_mark !== query.current_mark && (
-                                            <div className="text-green-600 text-xs">→ {query.new_mark}</div>
+                                    <td className="p-3 whitespace-nowrap text-sm text-gray-900">
+                                        {query.question_id && query.current_mark !== null ? (
+                                            <div>
+                                                <span className="font-medium">Current: {query.current_mark}</span>
+                                                {query.new_mark !== null && (
+                                                    <span className="block text-green-600">New: {query.new_mark}</span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="text-gray-400">N/A</span>
                                         )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -286,7 +298,6 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
                                             <button
                                                 onClick={() => {
                                                     setSelectedQuery(query);
-                                                    // You could show details modal here
                                                     alert(`Query: ${query.requested_change}`);
                                                 }}
                                                 className="text-gray-600 hover:text-gray-900"
@@ -323,9 +334,13 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
                                 <p className="font-medium text-gray-900 mb-2">Student Query:</p>
                                 <p className="text-gray-700">{selectedQuery.requested_change}</p>
                                 <div className="mt-2 text-sm text-gray-600">
-                                    <span>Current Mark: {selectedQuery.current_mark ?? 'Ungraded'}</span>
-                                    {selectedQuery.question_number && (
-                                        <span className="ml-4">Question: {selectedQuery.question_number}</span>
+                                    <span>Question: {selectedQuery.question_number ? `Question ${selectedQuery.question_number}` : 'Assessment-wide'}</span>
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                    {selectedQuery.question_id && selectedQuery.current_mark !== null && (
+                                        <div className="text-sm text-gray-600">
+                                            Current Mark: {selectedQuery.current_mark}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -349,29 +364,34 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
                                     </div>
                                 </div>
 
-                                {responseStatus === 'approved' && (
+                                {responseStatus === 'approved' && selectedQuery.question_id && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">New Mark (Optional)</label>
-                                        <input
-                                            type="number"
-                                            step="0.5"
-                                            value={newMark}
-                                            onChange={(e) => setNewMark(e.target.value)}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Enter new mark if changing"
-                                        />
+                                        <div className="flex items-center space-x-2">
+                                            <label className="text-sm text-gray-600 w-24">Question {selectedQuery.question_number}:</label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                value={newMarks[selectedQuery.question_id] || ''}
+                                                onChange={(e) => setNewMarks(prev => ({
+                                                    ...prev,
+                                                    [selectedQuery.question_id!]: e.target.value
+                                                }))}
+                                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Enter new mark if changing"
+                                            />
+                                        </div>
                                     </div>
                                 )}
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Response *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Your Response</label>
                                     <textarea
                                         value={responseText}
                                         onChange={(e) => setResponseText(e.target.value)}
                                         rows={4}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                         placeholder="Explain your decision and any changes made..."
-                                        required
                                     />
                                 </div>
 
@@ -385,7 +405,7 @@ export default function QueryManagement({ courseId, isMobile = false, isTablet =
                                     </button>
                                     <button
                                         type="submit"
-                                        disabled={submitting || !responseText.trim()}
+                                        disabled={submitting}
                                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                                     >
                                         {submitting ? 'Submitting...' : 'Submit Response'}

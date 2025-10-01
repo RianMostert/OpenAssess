@@ -28,7 +28,7 @@ from app.models.user import User
 from app.models.question_result import QuestionResult
 from app.dependencies import get_current_user
 from app.core.security import (
-    has_course_role,
+    can_access_course,
     can_create_assessments,
     can_manage_assessments,
 )
@@ -52,9 +52,6 @@ def upload_question_paper(
 ):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-
-    # if not has_course_role(current_user, course_id, "teacher", "ta"):
-    #     raise HTTPException(status_code=403, detail="Not authorized to upload")
 
     destination_dir = storage_path / course_id / assessment_id
     os.makedirs(destination_dir, exist_ok=True)
@@ -110,9 +107,7 @@ def get_assessment_questions(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(
-        current_user, assessment.course_id, "student", "ta", "teacher"
-    ):
+    if not can_access_course(current_user, assessment.course_id):
         raise HTTPException(status_code=403, detail="Not authorized to view questions")
 
     questions = db.query(Question).filter(Question.assessment_id == assessment.id).all()
@@ -131,9 +126,7 @@ def download_question_paper(
     if not assessment or not assessment.question_paper_file_path:
         raise HTTPException(status_code=404, detail="Question paper not found")
 
-    if not has_course_role(
-        current_user, assessment.course_id, "student", "ta", "teacher"
-    ):
+    if not can_access_course(current_user, assessment.course_id):
         raise HTTPException(
             status_code=403, detail="Not authorized to view this question paper"
         )
@@ -298,9 +291,7 @@ def get_assessment(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(
-        current_user, assessment.course_id, "student", "ta", "teacher"
-    ):
+    if not can_access_course(current_user, assessment.course_id):
         raise HTTPException(
             status_code=403, detail="Not authorized to view this assessment"
         )
@@ -396,7 +387,7 @@ def get_assessment_stats(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(current_user, assessment.course_id, "teacher", "ta"):
+    if not can_access_course(current_user, assessment.course_id):
         raise HTTPException(status_code=403, detail="Not authorized to view stats")
 
     # Get all questions for this assessment
@@ -563,7 +554,7 @@ def get_assessment_stats(
 
         question_performance.append({
             "question_number": question.question_number,
-            "question_title": question.question_number,
+            "question_title": question.question_number or f"Question {question.id}",
             "max_marks": question.max_marks,
             "graded_count": graded_count,
             "ungraded_count": ungraded_count,

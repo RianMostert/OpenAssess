@@ -1,6 +1,7 @@
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { Assessment, Course } from "@/types/course";
 import { useState, useEffect } from "react";
+import QueryManagement from "@/app/dashboard/lecturer/course/components/QueryManagement";
 
 interface AssessmentStats {
     grading_completion: {
@@ -456,6 +457,16 @@ export default function AssessmentOverview({
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Query Management Section */}
+                    <div className="flex-1 min-h-0">
+                        <QueryManagement 
+                            assessmentId={assessment.id}
+                            courseId={course.id} 
+                            isMobile={isMobile}
+                            isTablet={isTablet}
+                        />
                     </div>
                 </div>
             )}

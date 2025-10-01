@@ -4,11 +4,12 @@ from typing import List
 
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.schemas.mark_query import MarkQueryCreate, MarkQueryOut
+from app.schemas.mark_query import (
+    MarkQueryCreate, MarkQueryOut, MarkQueryBatchCreate, MarkQueryBatchResponse
+)
 from app.crud import mark_query as crud_mark_query
 from app.models.assessment import Assessment
 from app.models.question import Question
-from app.models.question_result import QuestionResult
 
 router = APIRouter()
 
@@ -26,44 +27,74 @@ def create_query(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     
-    # If querying a specific question, verify it exists and belongs to the assessment
-    if query_data.question_id:
-        question = db.query(Question).filter(
-            Question.id == query_data.question_id,
-            Question.assessment_id == query_data.assessment_id
-        ).first()
-        if not question:
-            raise HTTPException(status_code=404, detail="Question not found for this assessment")
-            
-        # Get the current mark for this question
-        question_result = db.query(QuestionResult).filter(
-            QuestionResult.student_id == current_user.id,
-            QuestionResult.question_id == query_data.question_id
-        ).first()
-        current_mark = question_result.mark if question_result else None
-    else:
-        # For full assessment queries, calculate total current marks
-        question_results = db.query(QuestionResult).filter(
-            QuestionResult.student_id == current_user.id,
-            QuestionResult.assessment_id == query_data.assessment_id
-        ).all()
-        current_mark = sum(qr.mark for qr in question_results if qr.mark is not None) if question_results else None
+    # Verify the question exists and belongs to the assessment
+    question = db.query(Question).filter(
+        Question.id == query_data.question_id,
+        Question.assessment_id == query_data.assessment_id
+    ).first()
     
-    # Check for existing pending queries
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found for this assessment")
+    
+    # Check for existing pending query for this question
     if crud_mark_query.check_existing_pending_query(
         db, current_user.id, query_data.assessment_id, query_data.question_id
     ):
         raise HTTPException(
             status_code=409, 
-            detail="You already have a pending query for this assessment/question"
+            detail="You already have a pending query for this question"
         )
     
-    # Create the query with current mark
-    query_data.current_mark = current_mark
+    # Create the query
     db_query = crud_mark_query.create_mark_query(db, query_data, current_user.id)
     
     # Load related data for response
     return _enrich_query_response(db, db_query)
+
+
+@router.post("/batch", response_model=MarkQueryBatchResponse)
+def create_batch_query(
+    batch_data: MarkQueryBatchCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Submit multiple mark queries in a batch"""
+    
+    # Verify the assessment exists
+    assessment = db.query(Assessment).filter(Assessment.id == batch_data.assessment_id).first()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    
+    # Validate all questions exist and belong to the assessment
+    question_ids = [item.question_id for item in batch_data.question_items if item.question_id]
+    if question_ids:
+        valid_questions = db.query(Question).filter(
+            Question.id.in_(question_ids),
+            Question.assessment_id == batch_data.assessment_id
+        ).all()
+        
+        valid_question_ids = {q.id for q in valid_questions}
+        for question_id in question_ids:
+            if question_id not in valid_question_ids:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Question {question_id} not found for this assessment"
+                )
+    
+    try:
+        # Create the batch
+        batch_id, created_queries = crud_mark_query.create_mark_query_batch(
+            db, batch_data, current_user.id
+        )
+        
+        return MarkQueryBatchResponse(
+            batch_id=batch_id,
+            query_ids=[q.id for q in created_queries],
+            created_count=len(created_queries)
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/my-queries", response_model=List[MarkQueryOut])
@@ -98,12 +129,13 @@ def get_query(
 
 def _enrich_query_response(db: Session, query: object) -> MarkQueryOut:
     """Add computed fields to query response"""
-    # Convert to dict and add computed fields
+    
     query_dict = {
         'id': query.id,
         'student_id': query.student_id,
         'assessment_id': query.assessment_id,
         'question_id': query.question_id,
+        'batch_id': query.batch_id, 
         'current_mark': query.current_mark,
         'requested_change': query.requested_change,
         'query_type': query.query_type,
@@ -118,6 +150,7 @@ def _enrich_query_response(db: Session, query: object) -> MarkQueryOut:
     # Add computed fields
     if hasattr(query, 'student') and query.student:
         query_dict['student_name'] = f"{query.student.first_name} {query.student.last_name}"
+        query_dict['student_number'] = query.student.student_number if hasattr(query.student, 'student_number') else None
     
     if hasattr(query, 'assessment') and query.assessment:
         query_dict['assessment_title'] = query.assessment.title

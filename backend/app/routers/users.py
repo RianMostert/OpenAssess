@@ -45,7 +45,7 @@ def create_user_endpoint(
 def bulk_upload_users(
     file: UploadFile = File(...),
     course_id: str = Form(...),
-    role_id: int = Form(3),
+    course_role_id: int = Form(3),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -67,13 +67,13 @@ def bulk_upload_users(
             existing_user_course_link = (
                 db.query(UserCourseRole)
                 .filter_by(
-                    user_id=existing_user.id, course_id=course_id, role_id=role_id
+                    user_id=existing_user.id, course_id=course_id, course_role_id=course_role_id
                 )
                 .first()
             )
             if not existing_user_course_link:
                 user_course_link = UserCourseRole(
-                    user_id=existing_user.id, course_id=course_id, role_id=role_id
+                    user_id=existing_user.id, course_id=course_id, course_role_id=course_role_id
                 )
                 db.add(user_course_link)
             continue
@@ -91,7 +91,7 @@ def bulk_upload_users(
         db.flush()
 
         user_course_link = UserCourseRole(
-            user_id=new_user.id, course_id=course_id, role_id=role_id
+            user_id=new_user.id, course_id=course_id, course_role_id=course_role_id
         )
         db.add(user_course_link)
 
@@ -105,7 +105,7 @@ def bulk_upload_users(
 def bulk_remove_users_from_course(
     file: UploadFile = File(...),
     course_id: str = Form(...),
-    role_id: int = Form(3),
+    course_role_id: int = Form(3),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -133,7 +133,7 @@ def bulk_remove_users_from_course(
         user_course_link = (
             db.query(UserCourseRole)
             .filter_by(
-                user_id=user.id, course_id=course_id, role_id=role_id
+                user_id=user.id, course_id=course_id, course_role_id=course_role_id
             )
             .first()
         )

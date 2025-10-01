@@ -24,7 +24,7 @@ from app.core.config import settings
 from app.models.user import User
 from app.models.assessment import Assessment
 from app.dependencies import get_current_user
-from app.core.security import has_course_role, is_course_convener
+from app.core.security import can_manage_assessments, can_manage_course
 
 
 router = APIRouter(prefix="/uploaded-files", tags=["Uploaded Files"])
@@ -44,7 +44,7 @@ def bulk_upload_answer_sheets(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not is_course_convener(current_user, assessment.course_id):
+    if not can_manage_course(current_user, assessment.course_id):
         raise HTTPException(status_code=403, detail="Only course conveners can bulk upload files")
 
     course_id = assessment.course_id
@@ -103,7 +103,7 @@ def upload_file(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    is_course_staff = has_course_role(current_user, assessment.course_id, "teacher", "ta")
+    is_course_staff = can_manage_assessments(current_user, assessment.course_id)
     is_target_student = current_user.id == student_id
 
     if not (current_user.is_admin or is_course_staff or is_target_student):
@@ -153,7 +153,7 @@ def download_answer_sheet(
     if not (
         current_user.is_admin
         or file.student_id == current_user.id
-        or has_course_role(current_user, file.assessment.course_id, "ta", "teacher")
+        or can_manage_assessments(current_user, file.assessment.course_id)
     ):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -179,7 +179,7 @@ def get_uploaded_file(
     if not (
         current_user.is_admin
         or file.student_id == current_user.id
-        or has_course_role(current_user, file.assessment.course_id, "ta", "teacher")
+        or can_manage_assessments(current_user, file.assessment.course_id)
     ):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -218,7 +218,7 @@ def update_uploaded_file(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    is_course_staff = has_course_role(current_user, assessment.course_id, "teacher", "ta")
+    is_course_staff = can_manage_assessments(current_user, assessment.course_id)
     is_target_student = file.student_id == current_user.id
 
     if not (current_user.is_admin or is_course_staff or is_target_student):
@@ -250,7 +250,7 @@ def delete_uploaded_file(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    is_course_staff = has_course_role(current_user, assessment.course_id, "teacher", "ta")
+    is_course_staff = can_manage_assessments(current_user, assessment.course_id)
     is_target_student = file.student_id == current_user.id
 
     if not (current_user.is_admin or is_course_staff or is_target_student):

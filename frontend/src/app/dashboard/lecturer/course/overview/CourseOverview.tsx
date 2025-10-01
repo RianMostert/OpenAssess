@@ -1,7 +1,6 @@
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { Course, Assessment } from "@/types/course";
 import { useState, useEffect } from "react";
-import QueryManagement from "@/app/dashboard/lecturer/course/components/QueryManagement";
 
 interface CourseStats {
     totalStudents: number;
@@ -19,6 +18,7 @@ interface AssessmentStats {
     questionsCompletelyMarked: number;
     averageScore: number;
     submissionCount: number;
+    queryCount: number;
 }
 
 interface CourseOverviewProps {
@@ -78,7 +78,7 @@ export default function CourseOverview({
             const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/my-role`);
             if (response.ok) {
                 const roleData = await response.json();
-                setActualUserRole(roleData.role === 'convener' ? 'convener' : roleData.role === 'teacher' ? 'facilitator' : 'student');
+                setActualUserRole(roleData.role === 'convener' ? 'convener' : roleData.role === 'facilitator' ? 'facilitator' : 'student');
             }
         } catch (error) {
             console.error('Error fetching user role:', error);
@@ -180,7 +180,7 @@ export default function CourseOverview({
 
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("role_name", "teacher"); // Default to teacher role
+        formData.append("role_name", "facilitator"); // Default to facilitator role
 
         try {
             const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/facilitators/bulk-upload`, {
@@ -353,7 +353,7 @@ export default function CourseOverview({
                                             </label>
                                         </div>
                                     </div>
-                                    <p className="text-2xl font-bold text-green-600">Teachers & TAs</p>
+                                    <p className="text-2xl font-bold text-green-600">Staff & Facilitators</p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         Upload CSV with email, first_name, last_name to manage course facilitators
                                     </p>
@@ -381,21 +381,21 @@ export default function CourseOverview({
                                             <th className="text-left p-3 font-medium">Assessment</th>
                                             <th className="text-left p-3 font-medium">Status</th>
                                             <th className="text-left p-3 font-medium">Questions Marked</th>
-                                            <th className="text-left p-3 font-medium">Students Marked</th>
+                                            <th className="text-left p-3 font-medium">Submissions Marked</th>
                                             <th className="text-left p-3 font-medium">Average Grade</th>
+                                            <th className="text-left p-3 font-medium">Queries</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {courseStats.assessments.map((assessment) => {
+                                            // Questions marked percentage - based on submissions only
                                             const questionsMarkedPercentage = formatPercentage(
                                                 assessment.questionsMarked,
-                                                assessment.totalQuestions * assessment.totalStudents
+                                                assessment.totalQuestions * assessment.totalStudents  // totalStudents now represents submission count
                                             );
                                             
-                                            // Calculate students marked: students who have all questions marked
-                                            const studentsMarked = assessment.totalQuestions > 0 
-                                                ? Math.floor(assessment.questionsCompletelyMarked / assessment.totalQuestions)
-                                                : 0;
+                                            // Students marked: backend now returns the actual count
+                                            const studentsMarked = assessment.questionsCompletelyMarked;
                                             const studentsMarkedPercentage = assessment.totalStudents > 0 
                                                 ? formatPercentage(studentsMarked, assessment.totalStudents)
                                                 : 0;
@@ -406,7 +406,7 @@ export default function CourseOverview({
                                                         <div>
                                                             <p className="font-medium">{assessment.title}</p>
                                                             <p className="text-sm text-muted-foreground">
-                                                                {assessment.totalQuestions} questions
+                                                                {assessment.totalQuestions} questions • {assessment.totalStudents} submissions
                                                             </p>
                                                         </div>
                                                     </td>
@@ -452,6 +452,18 @@ export default function CourseOverview({
                                                             {assessment.averageScore > 0 ? `${assessment.averageScore.toFixed(1)}%` : 'N/A'}
                                                         </span>
                                                     </td>
+                                                    <td className="p-3">
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className="font-medium">
+                                                                {assessment.queryCount || 0}
+                                                            </span>
+                                                            {assessment.queryCount > 0 && (
+                                                                <span className="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">
+                                                                    needs review
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
@@ -466,15 +478,6 @@ export default function CourseOverview({
                                 </div>
                             </div>
                         )}
-                    </div>
-
-                    {/* Query Management Section */}
-                    <div className="flex-1 min-h-0">
-                        <QueryManagement 
-                            courseId={course.id} 
-                            isMobile={isMobile}
-                            isTablet={isTablet}
-                        />
                     </div>
                 </div>
             )}

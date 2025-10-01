@@ -25,7 +25,7 @@ from app.models.assessment import Assessment
 from app.models.user import User
 from app.dependencies import get_db, get_current_user
 from app.core.config import settings
-from app.core.security import has_course_role
+from app.core.security import can_manage_assessments
 
 router = APIRouter(prefix="/question-results", tags=["Question Results"])
 
@@ -39,10 +39,55 @@ def validate_marker_access(db: Session, user: User, assessment_id: UUID):
         raise HTTPException(status_code=404, detail="Assessment not found")
 
     course_id = assessment.course_id
-    if not has_course_role(user, course_id, "teacher", "ta"):
+    if not can_manage_assessments(user, course_id):
         raise HTTPException(
             status_code=403, detail="Only teachers or TAs for this course can access"
         )
+
+
+@router.post("/update-mark", response_model=QuestionResultOut)
+def update_mark(
+    assessment_id: UUID = Form(...),
+    student_id: UUID = Form(...),
+    question_id: UUID = Form(...),
+    mark: float = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update only the mark for a question result."""
+    validate_marker_access(db, current_user, assessment_id)
+
+    question_result = (
+        db.query(QuestionResult)
+        .filter_by(
+            assessment_id=assessment_id,
+            student_id=student_id,
+            question_id=question_id,
+        )
+        .first()
+    )
+
+    if question_result:
+        # Update existing result
+        question_result.mark = mark
+        question_result.updated_at = datetime.now(timezone.utc)
+    else:
+        # Create new result with just the mark
+        question_result = QuestionResult(
+            id=uuid4(),
+            assessment_id=assessment_id,
+            student_id=student_id,
+            question_id=question_id,
+            marker_id=current_user.id,
+            mark=mark,
+            comment="",  # Empty comment for mark-only updates
+            annotation_file_path=None,
+        )
+    
+    db.add(question_result)
+    db.commit()
+    db.refresh(question_result)
+    return question_result
 
 
 @router.post("/upload-annotation", response_model=QuestionResultOut)

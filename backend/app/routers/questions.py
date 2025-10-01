@@ -7,7 +7,7 @@ from app.models.question import Question
 from app.models.assessment import Assessment
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.core.security import has_course_role, can_manage_assessments
+from app.core.security import can_access_course, can_manage_assessments
 
 router = APIRouter(prefix="/questions", tags=["Questions"])
 
@@ -50,9 +50,7 @@ def get_question(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
 
-    if not has_course_role(
-        current_user, assessment.course_id, "teacher", "ta", "student"
-    ):
+    if not can_access_course(current_user, assessment.course_id):
         raise HTTPException(status_code=403, detail="Not authorized to view question")
 
     return question

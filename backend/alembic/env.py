@@ -25,16 +25,18 @@ if config.config_file_name is not None:
 
 # Import all your models here so Alembic can see them for autogenerate
 # These imports are necessary for Alembic to detect model changes
-from app.models import (  # noqa: F401
-    user,
-    course,
-    role,
-    user_course_role,
-    assessment,
-    question,
-    question_result,
-    uploaded_file
-)
+# from app.models import (  # noqa: F401
+#     user,
+#     course,
+#     primary_role,
+#     course_role,
+#     user_course_role,
+#     assessment,
+#     question,
+#     question_result,
+#     uploaded_file,
+#     mark_query
+# )
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -42,12 +44,6 @@ target_metadata = Base.metadata
 
 # Set the database URL from our settings
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
-
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

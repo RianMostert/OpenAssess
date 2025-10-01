@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from app.models.primary_role import PrimaryRole
-from app.models.course_role import CourseRole
 
 
 def get_all_roles(db: Session):

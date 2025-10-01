@@ -1,17 +1,16 @@
 from sqlalchemy.orm import Session
 from app.models.user_course_role import UserCourseRole
-from app.models.primary_role import PrimaryRole
 from app.models.course_role import CourseRole
 from app.models.course import Course
 from app.models.user import User
 from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
 
 def assign_role_to_user(db: Session, user_id, course_id, role_name: str):
-    role = db.query(PrimaryRole).filter(PrimaryRole.name == role_name).first()
+    role = db.query(CourseRole).filter(CourseRole.name == role_name).first()
     if not role:
-        raise HTTPException(status_code=400, detail=f"Role '{role_name}' not found.")
+        raise HTTPException(status_code=400, detail=f"Course role '{role_name}' not found.")
 
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
@@ -22,7 +21,7 @@ def assign_role_to_user(db: Session, user_id, course_id, role_name: str):
         raise HTTPException(status_code=404, detail="User not found.")
 
     user_course_role = UserCourseRole(
-        user_id=user_id, course_id=course_id, role_id=role.id
+        user_id=user_id, course_id=course_id, course_role_id=role.id
     )
 
     db.add(user_course_role)
@@ -49,16 +48,16 @@ def get_user_roles_in_course(db: Session, user_id, course_id):
 
 
 def remove_user_role(db: Session, user_id, course_id, role_name: str):
-    role = db.query(PrimaryRole).filter(PrimaryRole.name == role_name).first()
+    role = db.query(CourseRole).filter(CourseRole.name == role_name).first()
     if not role:
-        raise HTTPException(status_code=400, detail=f"Role '{role_name}' not found.")
+        raise HTTPException(status_code=400, detail=f"Course role '{role_name}' not found.")
 
     entry = (
         db.query(UserCourseRole)
         .filter(
             UserCourseRole.user_id == user_id,
             UserCourseRole.course_id == course_id,
-            UserCourseRole.role_id == role.id,
+            UserCourseRole.course_role_id == role.id,
         )
         .first()
     )

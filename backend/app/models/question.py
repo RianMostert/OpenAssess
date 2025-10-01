@@ -43,7 +43,7 @@ class Question(Base):
         "QuestionResult", back_populates="question", cascade="all, delete-orphan"
     )
     mark_queries = relationship(
-        "MarkQuery", back_populates="question", cascade="all, delete-orphan"
+        "MarkQuery", back_populates="question"
     )
 
     __table_args__ = (
