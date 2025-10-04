@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
-import { Assessment, Question } from '@/types/course';
+import { Assessment, Question, GradingMode, QuestionWithResult, StudentAllResults, UploadedAnswer } from '@/types/course';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import PdfAnnotatorBar from '@dashboard/lecturer/course/components/PdfAnnotatorBar';
 import AnnotationLayer, { AnnotationLayerProps } from '@dashboard/lecturer/course/components/AnnotationLayer';
+import QuestionOverlay from './QuestionOverlay';
 import React from 'react';
 import { 
     percentageToPixels, 
@@ -17,41 +18,75 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     import.meta.url
 ).toString();
 
-interface UploadedAnswer {
-    id: string;
-    student_id: string;
-    student_name?: string;
-    answer_sheet_file_path: string;
-}
-
 interface GradingPdfViewerProps {
     assessment: Assessment;
     question: Question | null;
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
+    gradingMode: GradingMode;
+    currentStudentIndex?: number;
+    onStudentIndexChange?: (index: number) => void;
+    studentAllResults?: StudentAllResults | null;
+    onStudentAllResultsChange?: (results: StudentAllResults | null) => void;
+    onRefreshStudentData?: () => void;
 }
 
 type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
-export default function GradingPdfViewer({ assessment, question, pageContainerRef }: GradingPdfViewerProps) {
+export default function GradingPdfViewer({ 
+    assessment, 
+    question, 
+    pageContainerRef, 
+    gradingMode,
+    currentStudentIndex: propCurrentIndex,
+    onStudentIndexChange,
+    studentAllResults: propStudentAllResults,
+    onStudentAllResultsChange,
+    onRefreshStudentData
+}: GradingPdfViewerProps) {
     const [answers, setAnswers] = useState<UploadedAnswer[]>([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [localCurrentIndex, setLocalCurrentIndex] = useState(0);
+    
+    // Always use shared state when available (both modes)
+    const currentIndex = propCurrentIndex ?? localCurrentIndex;
+    const updateCurrentIndex = (newIndex: number | ((prev: number) => number)) => {
+        if (onStudentIndexChange) {
+            // Use shared state management when available (both modes)
+            const nextIndex = typeof newIndex === 'function' ? newIndex(currentIndex) : newIndex;
+            onStudentIndexChange(nextIndex);
+        } else {
+            // Fallback to local state
+            setLocalCurrentIndex(newIndex);
+        }
+    };
+        
     const [pdfUrl, setPdfUrl] = useState<string | null>(null);
     const [containerWidth, setContainerWidth] = useState<number | null>(null);
     const [numPages, setNumPages] = useState<number | null>(null);
     const [pdfReady, setPdfReady] = useState(false);
     const [selectedMark, setSelectedMark] = useState<number | null>(null);
-    const [gradingError, setGradingError] = useState<string | null>(null);
     const [annotationsByPage, setAnnotationsByPage] = useState<Record<string, AnnotationLayerProps['annotations']>>({});
     const [tool, setTool] = useState<Tool | null>(null);
     const [renderedPage, setRenderedPage] = useState<number | null>(null);
-    const [questionResultIdMap, setQuestionResultIdMap] = useState<Record<string, string>>({});
-    const [isResizing, setIsResizing] = useState(false); // Track if currently resizing
+    const [isResizing, setIsResizing] = useState(false);
     const [pdfVersion, setPdfVersion] = useState(0); // Force re-render
+
+    // New state for student-by-student mode - use shared state when available
+    const studentAllResults = gradingMode === 'student-by-student' ? propStudentAllResults : null;
+    const setStudentAllResults = onStudentAllResultsChange || (() => {});
+    const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+    const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set());
 
     const currentAnswer = answers[currentIndex] || null;
     const highlightRef = useRef<HTMLDivElement>(null);
     const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Helper function to clean up PDF URL
+    const cleanupPdfUrl = (url: string | null) => {
+        if (url) {
+            URL.revokeObjectURL(url);
+        }
+    };
 
     // Helper function to create a unique key for annotations per student per page
     const getAnnotationKey = (studentId: string, pageNumber: number) => {
@@ -128,6 +163,9 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
     useEffect(() => {
         let cancelled = false;
 
+        // Only run for question-by-question mode
+        if (gradingMode !== 'question-by-question') return;
+
         setSelectedMark(null);
         setPdfUrl(null);
         setPdfReady(false);
@@ -151,17 +189,10 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
                 if (resultRes.ok) {
                     const resultData = await resultRes.json();
-                    const resultId = resultData.id;
-
-                    // Cache resultId by student
-                    setQuestionResultIdMap((prev) => ({
-                        ...prev,
-                        [currentAnswer.student_id]: resultId,
-                    }));
 
                     // Fetch annotations
                     const annotationRes = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultId}/annotation?ts=${Date.now()}`
+                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultData.id}/annotation?ts=${Date.now()}`
                     );
 
                     if (annotationRes.ok) {
@@ -176,6 +207,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                 [annotationKey]: annotationsJson,
                             }));
                             setSelectedMark(resultData.mark ?? null);
+                            console.log('Question-by-question mark loaded:', resultData.mark); // Debug log
                         }
                     } else {
                         if (!cancelled) {
@@ -186,6 +218,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                 [annotationKey]: { page: question.page_number, lines: [], texts: [], stickyNotes: [] },
                             }));
                             setSelectedMark(resultData.mark ?? null);
+                            console.log('Question-by-question mark loaded (no annotations):', resultData.mark); // Debug log
                         }
                     }
                 }
@@ -200,31 +233,121 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         return () => {
             cancelled = true;
             // Clean up PDF URL when switching students
-            if (pdfUrl) {
-                URL.revokeObjectURL(pdfUrl);
+            cleanupPdfUrl(pdfUrl);
+        };
+    }, [currentAnswer?.id, question?.id, assessment.id, gradingMode]);
+
+    // New useEffect for student-by-student mode data loading
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadStudentAllResults = async () => {
+            if (gradingMode !== 'student-by-student' || !currentAnswer) return;
+
+            try {
+                // Load PDF
+                const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${currentAnswer.id}/answer-sheet`);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                if (!cancelled) setPdfUrl(url);
+
+                // Load all question results for this student
+                const resultsRes = await fetchWithAuth(
+                    `${process.env.NEXT_PUBLIC_API_URL}/question-results/student/${currentAnswer.student_id}/assessment/${assessment.id}/all-results`
+                );
+
+                if (resultsRes.ok) {
+                    const studentData: StudentAllResults = await resultsRes.json();
+                    if (!cancelled) {
+                        console.log('Fresh student data loaded:', studentData); // Debug log
+                        if (setStudentAllResults) {
+                            setStudentAllResults(studentData);
+                        }
+                        
+                        // Load all annotations for all questions
+                        const allAnnotations: Record<string, AnnotationLayerProps['annotations']> = {};
+                        
+                        for (const questionData of studentData.questions) {
+                            if (questionData.annotation) {
+                                const annotationKey = getAnnotationKey(currentAnswer.student_id, questionData.page_number);
+                                allAnnotations[annotationKey] = questionData.annotation;
+                            }
+                        }
+                        
+                        setAnnotationsByPage(allAnnotations);
+                    }
+                } else {
+                    console.error('Failed to fetch student results');
+                    if (!cancelled && setStudentAllResults) {
+                        setStudentAllResults(null);
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading student data:', err);
+                if (!cancelled) setPdfUrl(null);
             }
         };
-    }, [currentAnswer?.id, question?.id, assessment.id]);
+
+        if (gradingMode === 'student-by-student') {
+            // Clear all previous data to prevent stale state
+            setSelectedMark(null); // Clear question-by-question state
+            setPdfUrl(null);
+            setPdfReady(false);
+            setRenderedPages(new Set());
+            setAnnotationsByPage({});
+            
+            // Only clear student data if we're managing it locally
+            if (setStudentAllResults && !propStudentAllResults) {
+                setStudentAllResults(null); // Important: clear stale data immediately
+            }
+            
+            loadStudentAllResults();
+        } else if (gradingMode === 'question-by-question') {
+            // Clear student-by-student state when switching to question-by-question
+            setRenderedPages(new Set());
+            if (setStudentAllResults && !propStudentAllResults) {
+                setStudentAllResults(null);
+            }
+        }
+
+        return () => {
+            cancelled = true;
+            if (gradingMode === 'student-by-student') {
+                cleanupPdfUrl(pdfUrl);
+            }
+        };
+    }, [currentAnswer?.id, assessment.id, gradingMode]);
 
 
-    const saveAnnotations = async () => {
-        if (!currentAnswer || !question) return;
+    const saveAnnotations = async (questionId?: string, pageNumber?: number) => {
+        if (!currentAnswer) return;
 
-        const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+        // For question-by-question mode, use current question
+        // For student-by-student mode, use provided questionId and pageNumber
+        const finalQuestionId = questionId || question?.id;
+        const finalPageNumber = pageNumber || question?.page_number;
+        
+        if (!finalQuestionId || !finalPageNumber) return;
+
+        const annotationKey = getAnnotationKey(currentAnswer.student_id, finalPageNumber);
         const annotations = annotationsByPage[annotationKey] ?? { lines: [], texts: [], stickyNotes: [] };
 
         // Ensure the page number is included in the annotation data
         const annotationsWithPage = {
             ...annotations,
-            page: question.page_number
+            page: finalPageNumber
         };
 
         const blob = new Blob([JSON.stringify(annotationsWithPage)], { type: 'application/json' });
         const formData = new FormData();
         formData.append('assessment_id', assessment.id);
-        formData.append('question_id', question.id);
+        formData.append('question_id', finalQuestionId);
         formData.append('student_id', currentAnswer.student_id);
-        formData.append('mark', (selectedMark ?? 0).toString());
+        
+        // IMPORTANT: Don't send mark when saving annotations only
+        // The mark should only be updated through explicit mark update functions
+        formData.append('mark', '0'); // Send 0 as placeholder - backend should ignore this
+        formData.append('annotation_only', 'true'); // Flag to indicate annotation-only save
         formData.append('file', blob, 'annotations.json');
 
         try {
@@ -232,7 +355,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 method: 'POST',
                 body: formData,
             });
-            console.log('Annotations saved automatically');
+            console.log('Annotations saved (mark unchanged)');
         } catch (err) {
             console.error('Failed to save annotations', err);
         }
@@ -240,7 +363,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
 
     // Auto-save annotations whenever they change
     useEffect(() => {
-        if (currentAnswer && question) {
+        if (gradingMode === 'question-by-question' && currentAnswer && question) {
             const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
             if (annotationsByPage[annotationKey]) {
                 // Clear existing timeout
@@ -259,8 +382,33 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                     }
                 };
             }
+        } else if (gradingMode === 'student-by-student' && currentAnswer && studentAllResults) {
+            // In student mode, we need to save annotations for all modified pages
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
+            
+            saveTimeoutRef.current = setTimeout(() => {
+                // Save annotations for all pages that have been modified
+                const promises: Promise<void>[] = [];
+                
+                studentAllResults.questions.forEach(questionData => {
+                    const annotationKey = getAnnotationKey(currentAnswer.student_id, questionData.page_number);
+                    if (annotationsByPage[annotationKey]) {
+                        promises.push(saveAnnotations(questionData.id, questionData.page_number));
+                    }
+                });
+                
+                Promise.all(promises).catch(err => console.error('Failed to save some student mode annotations', err));
+            }, 1000);
+
+            return () => {
+                if (saveTimeoutRef.current) {
+                    clearTimeout(saveTimeoutRef.current);
+                }
+            };
         }
-    }, [annotationsByPage, currentAnswer?.id, question?.id]);
+    }, [annotationsByPage, currentAnswer?.id, question?.id, gradingMode, studentAllResults]);
 
     // Cleanup effect to save any pending changes on unmount or student change
     useEffect(() => {
@@ -287,7 +435,8 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                     formData.append('assessment_id', assessment.id);
                     formData.append('question_id', question.id);
                     formData.append('student_id', currentAnswer.student_id);
-                    formData.append('mark', (selectedMark ?? 0).toString());
+                    formData.append('mark', '0'); // Don't update marks in cleanup
+                    formData.append('annotation_only', 'true'); // Only save annotations
                     formData.append('file', blob, 'annotations.json');
 
                     // Note: This will be a fire-and-forget save since we can't await in cleanup
@@ -298,14 +447,14 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                 }
             }
         };
-    }, [currentAnswer?.id, question?.id, annotationsByPage, selectedMark, assessment.id]);
+    }, [currentAnswer?.id, question?.id, annotationsByPage, assessment.id]);
 
     const goToNext = async () => {
-        setCurrentIndex((i) => Math.min(i + 1, answers.length - 1));
+        updateCurrentIndex((i: number) => Math.min(i + 1, answers.length - 1));
     };
 
     const goToPrevious = async () => {
-        setCurrentIndex((i) => Math.max(i - 1, 0));
+        updateCurrentIndex((i: number) => Math.max(i - 1, 0));
     };
 
     const handleGrade = async (mark: number) => {
@@ -332,6 +481,59 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         } catch (err) {
             console.error('Failed to save mark', err);
         }
+    };
+
+    // New functions for student-by-student mode
+    const handleStudentModeMarkChange = async (questionId: string, mark: number) => {
+        if (!currentAnswer || !studentAllResults) return;
+
+        // Find the question
+        const questionData = studentAllResults.questions.find(q => q.id === questionId);
+        if (!questionData) {
+            console.error('Question not found:', questionId);
+            return;
+        }
+
+        console.log('Updating mark for question:', questionId, 'mark:', mark); // Debug log
+
+        const formData = new FormData();
+        formData.append('assessment_id', assessment.id);
+        formData.append('question_id', questionId);
+        formData.append('student_id', currentAnswer.student_id);
+        formData.append('mark', mark.toString());
+
+        try {
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/update-mark`, {
+                method: 'POST',
+                body: formData,
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to update mark: ${response.status}`);
+            }
+            
+            // Update local state optimistically
+            if (studentAllResults && setStudentAllResults) {
+                const updated = {
+                    ...studentAllResults,
+                    questions: studentAllResults.questions.map(q => 
+                        q.id === questionId ? { ...q, mark } : q
+                    )
+                };
+                console.log('Updated shared state:', updated); // Debug log
+                setStudentAllResults(updated);
+            }
+            
+            console.log('Student mode mark saved successfully:', mark);
+        } catch (err) {
+            console.error('Failed to save mark in student mode', err);
+            // TODO: Show user-friendly error message
+        }
+    };
+
+    const getQuestionsOnPage = (pageNumber: number): QuestionWithResult[] => {
+        if (!studentAllResults) return [];
+        return studentAllResults.questions.filter(q => q.page_number === pageNumber);
     };
 
 
@@ -376,8 +578,40 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
         }
     }, [pdfReady, renderedPage, question?.id, currentAnswer?.id, isResizing]);
 
-    if (!question) {
+    // Keyboard shortcuts for navigation
+    useEffect(() => {
+        const handleKeyPress = (e: KeyboardEvent) => {
+            // Only handle shortcuts when not typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+                return;
+            }
+
+            switch (e.key) {
+                case 'ArrowLeft':
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        goToPrevious();
+                    }
+                    break;
+                case 'ArrowRight':
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        goToNext();
+                    }
+                    break;
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyPress);
+        return () => document.removeEventListener('keydown', handleKeyPress);
+    }, [currentIndex, answers.length]);
+
+    if (gradingMode === 'question-by-question' && !question) {
         return <p className="text-muted-foreground p-4">No question selected.</p>;
+    }
+
+    if (gradingMode === 'student-by-student' && !currentAnswer) {
+        return <p className="text-muted-foreground p-4">No student selected.</p>;
     }
 
     return (
@@ -410,10 +644,10 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                 setPdfReady(false);
                             }}
                         >
-                            {pdfReady && (
+                            {pdfReady && gradingMode === 'question-by-question' && question && (
                                 <div className="relative" id={`page-${question.page_number}`}>
                                     <Page
-                                        key={`page-${question.page_number}-${containerWidth}-${pdfVersion}`} // Force re-render on width/version change
+                                        key={`page-${question.page_number}-${containerWidth}-${pdfVersion}`}
                                         pageNumber={question.page_number}
                                         width={containerWidth ? Math.max(containerWidth - 32, 400) : 500}
                                         renderTextLayer={false}
@@ -425,11 +659,11 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                     />
                                     {renderedPage === question.page_number && !isResizing && (
                                         <AnnotationLayer
-                                            key={`${currentAnswer.id}-${question.id}-${question.page_number}-${pdfVersion}`}
+                                            key={`${currentAnswer?.id}-${question.id}-${question.page_number}-${pdfVersion}`}
                                             page={question.page_number}
-                                            annotations={annotationsByPage[getAnnotationKey(currentAnswer.student_id, question.page_number)] ?? { lines: [], texts: [], stickyNotes: [] }}
+                                            annotations={annotationsByPage[getAnnotationKey(currentAnswer?.student_id || '', question.page_number)] ?? { lines: [], texts: [], stickyNotes: [] }}
                                             setAnnotations={(data) => {
-                                                const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+                                                const annotationKey = getAnnotationKey(currentAnswer?.student_id || '', question.page_number);
                                                 setAnnotationsByPage((prev) => ({
                                                     ...prev,
                                                     [annotationKey]: data,
@@ -440,28 +674,16 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                             rendered={renderedPage === question.page_number}
                                         />
                                     )}
+                                    {/* Question highlight for question-by-question mode */}
                                     {!isResizing && (() => {
-                                        // Convert percentage coordinates to pixels for display
-                                        // Use the actual PDF page element for consistency with mapping
                                         const pdfPageElement = document.querySelector(`#page-${question.page_number} .react-pdf__Page`);
-                                        if (!pdfPageElement) {
-                                            console.warn(`Could not find PDF page element for page ${question.page_number}`);
-                                            return null;
-                                        }
+                                        if (!pdfPageElement) return null;
 
                                         const pageRect = pdfPageElement.getBoundingClientRect();
-                                        const pageSize = {
-                                            width: pageRect.width,
-                                            height: pageRect.height
-                                        };
-
+                                        const pageSize = { width: pageRect.width, height: pageRect.height };
                                         const percentageCoords: PercentageCoordinates = {
-                                            x: question.x,
-                                            y: question.y,
-                                            width: question.width,
-                                            height: question.height,
+                                            x: question.x, y: question.y, width: question.width, height: question.height,
                                         };
-
                                         const pixelCoords = percentageToPixels(percentageCoords, pageSize);
 
                                         return (
@@ -471,11 +693,8 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                                     key={`highlight-${question.id}-${pdfVersion}`}
                                                     className="absolute border-2 border-blue-500 pointer-events-none"
                                                     style={{
-                                                        top: pixelCoords.y,
-                                                        left: pixelCoords.x,
-                                                        width: pixelCoords.width,
-                                                        height: pixelCoords.height,
-                                                        zIndex: 10,
+                                                        top: pixelCoords.y, left: pixelCoords.x,
+                                                        width: pixelCoords.width, height: pixelCoords.height, zIndex: 10,
                                                     }}
                                                 />
                                                 {question.max_marks !== undefined && (
@@ -484,8 +703,7 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                                         className="absolute right-0 flex flex-col pr-2"
                                                         style={{
                                                             top: pixelCoords.y + pixelCoords.height / 2,
-                                                            transform: 'translateY(-50%)',
-                                                            zIndex: 15,
+                                                            transform: 'translateY(-50%)', zIndex: 15,
                                                         }}
                                                     >
                                                         {Array.from({
@@ -512,6 +730,70 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                                     })()}
                                 </div>
                             )}
+
+                            {/* Student-by-student mode: Render all pages with question overlays */}
+                            {pdfReady && gradingMode === 'student-by-student' && numPages && (
+                                <div className="space-y-8">
+                                    {Array.from(new Array(numPages), (el, index) => {
+                                        const pageNumber = index + 1;
+                                        const questionsOnThisPage = getQuestionsOnPage(pageNumber);
+                                        
+                                        return (
+                                            <div key={`page-${pageNumber}`} className="relative" id={`page-${pageNumber}`}>
+                                                <Page
+                                                    key={`page-${pageNumber}-${containerWidth}-${pdfVersion}`}
+                                                    pageNumber={pageNumber}
+                                                    width={containerWidth ? Math.max(containerWidth - 32, 400) : 500}
+                                                    renderTextLayer={false}
+                                                    renderAnnotationLayer={false}
+                                                    onRenderSuccess={() => {
+                                                        setRenderedPages(prev => new Set([...prev, pageNumber]));
+                                                    }}
+                                                />
+                                                
+                                                {/* Annotation Layer for this page */}
+                                                {renderedPages.has(pageNumber) && !isResizing && (
+                                                    <AnnotationLayer
+                                                        key={`${currentAnswer?.id}-${pageNumber}-${pdfVersion}`}
+                                                        page={pageNumber}
+                                                        annotations={annotationsByPage[getAnnotationKey(currentAnswer?.student_id || '', pageNumber)] ?? { lines: [], texts: [], stickyNotes: [] }}
+                                                        setAnnotations={(data) => {
+                                                            const annotationKey = getAnnotationKey(currentAnswer?.student_id || '', pageNumber);
+                                                            setAnnotationsByPage((prev) => ({
+                                                                ...prev,
+                                                                [annotationKey]: data,
+                                                            }));
+                                                        }}
+                                                        tool={tool}
+                                                        containerRef={pageContainerRef}
+                                                        rendered={renderedPages.has(pageNumber)}
+                                                    />
+                                                )}
+
+                                                {/* Question overlays for this page */}
+                                                {renderedPages.has(pageNumber) && !isResizing && questionsOnThisPage.map(questionData => {
+                                                    const pdfPageElement = document.querySelector(`#page-${pageNumber} .react-pdf__Page`);
+                                                    if (!pdfPageElement) return null;
+
+                                                    const pageRect = pdfPageElement.getBoundingClientRect();
+                                                    
+                                                    return (
+                                                        <QuestionOverlay
+                                                            key={`overlay-${questionData.id}-${pageNumber}`}
+                                                            question={questionData}
+                                                            onMarkChange={handleStudentModeMarkChange}
+                                                            pageWidth={pageRect.width}
+                                                            pageHeight={pageRect.height}
+                                                            isSelected={selectedQuestionId === questionData.id}
+                                                            onSelect={() => setSelectedQuestionId(questionData.id)}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </Document>
                     </div>
 
@@ -525,6 +807,11 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                         </Button>
                         <p className="text-sm text-muted-foreground">
                             Student {currentIndex + 1} of {answers.length}
+                            {gradingMode === 'student-by-student' && currentAnswer && (
+                                <span className="block text-xs">
+                                    {currentAnswer.student_name || `Student ${currentAnswer.student_id}`}
+                                </span>
+                            )}
                         </p>
                         <Button 
                             onClick={goToNext} 
@@ -536,7 +823,12 @@ export default function GradingPdfViewer({ assessment, question, pageContainerRe
                     </div>
                 </>
             ) : (
-                <p className="text-sm text-muted-foreground">Loading answer sheet PDF...</p>
+                <p className="text-sm text-muted-foreground">
+                    {gradingMode === 'question-by-question' 
+                        ? 'Loading answer sheet PDF...' 
+                        : 'Loading student answer sheet...'
+                    }
+                </p>
             )}
         </div>
     );

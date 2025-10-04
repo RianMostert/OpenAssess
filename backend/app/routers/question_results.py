@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from fastapi import (
     APIRouter,
@@ -13,7 +13,6 @@ from sqlalchemy.orm import Session
 from uuid import UUID, uuid4
 from pathlib import Path
 import shutil
-from datetime import timezone
 
 from app.schemas.question_result import (
     QuestionResultCreate,
@@ -22,6 +21,7 @@ from app.schemas.question_result import (
 )
 from app.models.question_result import QuestionResult
 from app.models.assessment import Assessment
+from app.models.question import Question
 from app.models.user import User
 from app.dependencies import get_db, get_current_user
 from app.core.config import settings
@@ -97,6 +97,7 @@ def upload_annotation(
     question_id: UUID = Form(...),
     mark: float = Form(...),
     comment: str = Form(""),
+    annotation_only: str = Form("false"),  # New flag to indicate annotation-only save
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -137,20 +138,36 @@ def upload_annotation(
         shutil.copyfileobj(file.file, buffer)
 
     if question_result:
-        question_result.mark = mark
-        question_result.comment = comment
+        # Only update mark and comment if this is not an annotation-only save
+        if annotation_only.lower() != "true":
+            question_result.mark = mark
+            question_result.comment = comment
         question_result.annotation_file_path = str(file_path)
+        question_result.updated_at = datetime.now(timezone.utc)
     else:
-        question_result = QuestionResult(
-            id=question_result_id,
-            assessment_id=assessment_id,
-            student_id=student_id,
-            question_id=question_id,
-            marker_id=current_user.id,
-            mark=mark,
-            comment=comment,
-            annotation_file_path=str(file_path),
-        )
+        # Create new record - for annotation-only saves, don't set mark
+        if annotation_only.lower() == "true":
+            question_result = QuestionResult(
+                id=question_result_id,
+                assessment_id=assessment_id,
+                student_id=student_id,
+                question_id=question_id,
+                marker_id=current_user.id,
+                mark=None,  # Don't set mark for annotation-only saves
+                comment="",
+                annotation_file_path=str(file_path),
+            )
+        else:
+            question_result = QuestionResult(
+                id=question_result_id,
+                assessment_id=assessment_id,
+                student_id=student_id,
+                question_id=question_id,
+                marker_id=current_user.id,
+                mark=mark,
+                comment=comment,
+                annotation_file_path=str(file_path),
+            )
     db.add(question_result)
 
     db.commit()
@@ -289,3 +306,79 @@ def delete_question_result(
     db.delete(result)
     db.commit()
     return {"message": "Question result deleted"}
+
+
+@router.get("/student/{student_id}/assessment/{assessment_id}/all-results")
+def get_student_all_question_results(
+    student_id: UUID,
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get all question results and annotations for a specific student in an assessment"""
+    validate_marker_access(db, current_user, assessment_id)
+    
+    # Get all questions for this assessment
+    questions = (
+        db.query(Question)
+        .filter(Question.assessment_id == assessment_id)
+        .order_by(Question.question_number)
+        .all()
+    )
+    
+    # Get all question results for this student and assessment
+    question_results = (
+        db.query(QuestionResult)
+        .filter(
+            QuestionResult.assessment_id == assessment_id,
+            QuestionResult.student_id == student_id
+        )
+        .all()
+    )
+    
+    # Create a map of question_id -> result for easy lookup
+    results_map = {qr.question_id: qr for qr in question_results}
+    
+    # Build response with all questions and their results/annotations
+    response = {
+        "student_id": str(student_id),
+        "assessment_id": str(assessment_id),
+        "questions": []
+    }
+    
+    for question in questions:
+        result = results_map.get(question.id)
+        
+        # Load annotation if it exists
+        annotation_data = None
+        if result and result.annotation_file_path:
+            try:
+                annotation_path = Path(result.annotation_file_path)
+                if annotation_path.exists():
+                    import json
+                    with open(annotation_path, 'r') as f:
+                        annotation_data = json.load(f)
+            except Exception as e:
+                print(f"Error loading annotation: {e}")
+        
+        question_data = {
+            "id": str(question.id),
+            "question_number": question.question_number,
+            "max_marks": question.max_marks,
+            "increment": question.increment,
+            "memo": question.memo,
+            "marking_note": question.marking_note,
+            "page_number": question.page_number,
+            "x": question.x,
+            "y": question.y,
+            "width": question.width,
+            "height": question.height,
+            "mark": result.mark if result else None,
+            "comment": result.comment if result else None,
+            "annotation": annotation_data,
+            "result_id": str(result.id) if result else None,
+            "updated_at": result.updated_at if result else None
+        }
+        response["questions"].append(question_data)
+    
+    return response
