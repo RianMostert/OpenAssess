@@ -37,6 +37,29 @@ def get_course_queries(
     return [_enrich_query_response(db, query) for query in queries]
 
 
+@router.get("/course/{course_id}/grouped")
+def get_course_queries_grouped(
+    course_id: UUID,
+    status: Optional[QueryStatus] = None,
+    assessment_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_lecturer_or_ta_access()),
+):
+    """Get queries grouped by batch for lecturer review (one entry per batch)"""
+    
+    # Convert status to list if provided
+    status_filter = [status.value] if status else ['pending', 'under_review']
+    
+    # Get grouped data
+    groups_data = crud_mark_query.get_triage_groups(db, course_id, status_filter)
+    
+    # Filter by assessment if provided
+    if assessment_id:
+        groups_data = [group for group in groups_data if group['assessment_id'] == assessment_id]
+    
+    return groups_data
+
+
 @router.get("/assessment/{assessment_id}", response_model=List[MarkQueryOut])
 def get_assessment_queries(
     assessment_id: UUID,
@@ -210,7 +233,7 @@ def get_triage_view(
 def bulk_update_status(
     update_request: BulkStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_lecturer_or_ta_access()),
+    current_user: User = Depends(get_current_user),
 ):
     """Bulk update status for multiple queries"""
     
@@ -246,7 +269,7 @@ def bulk_update_status(
 def get_batch_queries(
     batch_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_lecturer_or_ta_access()),
+    current_user: User = Depends(get_current_user),
 ):
     """Get all queries in a batch for workbench review"""
     
@@ -265,7 +288,7 @@ def get_batch_queries(
 def bulk_review_queries(
     review_request: BulkReviewSubmission,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_lecturer_or_ta_access()),
+    current_user: User = Depends(get_current_user),
 ):
     """Submit bulk review decisions for staging"""
     
@@ -304,7 +327,7 @@ def bulk_review_queries(
 def commit_grades_to_gradebook(
     commit_request: GradeCommitRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_lecturer_or_ta_access()),
+    current_user: User = Depends(get_current_user),
 ):
     """Commit approved mark changes to the gradebook (two-step workflow)"""
     

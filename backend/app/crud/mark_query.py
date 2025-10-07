@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from typing import List, Optional
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.models.mark_query import MarkQuery
 from app.models.assessment import Assessment
@@ -34,9 +34,19 @@ def create_mark_query_batch(db: Session, batch_query: MarkQueryBatchCreate, stud
     created_queries = []
     
     for item in batch_query.question_items:
-        # Check for existing pending query for this question (if question_id is provided)
-        if item.question_id and check_existing_pending_query(db, student_id, batch_query.assessment_id, item.question_id):
-            raise ValueError(f"You already have a pending query for question {item.question_id}")
+        # Allow multiple batches from the same student, but check for very recent pending queries
+        # to prevent accidental duplicates (e.g., double-clicking submit button)
+        if item.question_id:
+            recent_query = db.query(MarkQuery).filter(
+                MarkQuery.student_id == student_id,
+                MarkQuery.assessment_id == batch_query.assessment_id,
+                MarkQuery.question_id == item.question_id,
+                MarkQuery.status == 'pending',
+                MarkQuery.created_at > datetime.utcnow() - timedelta(minutes=5)  # Within last 5 minutes
+            ).first()
+            
+            if recent_query:
+                raise ValueError(f"You submitted a query for question {item.question_id} very recently. Please wait before submitting another.")
         
         db_query = MarkQuery(
             student_id=student_id,
@@ -333,5 +343,84 @@ def get_triage_groups(db: Session, course_id: UUID, status_filter: Optional[List
     
     # Sort by created_at
     groups.sort(key=lambda x: x['created_at'])
+    
+    return groups
+
+
+def get_student_queries_grouped(db: Session, student_id: UUID) -> List[dict]:
+    """Get student queries grouped by batch_id, showing one entry per batch"""
+    from sqlalchemy import func
+    
+    # Get batch groups first
+    batch_groups = db.query(
+        MarkQuery.batch_id,
+        MarkQuery.assessment_id,
+        func.count(MarkQuery.id).label('question_count'),
+        func.array_agg(MarkQuery.query_type).label('query_types'),
+        func.string_agg(MarkQuery.requested_change, ' | ').label('combined_requests'),
+        func.min(MarkQuery.created_at).label('created_at'),
+        func.array_agg(MarkQuery.status).label('statuses'),
+        func.array_agg(MarkQuery.id).label('query_ids')
+    ).filter(
+        MarkQuery.student_id == student_id,
+        MarkQuery.batch_id.isnot(None)
+    ).group_by(
+        MarkQuery.batch_id, MarkQuery.assessment_id
+    ).all()
+    
+    # Get individual queries (legacy single-question submissions)
+    individual_queries = db.query(MarkQuery).options(
+        joinedload(MarkQuery.assessment),
+        joinedload(MarkQuery.question)
+    ).filter(
+        MarkQuery.student_id == student_id,
+        MarkQuery.batch_id.is_(None)
+    ).all()
+    
+    # Convert to consistent format
+    groups = []
+    
+    # Add batch groups
+    for group in batch_groups:
+        # Get assessment info
+        assessment = db.query(Assessment).filter(Assessment.id == group.assessment_id).first()
+        
+        # Determine primary status (most urgent)
+        status_priority = {'pending': 1, 'under_review': 2, 'approved': 3, 'rejected': 4, 'resolved': 5}
+        primary_status = min(group.statuses, key=lambda x: status_priority.get(x, 6))
+        
+        groups.append({
+            'id': f"batch_{group.batch_id}",  # Unique identifier for frontend
+            'batch_id': group.batch_id,
+            'assessment_id': group.assessment_id,
+            'assessment_title': assessment.title if assessment else "Unknown",
+            'question_count': group.question_count,
+            'query_types': list(set(group.query_types)),  # Remove duplicates
+            'combined_requests': group.combined_requests,
+            'created_at': group.created_at,
+            'status': primary_status,
+            'query_ids': group.query_ids,
+            'is_batch': True
+        })
+    
+    # Add individual queries as single-item groups
+    for query in individual_queries:
+        groups.append({
+            'id': str(query.id),  # Use query ID for individual queries
+            'batch_id': None,
+            'assessment_id': query.assessment_id,
+            'assessment_title': query.assessment.title if query.assessment else "Unknown",
+            'question_count': 1,
+            'query_types': [query.query_type],
+            'combined_requests': query.requested_change,
+            'created_at': query.created_at,
+            'status': query.status,
+            'query_ids': [query.id],
+            'is_batch': False,
+            'question_number': query.question.question_number if query.question else None
+        })
+    
+    # Sort by created_at (newest first)
+    groups.sort(key=lambda x: x['created_at'], reverse=True)
     
     return groups

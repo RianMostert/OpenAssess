@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from uuid import UUID
 
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
@@ -106,6 +107,39 @@ def get_my_queries(
 ):
     """Get all queries for the current student"""
     queries = crud_mark_query.get_student_queries(db, current_user.id, skip, limit)
+    return [_enrich_query_response(db, query) for query in queries]
+
+
+@router.get("/my-queries-grouped")
+def get_my_queries_grouped(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get student queries grouped by batch_id"""
+    return crud_mark_query.get_student_queries_grouped(db, current_user.id)
+
+
+@router.get("/batch/{batch_id}", response_model=List[MarkQueryOut])
+def get_batch_queries(
+    batch_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get detailed information about all queries in a batch"""
+    # Convert string to UUID
+    try:
+        batch_uuid = UUID(batch_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid batch ID format")
+    
+    # Get all queries in the batch
+    queries = crud_mark_query.get_queries_by_batch(db, batch_uuid)
+    
+    # Ensure all queries belong to the current user
+    for query in queries:
+        if query.student_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
     return [_enrich_query_response(db, query) for query in queries]
 
 

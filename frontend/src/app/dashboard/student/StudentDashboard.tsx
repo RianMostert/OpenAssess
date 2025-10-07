@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import QueryModal from '@/app/dashboard/lecturer/course/components/QueryModal';
+import QueryHistoryModal from './components/QueryHistoryModal';
 
 interface StudentDashboardProps {
     isMobile?: boolean;
@@ -45,16 +46,18 @@ interface AssessmentWithCourse extends Assessment {
     course_code: string;
 }
 
-interface MarkQuery {
+interface QueryGroup {
     id: string;
+    batch_id?: string;
     assessment_id: string;
-    question_id?: string;
-    query_type: 'regrade' | 'clarification' | 'technical_issue';
-    status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'resolved';
-    requested_change: string;
-    reviewer_response?: string;
+    assessment_title: string;
+    question_count: number;
+    query_types: string[];
+    combined_requests: string;
     created_at: string;
-    assessment_title?: string;
+    status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'resolved';
+    query_ids: string[];
+    is_batch: boolean;
     question_number?: string;
 }
 
@@ -69,8 +72,9 @@ export default function StudentDashboard({
     const [assessmentsLoading, setAssessmentsLoading] = useState(false);
     
     // Query-related state
-    const [queries, setQueries] = useState<MarkQuery[]>([]);
+    const [queries, setQueries] = useState<QueryGroup[]>([]);
     const [queryModalOpen, setQueryModalOpen] = useState(false);
+    const [queryHistoryModalOpen, setQueryHistoryModalOpen] = useState(false);
     const [selectedAssessment, setSelectedAssessment] = useState<AssessmentWithCourse | null>(null);
 
     useEffect(() => {
@@ -180,12 +184,14 @@ export default function StudentDashboard({
 
     const fetchStudentQueries = async () => {
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/student-queries/my-queries`);
+            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/student-queries/my-queries-grouped`);
             if (response.ok) {
                 const queriesData = await response.json();
                 setQueries(queriesData);
+                console.log('Fetched queries:', queriesData); // Debug log
             } else {
-                console.error('Failed to fetch queries');
+                console.error('Failed to fetch queries, status:', response.status);
+                console.error('Response text:', await response.text());
             }
         } catch (error) {
             console.error('Error fetching queries:', error);
@@ -200,12 +206,20 @@ export default function StudentDashboard({
         }
     };
 
+    const handleViewQueryHistory = (assessmentId: string) => {
+        const assessment = assessments.find(a => a.assessment_id === assessmentId);
+        if (assessment) {
+            setSelectedAssessment(assessment);
+            setQueryHistoryModalOpen(true);
+        }
+    };
+
     const handleQuerySubmitted = () => {
         // Refresh queries after submission
         fetchStudentQueries();
     };
 
-    const getQueryStatusBadge = (status: MarkQuery['status']) => {
+    const getQueryStatusBadge = (status: QueryGroup['status']) => {
         const statusConfig = {
             pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
             under_review: { label: 'Under Review', className: 'bg-blue-100 text-blue-800' },
@@ -227,6 +241,10 @@ export default function StudentDashboard({
             q.assessment_id === assessmentId && 
             ['pending', 'under_review'].includes(q.status)
         );
+    };
+
+    const getQueryForAssessment = (assessmentId: string) => {
+        return queries.find(q => q.assessment_id === assessmentId);
     };
 
     const handleDownloadPdf = async (assessmentId: string) => {
@@ -433,16 +451,14 @@ export default function StudentDashboard({
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex flex-col space-y-2">
-                                                    <div className="flex space-x-2">
+                                                    <div className="flex space-x-2 items-center">
                                                         <button
-                                                            onClick={() => handleQueryMark(assessment.assessment_id)}
-                                                            disabled={hasActiveQuery(assessment.assessment_id)}
-                                                            className={`flex items-center space-x-1 ${
-                                                                hasActiveQuery(assessment.assessment_id)
-                                                                    ? 'text-gray-400 cursor-not-allowed'
-                                                                    : 'text-blue-600 hover:text-blue-900'
-                                                            }`}
-                                                            title={hasActiveQuery(assessment.assessment_id) ? "Query already submitted" : "Query this mark"}
+                                                            onClick={() => hasActiveQuery(assessment.assessment_id) 
+                                                                ? handleViewQueryHistory(assessment.assessment_id)
+                                                                : handleQueryMark(assessment.assessment_id)
+                                                            }
+                                                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-900"
+                                                            title={hasActiveQuery(assessment.assessment_id) ? "View queries" : "Create new query"}
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -462,15 +478,6 @@ export default function StudentDashboard({
                                                             </button>
                                                         )}
                                                     </div>
-                                                    {/* Show active queries */}
-                                                    {queries
-                                                        .filter(q => q.assessment_id === assessment.assessment_id)
-                                                        .map(query => (
-                                                            <div key={query.id} className="text-xs">
-                                                                {getQueryStatusBadge(query.status)}
-                                                            </div>
-                                                        ))
-                                                    }
                                                 </div>
                                             </td>
                                         </tr>
@@ -492,6 +499,29 @@ export default function StudentDashboard({
                         assessmentId={selectedAssessment.assessment_id}
                         assessmentTitle={selectedAssessment.title}
                         onQuerySubmitted={handleQuerySubmitted}
+                    />
+                )}
+
+                {/* Query History Modal */}
+                {selectedAssessment && (
+                    <QueryHistoryModal
+                        isOpen={queryHistoryModalOpen}
+                        onClose={() => {
+                            setQueryHistoryModalOpen(false);
+                            setSelectedAssessment(null);
+                        }}
+                        assessmentId={selectedAssessment.assessment_id}
+                        assessmentTitle={selectedAssessment.title}
+                        onCreateNewQuery={() => {
+                            console.log('Create new query clicked, selectedAssessment:', selectedAssessment);
+                            // Keep the selected assessment and switch modals
+                            setQueryHistoryModalOpen(false);
+                            // Small delay to ensure the history modal closes before opening the query modal
+                            setTimeout(() => {
+                                console.log('Opening query modal, selectedAssessment:', selectedAssessment);
+                                setQueryModalOpen(true);
+                            }, 100);
+                        }}
                     />
                 )}
             </div>

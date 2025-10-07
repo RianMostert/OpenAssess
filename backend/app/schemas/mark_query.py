@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from uuid import UUID
 from datetime import datetime
 from enum import Enum
@@ -58,8 +58,8 @@ class MarkQueryUpdate(BaseModel):
 
 class MarkQueryResponse(BaseModel):
     status: QueryStatus
-    reviewer_response: str = Field(..., min_length=1, max_length=1000)
-    new_mark: Optional[float] = None
+    reviewer_response: Optional[str] = Field(None, max_length=1000)
+    new_marks: Optional[Dict[str, float]] = None
 
 
 class MarkQueryOut(BaseModel):
@@ -122,7 +122,7 @@ class BulkQueryUpdate(BaseModel):
 # Bulk review for workbench
 class QueryReview(BaseModel):
     id: UUID
-    reviewer_response: str = Field(..., min_length=1, max_length=1000)
+    reviewer_response: Optional[str] = Field(None, max_length=1000)
     new_mark: Optional[float] = None
     status: QueryStatus
 
