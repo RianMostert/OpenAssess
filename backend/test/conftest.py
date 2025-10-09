@@ -7,7 +7,8 @@ from app.dependencies import get_db
 from fastapi.testclient import TestClient
 from app.main import app
 from app.models import user as user_model
-from app.models import role as role_model
+from app.models import primary_role as role_model
+from app.models import course_role as course_role_model
 from app.models import course as course_model
 from app.models import assessment as assessment_model
 from app.models import uploaded_file as uploaded_file_model
@@ -63,22 +64,9 @@ def client(db_session):
 
 @pytest.fixture(scope="session", autouse=True)
 def seed_roles(setup_database):
-    from sqlalchemy.dialects.postgresql import insert
-
-    with engine.begin() as conn:
-        stmt = (
-            insert(role_model.Role)
-            .values(
-                [
-                    {"name": "teacher"},
-                    {"name": "ta"},
-                    {"name": "student"},
-                ]
-            )
-            .on_conflict_do_nothing(index_elements=["name"])
-        )
-
-        conn.execute(stmt)
+    # Roles are already seeded from the database dump
+    # No need to insert them again
+    pass
 
 
 def auth_headers(user: user_model.User):
@@ -98,9 +86,9 @@ def admin_token(client, admin):
 
 @pytest.fixture
 def admin(db_session):
-    role = db_session.query(role_model.Role).filter_by(name="teacher").first()
+    role = db_session.query(role_model.PrimaryRole).filter_by(name="administrator").first()
     if not role:
-        role = role_model.Role(name="teacher")
+        role = role_model.PrimaryRole(name="administrator")
         db_session.add(role)
         db_session.flush()
 
@@ -121,9 +109,9 @@ def admin(db_session):
 
 @pytest.fixture
 def teacher(db_session):
-    role = db_session.query(role_model.Role).filter_by(name="teacher").first()
+    role = db_session.query(role_model.PrimaryRole).filter_by(name="staff").first()
     if not role:
-        role = role_model.Role(name="teacher")
+        role = role_model.PrimaryRole(name="staff")
         db_session.add(role)
         db_session.flush()
 
@@ -144,23 +132,15 @@ def teacher(db_session):
         id=uuid.uuid4(), title="Dummy Course", teacher_id=user.id, code="DUMMY101"
     )
     db_session.add(dummy_course)
-    db_session.flush()
-
-    dummy_link = user_course_role_model.UserCourseRole(
-        user_id=user.id,
-        course_id=dummy_course.id,
-        role_id=role.id,
-    )
-    db_session.add(dummy_link)
     db_session.commit()
     return user
 
 
 @pytest.fixture
 def student(db_session):
-    role = db_session.query(role_model.Role).filter_by(name="student").first()
+    role = db_session.query(role_model.PrimaryRole).filter_by(name="student").first()
     if not role:
-        role = role_model.Role(name="student")
+        role = role_model.PrimaryRole(name="student")
         db_session.add(role)
         db_session.flush()
 
@@ -181,9 +161,9 @@ def student(db_session):
 
 @pytest.fixture
 def marker(db_session, course):
-    role = db_session.query(role_model.Role).filter_by(name="ta").first()
+    role = db_session.query(role_model.PrimaryRole).filter_by(name="staff").first()
     if not role:
-        role = role_model.Role(name="ta")
+        role = role_model.PrimaryRole(name="staff")
         db_session.add(role)
         db_session.flush()
 
@@ -200,11 +180,16 @@ def marker(db_session, course):
     db_session.add(user)
     db_session.flush()
 
-    db_session.add(
-        user_course_role_model.UserCourseRole(
-            user_id=user.id, course_id=course.id, role_id=role.id
+    # Add convener course role for grading permissions  
+    convener_role = db_session.query(course_role_model.CourseRole).filter_by(name="convener").first()
+    if convener_role:
+        user_course_role = user_course_role_model.UserCourseRole(
+            user_id=user.id,
+            course_id=course.id,
+            course_role_id=convener_role.id,
         )
-    )
+        db_session.add(user_course_role)
+
     db_session.commit()
     return user
 
@@ -217,11 +202,14 @@ def course(db_session, teacher):
     db_session.add(course)
     db_session.flush()
 
-    role = db_session.query(role_model.Role).filter_by(name="teacher").first()
+    # Get the convener role dynamically
+    from app.models.course_role import CourseRole
+    convener_role = db_session.query(CourseRole).filter_by(name="convener").first()
+    
     user_course_role = user_course_role_model.UserCourseRole(
         user_id=teacher.id,
         course_id=course.id,
-        role_id=role.id,
+        course_role_id=convener_role.id,
     )
     db_session.add(user_course_role)
     db_session.commit()
@@ -290,4 +278,4 @@ def question_result(db_session, assessment, question, student, marker):
 
 @pytest.fixture
 def teacher_role_id(db_session):
-    return db_session.query(role_model.Role).filter_by(name="teacher").first().id
+    return db_session.query(role_model.PrimaryRole).filter_by(name="staff").first().id
