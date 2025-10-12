@@ -8,7 +8,9 @@
     "dev:network": "next dev -H 10.65.244.99 -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:a11y": "./test-a11y.sh",
+    "test:a11y:single": "pa11y --config .pa11yrc.js"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.8",
@@ -40,7 +42,10 @@
     "autoprefixer": "^10",
     "eslint": "^9",
     "eslint-config-next": "15.3.1",
+    "pa11y": "^9.0.1",
+    "pa11y-ci": "^4.0.1",
     "postcss": "^8",
+    "puppeteer": "^24.24.0",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.2.8",
