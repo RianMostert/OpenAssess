@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔍 Running accessibility tests..."
+echo "Running accessibility tests..."
 
 URLS=(
   "http://localhost:3000"
@@ -14,4 +14,4 @@ for url in "${URLS[@]}"; do
   echo ""
 done
 
-echo "✅ All tests completed"
+echo "All tests completed"
