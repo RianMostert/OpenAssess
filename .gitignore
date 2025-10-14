@@ -9,3 +9,5 @@
 reports/
 .github/
 K6_README.md
+playwright-report/
+test-results/
