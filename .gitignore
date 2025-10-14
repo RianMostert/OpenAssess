@@ -11,3 +11,6 @@ reports/
 K6_README.md
 playwright-report/
 test-results/
+!**/README.md
+*.md
+*.csv

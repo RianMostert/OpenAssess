@@ -59,6 +59,7 @@ def seed_users(db: Session) -> None:
             "first_name": "John",
             "last_name": "Smith",
             "email": "john.smith@example.com", 
+            "student_number": "12345676",
             "primary_role_id": 2,  # Staff
             "password": "staff123",
             "is_admin": False,
@@ -67,6 +68,7 @@ def seed_users(db: Session) -> None:
             "first_name": "Sarah",
             "last_name": "Johnson",
             "email": "sarah.johnson@example.com", 
+            "student_number": "12345677",
             "primary_role_id": 2,  # Staff
             "password": "staff123",
             "is_admin": False,

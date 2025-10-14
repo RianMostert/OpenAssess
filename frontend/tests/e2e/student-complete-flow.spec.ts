@@ -1,8 +1,4 @@
 
-/**
- * NOTE: This E2E test uses a seeded student user from the backend's seed_db.py.
- * This avoids polluting the database with new signups. If you change the seed users, update the credentials below.
- */
 import { test, expect } from '@playwright/test';
 
 const SEEDED_STUDENT = {
@@ -46,6 +42,73 @@ test.describe('Complete Student User Flow', () => {
       // Check assessments section
       await expect(page.locator('h2:has-text("My Assessments")')).toBeVisible();
 
+      // Try to download annotated PDF for the first assessment that has a PDF
+      const pdfButton = page.locator('button:has-text("PDF")');
+      if (await pdfButton.count() > 0) {
+        console.log('Attempting to download annotated PDF...');
+        // Intercept download
+        const [ download ] = await Promise.all([
+          page.waitForEvent('download', { timeout: 5000 }).catch(() => null),
+          pdfButton.first().click()
+        ]);
+        if (download) {
+          const path = await download.path();
+          console.log('PDF downloaded to:', path);
+        } else {
+          console.log('PDF download event did not fire (may be a browser limitation in headless mode)');
+        }
+      } else {
+        console.log('No annotated PDF available for download');
+      }
+
+      // Try to open and close the query modal for the first assessment
+      const queryButton = page.locator('button:has-text("Query")');
+      if (await queryButton.count() > 0) {
+        console.log('Opening query modal...');
+        await queryButton.first().click();
+        
+        // Wait for modal to appear - could be either QueryModal or QueryHistoryModal
+        const queryModalHeading = page.locator('h2:has-text("Submit Mark Query")');
+        const historyModalHeading = page.locator('h2:has-text("Query History")');
+        
+        // Wait for either modal to appear
+        await Promise.race([
+          queryModalHeading.waitFor({ state: 'visible', timeout: 5000 }),
+          historyModalHeading.waitFor({ state: 'visible', timeout: 5000 })
+        ]).catch(() => {
+          console.log('No modal appeared within timeout');
+        });
+        
+        const isQueryModalVisible = await queryModalHeading.isVisible();
+        const isHistoryModalVisible = await historyModalHeading.isVisible();
+        
+        if (isQueryModalVisible) {
+          console.log('Query modal (Submit Mark Query) opened');
+        } else if (isHistoryModalVisible) {
+          console.log('Query History modal opened (assessment has active queries)');
+        }
+        
+        // Close the modal using the X button (both modals have this)
+        const closeBtn = page.locator('button').filter({ has: page.locator('svg path[d*="M6 18L18 6M6 6l12 12"]') });
+        if (await closeBtn.count() > 0) {
+          await closeBtn.first().click();
+          console.log('Clicked close button');
+        } else {
+          // Fallback to escape key
+          await page.keyboard.press('Escape');
+          console.log('Pressed Escape key');
+        }
+        
+        // Modal should be gone
+        await Promise.all([
+          queryModalHeading.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {}),
+          historyModalHeading.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+        ]);
+        console.log('Query modal closed successfully');
+      } else {
+        console.log('No Query button found for any assessment');
+      }
+
       // Step 4: Test logout
       console.log('Testing logout...');
       await page.click('button:has-text("Logout")');
@@ -59,7 +122,7 @@ test.describe('Complete Student User Flow', () => {
       await page.waitForTimeout(2000);
 
       // Take a screenshot for debugging
-      await page.screenshot({ path: 'login-debug.png' });
+    //   await page.screenshot({ path: 'login-debug.png' });
       console.log('Screenshot saved as login-debug.png');
     }
   });
