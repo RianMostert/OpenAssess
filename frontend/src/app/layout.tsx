@@ -14,7 +14,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        {/* Allow user zooming to satisfy WCAG 2.1 1.4.10 (do not disable user scaling) */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className="antialiased">
         {children}

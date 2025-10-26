@@ -39,8 +39,8 @@ test.describe('Lecturer - Full Integration Workflow', () => {
     await page.goto('/');
     await expect(page).toHaveURL(/.*\/auth/);
     
-    // Wait for login form to be visible
-    await expect(page.locator('h2:has-text("Login")')).toBeVisible();
+  // Wait for login form to be visible (use role-based heading lookup)
+  await expect(page.getByRole('heading', { name: /Login/i })).toBeVisible();
     
     await page.fill('input[type="email"]', SEEDED_LECTURER.email);
     await page.fill('input[type="password"]', SEEDED_LECTURER.password);

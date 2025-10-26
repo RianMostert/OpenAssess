@@ -12,8 +12,8 @@ test.describe('Complete Student User Flow', () => {
     await page.goto('/');
     await expect(page).toHaveURL(/.*\/auth/);
 
-    // Step 2: Login with seeded student
-    await expect(page.locator('h2:has-text("Login")')).toBeVisible();
+  // Step 2: Login with seeded student
+  await expect(page.getByRole('heading', { name: /Login/i })).toBeVisible();
     await page.fill('input[type="email"]', SEEDED_STUDENT.email);
     await page.fill('input[type="password"]', SEEDED_STUDENT.password);
     await page.click('button[type="submit"]');
@@ -29,9 +29,9 @@ test.describe('Complete Student User Flow', () => {
       console.log('Login successful - on dashboard');
 
       // Verify student dashboard elements
-      await expect(page.locator('h1:has-text("Assessment Portal")')).toBeVisible({ timeout: 10000 });
-      await expect(page.locator('span.bg-blue-100:has-text("Student")')).toBeVisible();
-      await expect(page.locator('h1:has-text("Student Dashboard")')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Assessment Portal/i })).toBeVisible({ timeout: 10000 });
+  await expect(page.locator('span.bg-blue-100:has-text("Student")')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Student Dashboard/i })).toBeVisible();
 
       // Check dashboard stats
       await expect(page.locator('text="Total Courses"')).toBeVisible();
@@ -40,7 +40,7 @@ test.describe('Complete Student User Flow', () => {
       await expect(page.locator('text="Completed"')).toBeVisible();
 
       // Check assessments section
-      await expect(page.locator('h2:has-text("My Assessments")')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /My Assessments/i })).toBeVisible();
 
       // Try to download annotated PDF for the first assessment that has a PDF
       const pdfButton = page.locator('button:has-text("PDF")');
@@ -68,8 +68,8 @@ test.describe('Complete Student User Flow', () => {
         await queryButton.first().click();
         
         // Wait for modal to appear - could be either QueryModal or QueryHistoryModal
-        const queryModalHeading = page.locator('h2:has-text("Submit Mark Query")');
-        const historyModalHeading = page.locator('h2:has-text("Query History")');
+  const queryModalHeading = page.getByRole('heading', { name: /Submit Mark Query/i });
+  const historyModalHeading = page.getByRole('heading', { name: /Query History/i });
         
         // Wait for either modal to appear
         await Promise.race([
@@ -122,7 +122,6 @@ test.describe('Complete Student User Flow', () => {
       await page.waitForTimeout(2000);
 
       // Take a screenshot for debugging
-    //   await page.screenshot({ path: 'login-debug.png' });
       console.log('Screenshot saved as login-debug.png');
     }
   });
@@ -145,9 +144,6 @@ test.describe('Complete Student User Flow', () => {
   });
   
   test('should display student dashboard elements when authenticated', async ({ page }) => {
-    // This test assumes we can get to an authenticated state
-    // We'll use localStorage to simulate authentication for testing UI elements
-    
     await page.goto('/auth');
     
     // Mock a valid JWT token for UI testing
@@ -161,14 +157,14 @@ test.describe('Complete Student User Flow', () => {
     await page.goto('/');
     
     // Should show student dashboard (or loading state)
-    const isOnDashboard = await page.locator('h1:has-text("Student Dashboard")').isVisible({ timeout: 5000 }).catch(() => false);
-    const isLoading = await page.locator('text="Loading..."').isVisible().catch(() => false);
+  const isOnDashboard = await page.getByRole('heading', { name: /Student Dashboard/i }).isVisible({ timeout: 5000 }).catch(() => false);
+  const isLoading = await page.locator('text="Loading..."').isVisible().catch(() => false);
     
     if (isOnDashboard) {
       console.log('Successfully showing student dashboard with mock auth');
       
       // Test dashboard components
-      await expect(page.locator('h1:has-text("Assessment Portal")')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Assessment Portal/i })).toBeVisible();
       await expect(page.locator('text="Total Courses"')).toBeVisible();
       
     } else if (isLoading) {

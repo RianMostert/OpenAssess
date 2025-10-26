@@ -1,4 +1,4 @@
-from test.conftest import auth_headers
+from .conftest import auth_headers
 
 
 def test_create_course(client, teacher):
@@ -41,7 +41,6 @@ def test_update_course(client, course, teacher):
 
 def test_delete_course(client, course, teacher):
     headers = auth_headers(teacher)
-    print(f"Deleting course with ID: {course.id} for teacher: {teacher.id}")
     response = client.delete(f"/api/v1/courses/{course.id}", headers=headers)
     assert response.status_code == 200
     assert response.json()["message"] == "Course deleted"

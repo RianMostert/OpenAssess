@@ -5,6 +5,9 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.dependencies import register_dependencies
 from starlette.status import HTTP_422_UNPROCESSABLE_ENTITY
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.routers import auth
 from app.routers import users
@@ -22,6 +25,9 @@ from app.routers import mark_queries
 from app.db.session import engine
 from app.db.base import Base   # adjust if Base is declared elsewhere
 
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="Assesment Management System",
     description="Backend for managing and grading assessment papers using FastAPI",
@@ -29,21 +35,41 @@ app = FastAPI(
     lifespan=register_dependencies(),
 )
 
+# Add rate limiter state and exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Create tables if they don’t exist
 Base.metadata.create_all(bind=engine)
 
-# CORS Middleware
+# CORS Middleware - use origins from settings/environment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://100.90.83.38:3000",
-        "http://100.105.155.99:3000",
-    ],
+    allow_origins=settings.frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    # HSTS - Force HTTPS (only enable if deployed behind HTTPS)
+    if settings.ENV == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    # Prevent MIME sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # Control referrer information
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Basic CSP - adjust based on your needs
+    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
+    # Prevent XSS in older browsers
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 
 @app.exception_handler(RequestValidationError)

@@ -19,9 +19,6 @@ def test_create_query_success(client, admin_token, assessment, question):
         json=request_data
     )
     
-    print(f"Response status: {response.status_code}")
-    print(f"Response body: {response.text}")
-    
     assert response.status_code == 200
     data = response.json()
     assert data["assessment_id"] == request_data["assessment_id"]
@@ -116,8 +113,6 @@ def test_create_batch_query_success(client, admin_token, assessment, question):
         headers={"Authorization": f"Bearer {admin_token}"},
         json=request_data
     )
-    
-    print(f"Response: {response.json()}")
     
     assert response.status_code == 200
     data = response.json()

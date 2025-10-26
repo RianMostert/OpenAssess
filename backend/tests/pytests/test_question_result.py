@@ -1,5 +1,5 @@
 import json
-from test.conftest import auth_headers
+from .conftest import auth_headers
 from pathlib import Path
 import tempfile
 

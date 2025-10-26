@@ -1,33 +1,106 @@
 stages:
   - test
+  - lint
 
 variables:
-  POSTGRES_DB: mydbtest
-  POSTGRES_USER: rianmostert
-  POSTGRES_PASSWORD: password
-  DATABASE_URL: postgresql://rianmostert:password@postgres:5432/mydbtest
+  POSTGRES_DB: test_db
+  POSTGRES_USER: test_user
+  POSTGRES_PASSWORD: test_password
+  DATABASE_URL: postgresql://test_user:test_password@postgres:5432/test_db
 
-test_backend:
+# Cache configuration for faster builds
+.cache-pnpm: &cache-pnpm
+  cache:
+    key:
+      files:
+        - frontend/pnpm-lock.yaml
+    paths:
+      - frontend/.pnpm-store
+
+.cache-pip: &cache-pip
+  cache:
+    key:
+      files:
+        - backend/requirements.txt
+    paths:
+      - .cache/pip
+
+# Frontend Unit Tests
+test_frontend:
   stage: test
-  image: python:3.11
-  tags:
-    - shared-docker-runner
-  services:
-    - name: postgres:13
-      alias: postgres
+  image: node:20
+  <<: *cache-pnpm
   before_script:
-    - python -m venv venv
-    - source venv/bin/activate
-    - pip install --upgrade pip
-    - pip install -r backend/requirements.txt
+    - cd frontend
+    - npm install -g pnpm@8
+    - pnpm config set store-dir .pnpm-store
+    - pnpm install --frozen-lockfile
   script:
-    - pytest --tb=short --disable-warnings --junitxml=pytest-report.xml
+    - pnpm test:unit --run
   artifacts:
     when: always
     reports:
-      junit: pytest-report.xml
+      junit: frontend/junit.xml
     paths:
-      - pytest-report.xml
+      - frontend/coverage/
   rules:
-    - changes:
-        - backend/app/routers/**
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+
+# Backend Unit Tests
+test_backend:
+  stage: test
+  image: python:3.11
+  <<: *cache-pip
+  services:
+    - name: postgres:15
+      alias: postgres
+  variables:
+    POSTGRES_HOST_AUTH_METHOD: trust
+  before_script:
+    - cd backend
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+  script:
+    - pytest -v --tb=short --junitxml=pytest-report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: backend/pytest-report.xml
+    paths:
+      - backend/pytest-report.xml
+      - backend/htmlcov/
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+
+# ESLint Code Quality (non-blocking)
+lint_frontend:
+  stage: lint
+  image: node:20
+  <<: *cache-pnpm
+  before_script:
+    - cd frontend
+    - npm install -g pnpm@8
+    - pnpm config set store-dir .pnpm-store
+    - pnpm install --frozen-lockfile
+  script:
+    - pnpm lint || echo "ESLint found issues (non-blocking)"
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'
+
+# Flake8 Code Quality (non-blocking)
+lint_backend:
+  stage: lint
+  image: python:3.11
+  before_script:
+    - cd backend
+    - pip install flake8
+  script:
+    - flake8 app/ --max-line-length=120 --statistics || echo "Flake8 found issues (non-blocking)"
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop"'

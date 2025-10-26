@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from app.core.config import settings
 
 from app.db.session import get_db
 from app.crud.user import get_user_by_email
@@ -14,11 +17,18 @@ from app.core.security import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 
+
 router = APIRouter(prefix="/auth", tags=["Auth"])
+limiter = Limiter(key_func=get_remote_address)
+
+# Use a strict rate limit in production but relax it for development and tests
+_login_limit = "5/minute" if settings.ENV == "production" else "1000/minute"
 
 
 @router.post("/login")
+@limiter.limit(_login_limit)
 def login(
+    request: Request,  # Required for rate limiting
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):

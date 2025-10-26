@@ -1,4 +1,4 @@
-from test.conftest import auth_headers
+from .conftest import auth_headers
 
 
 def test_create_user(client, admin, teacher_role_id):

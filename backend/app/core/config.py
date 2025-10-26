@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./test.db"
     FRONTEND_URL: str = "*"
     ENV: str = "dev"
+    
+    # JWT Secret Key - MUST be set in production via environment variable
+    SECRET_KEY: str = "dev-insecure-secret-change-in-production"
 
     JSON_STORAGE_PATH: Path = Path("storage/json/")
 

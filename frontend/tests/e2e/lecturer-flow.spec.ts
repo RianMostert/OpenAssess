@@ -20,7 +20,7 @@ test.describe('Lecturer Authentication', () => {
   test('should login as lecturer and see lecturer dashboard', async ({ page }) => {
     // Navigate to auth page
     await page.goto('/auth');
-    await expect(page.locator('h2:has-text("Login")')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Login/i })).toBeVisible();
 
     // Login with lecturer credentials
     await page.fill('input[type="email"]', SEEDED_LECTURER.email);
@@ -40,7 +40,6 @@ test.describe('Lecturer Authentication', () => {
       console.log('Still on auth page. Page content:', errorText?.substring(0, 200));
       
       // Take screenshot for debugging
-    //   await page.screenshot({ path: 'lecturer-login-debug.png' });
       
       // For now, just log this - the credentials might be correct but UI needs investigation
       console.log(' Login may have failed or is taking longer than expected');
@@ -49,7 +48,7 @@ test.describe('Lecturer Authentication', () => {
       expect(url).toBe('http://localhost:3000/');
       
       // Should NOT see "Student Dashboard" heading
-      const studentDashboard = page.locator('h1:has-text("Student Dashboard")');
+      const studentDashboard = page.getByRole('heading', { name: /Student Dashboard/i });
       await expect(studentDashboard).not.toBeVisible();
 
       console.log('\u2713 Lecturer login successful');

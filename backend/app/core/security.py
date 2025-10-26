@@ -4,6 +4,7 @@ from passlib.context import CryptContext
 from uuid import UUID
 
 from app.models.user import User
+from app.core.config import settings
 
 # Role ID constants
 PRIMARY_ROLE_ADMINISTRATOR = 1
@@ -15,7 +16,7 @@ COURSE_ROLE_FACILITATOR = 2
 COURSE_ROLE_STUDENT = 3
 
 # Token config
-SECRET_KEY = "super-secret-key"
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

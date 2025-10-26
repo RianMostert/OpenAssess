@@ -120,9 +120,9 @@ export default function AuthPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
             <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm">
-                <h2 className="text-2xl font-bold mb-6 text-center">
+                <h1 className="text-2xl font-bold mb-6 text-center">
                     {isLogin ? "Login" : "Sign Up"}
-                </h2>
+                </h1>
                 {!isLogin && (
                     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
                         <p className="text-sm text-blue-800">
@@ -183,24 +183,34 @@ export default function AuthPage() {
                             </div>
                         </>
                     )}
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        disabled={loading}
-                        className="w-full px-4 py-2 border rounded-xl"
-                    />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={loading}
-                        className="w-full px-4 py-2 border rounded-xl"
-                    />
+                    <div>
+                        <label htmlFor="auth-email" className="sr-only">Email</label>
+                        <input
+                            id="auth-email"
+                            name="email"
+                            type="email"
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            disabled={loading}
+                            className="w-full px-4 py-2 border rounded-xl"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="auth-password" className="sr-only">Password</label>
+                        <input
+                            id="auth-password"
+                            name="password"
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={loading}
+                            className="w-full px-4 py-2 border rounded-xl"
+                        />
+                    </div>
                     {!isLogin && (
                         <input
                             type="password"
