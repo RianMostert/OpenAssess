@@ -17,7 +17,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     onChange,
     onClick,
     isSelected = false,
-    scaleFactor = 1,
+    scaleFactor = 0.5,
     fontSize = 14,
 }) => {
     const [expanded, setExpanded] = useState(false);

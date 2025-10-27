@@ -442,7 +442,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 // Convert percentage position to pixel position for display
                 const pageSize = getPageSize();
                 const pixelPos = positionToPixels({ x: note.x, y: note.y }, pageSize);
-                const scaleFactor = Math.min(pageSize.width / 595, pageSize.height / 842); // Scale based on A4 reference
+                const scaleFactor = Math.min(pageSize.width / 595 * 0.5, pageSize.height / 842 * 0.5); // Scale based on A4 reference
                 const scaledFontSize = getScaledFontSize(note.fontSize, pageSize);
                 
                 return (
