@@ -27,8 +27,44 @@ def seed_roles(db: Session) -> dict:
     """Seed initial roles into the database."""
     logger.info("Seeding roles...")
     
-    # This function is kept for backward compatibility
-    logger.info("Primary roles and course roles are seeded via database migration")
+    from app.models.primary_role import PrimaryRole
+    from app.models.course_role import CourseRole
+    
+    # Define the primary roles
+    primary_roles_data = [
+        {"id": 1, "name": "administrator"},
+        {"id": 2, "name": "staff"},
+        {"id": 3, "name": "student"}
+    ]
+    
+    # Create primary roles if they don't exist
+    for role_data in primary_roles_data:
+        existing_role = db.query(PrimaryRole).filter(PrimaryRole.id == role_data["id"]).first()
+        if not existing_role:
+            role = PrimaryRole(id=role_data["id"], name=role_data["name"])
+            db.add(role)
+            logger.info(f"Created primary role: {role_data['name']} (ID: {role_data['id']})")
+        else:
+            logger.info(f"Primary role already exists: {existing_role.name}")
+    
+    # Define the course roles
+    course_roles_data = [
+        {"id": 1, "name": "convener"},
+        {"id": 2, "name": "facilitator"},
+        {"id": 3, "name": "student"}
+    ]
+    
+    # Create course roles if they don't exist
+    for role_data in course_roles_data:
+        existing_role = db.query(CourseRole).filter(CourseRole.id == role_data["id"]).first()
+        if not existing_role:
+            role = CourseRole(id=role_data["id"], name=role_data["name"])
+            db.add(role)
+            logger.info(f"Created course role: {role_data['name']} (ID: {role_data['id']})")
+        else:
+            logger.info(f"Course role already exists: {existing_role.name}")
+    
+    db.commit()
     
     # Return the role mapping for our current structure
     role_map = {
