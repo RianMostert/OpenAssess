@@ -46,15 +46,12 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL_LOCAL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL_NETWORK=http://10.65.244.99:8000/api/v1
+      - NEXT_PUBLIC_API_URL_TAILSCALE=http://100.105.155.99:8000/api/v1
       - CI=true
     depends_on:
       - backend
-    command: >
-      sh -lc "
-        rm -rf /app/node_modules/* &&
-        pnpm install --frozen-lockfile --force &&
-        pnpm dev
-      "
 
 volumes:
   postgres_data:

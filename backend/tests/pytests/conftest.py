@@ -180,7 +180,7 @@ def marker(db_session, course):
     db_session.add(user)
     db_session.flush()
 
-    # Add convener course role for grading permissions  
+    # Add convener course role for marking permissions  
     convener_role = db_session.query(course_role_model.CourseRole).filter_by(name="convener").first()
     if convener_role:
         user_course_role = user_course_role_model.UserCourseRole(

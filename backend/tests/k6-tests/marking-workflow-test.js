@@ -5,7 +5,7 @@ import { config } from './config.js';
 export const options = {
   stages: config.loadPatterns.moderate,
   thresholds: {
-    http_req_duration: ['p(95)<2000'], // Allow up to 2s for grading operations
+    http_req_duration: ['p(95)<2000'], // Allow up to 2s for marking operations
     http_req_failed: ['rate<0.15'],
   },
 };
@@ -42,7 +42,7 @@ function makeAuthRequest(token, endpoint, method = 'GET', payload = null) {
 }
 
 export default function () {
-  // Simulate marker/grader behavior (staff)
+  // Simulate marker behavior (staff)
   const userTypes = ['admin', 'staff'];
   const userType = userTypes[Math.floor(Math.random() * userTypes.length)];
   
@@ -61,7 +61,7 @@ export default function () {
 
   const assessments = assessmentsResponse.json();
   if (assessments.length === 0) {
-    console.log('No assessments available for grading');
+    console.log('No assessments available for marking');
     return;
   }
 
@@ -70,10 +70,10 @@ export default function () {
 
   sleep(0.5);
 
-  // Test 1: Get assessment questions (first step in grading workflow)
+  // Test 1: Get assessment questions (first step in marking workflow)
   const questionsResponse = makeAuthRequest(token, `/assessments/${assessmentId}/questions`);
   check(questionsResponse, {
-    'questions load for grading': (r) => r.status === 200,
+    'questions load for marking': (r) => r.status === 200,
     'questions response time < 1s': (r) => r.timings.duration < 1000,
     'questions returns array': (r) => Array.isArray(r.json()),
   });
@@ -91,7 +91,7 @@ export default function () {
 
   sleep(0.5);
 
-  // Test 2: Get answer sheets to grade
+  // Test 2: Get answer sheets to mark
   const answerSheetsResponse = makeAuthRequest(token, `/assessments/${assessmentId}/answer-sheets`);
   check(answerSheetsResponse, {
     'answer sheets load': (r) => r.status === 200 || r.status === 403,
@@ -125,7 +125,7 @@ export default function () {
       sleep(0.5);
 
       // Test 4: Submit question results
-      // Randomly grade a question
+      // Randomly mark a question
       const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
       const questionId = randomQuestion.id;
       const maxMarks = randomQuestion.max_marks || 10;
@@ -133,19 +133,19 @@ export default function () {
       // Generate a random mark (between 0 and max_marks)
       const randomMark = Math.floor(Math.random() * (maxMarks + 1));
       
-      const gradingPayload = {
+      const markingPayload = {
         student_id: studentId,
         assessment_id: assessmentId,
         question_id: questionId,
         mark: randomMark,
-        comment: 'K6 test grading',
+        comment: 'K6 test marking',
       };
       
-      const gradingResponse = makeAuthRequest(token, '/question-results/', 'POST', gradingPayload);
-      check(gradingResponse, {
-        'grading submission works': (r) => r.status === 200 || r.status === 201 || r.status === 409,
-        'grading response time < 1.5s': (r) => r.timings.duration < 1500,
-        'grading returns result': (r) => {
+      const markingResponse = makeAuthRequest(token, '/question-results/', 'POST', markingPayload);
+      check(markingResponse, {
+        'marking submission works': (r) => r.status === 200 || r.status === 201 || r.status === 409,
+        'marking response time < 1.5s': (r) => r.timings.duration < 1500,
+        'marking returns result': (r) => {
           if (r.status === 200 || r.status === 201) {
             const result = r.json();
             return result.hasOwnProperty('mark') && result.hasOwnProperty('student_id');
@@ -156,7 +156,7 @@ export default function () {
 
       sleep(0.5);
 
-      // Test 5: Get student results to verify grading
+      // Test 5: Get student results to verify marking
       const studentResultsResponse = makeAuthRequest(
         token, 
         `/student-results/assessments/${assessmentId}/my-results`
@@ -173,9 +173,9 @@ export default function () {
   // Test 6: Get assessment stats (marker checking progress)
   const statsResponse = makeAuthRequest(token, `/assessments/${assessmentId}/stats`);
   check(statsResponse, {
-    'stats load after grading': (r) => r.status === 200,
+    'stats load after marking': (r) => r.status === 200,
     'stats response time < 3s': (r) => r.timings.duration < 3000,
-    'stats shows grading progress': (r) => {
+    'stats shows marking progress': (r) => {
       if (r.status === 200) {
         const stats = r.json();
         return stats.hasOwnProperty('grading_completion') &&

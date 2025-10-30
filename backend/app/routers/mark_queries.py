@@ -329,7 +329,7 @@ def commit_grades_to_gradebook(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Commit approved mark changes to the gradebook (two-step workflow)"""
+    """Commit approved mark changes to the markbook (two-step workflow)"""
     
     committed_ids = []
     failed_ids = []
@@ -358,7 +358,7 @@ def commit_grades_to_gradebook(
                 errors.append(f"Query {query_id} is assessment-wide and cannot update question marks")
                 continue
             
-            # Update the question result in gradebook
+            # Update the question result in markbook
             from app.models.question_result import QuestionResult
             
             question_result = db.query(QuestionResult).filter(

@@ -18,15 +18,25 @@ export default function AuthPage() {
 
     // Helper function to get the appropriate API URL
     const getApiUrl = () => {
+        // Default to localhost for development
+        const defaultUrl = 'http://localhost:8000/api/v1';
+        
         if (typeof window !== 'undefined') {
             const hostname = window.location.hostname;
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return process.env.NEXT_PUBLIC_API_URL_TAILSCALE || process.env.NEXT_PUBLIC_API_URL_TAILSCALE;
+                return process.env.NEXT_PUBLIC_API_URL_LOCAL || process.env.NEXT_PUBLIC_API_URL || defaultUrl;
             }
-            // You can add more conditions here for different environments
-            return process.env.NEXT_PUBLIC_API_URL_TAILSCALE;
+            // For network access
+            if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) {
+                return process.env.NEXT_PUBLIC_API_URL_NETWORK || process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+            }
+            // For Tailscale
+            if (hostname.startsWith('100.')) {
+                return process.env.NEXT_PUBLIC_API_URL_TAILSCALE || process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+            }
+            return process.env.NEXT_PUBLIC_API_URL || defaultUrl;
         }
-        return process.env.NEXT_PUBLIC_API_URL_TAILSCALE;
+        return process.env.NEXT_PUBLIC_API_URL || defaultUrl;
     };
 
     const toggleMode = () => {

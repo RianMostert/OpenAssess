@@ -9,7 +9,7 @@ def test_create_query_success(client, admin_token, assessment, question):
         "assessment_id": str(assessment.id),
         "question_id": str(question.id),
         "requested_change": "I believe my mark is incorrect and should be higher",
-        "query_type": "regrade",
+        "query_type": "remark",
         "current_mark": 5.0
     }
     
