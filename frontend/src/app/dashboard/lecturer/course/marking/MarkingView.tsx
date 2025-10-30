@@ -1,18 +1,18 @@
 import { useRef, useState } from 'react';
-import GradingPdfViewer from '@dashboard/lecturer/course/grading/GradingPdfViewer';
-import GradingRightPanel from '@dashboard/lecturer/course/grading/GradingRightPanel';
-import { Assessment, Question, GradingMode, StudentAllResults } from '@/types/course';
+import MarkingPdfViewer from '@dashboard/lecturer/course/marking/MarkingPdfViewer';
+import MarkingRightPanel from '@dashboard/lecturer/course/marking/MarkingRightPanel';
+import { Assessment, Question, MarkingMode, StudentAllResults } from '@/types/course';
 
-interface GradingLayoutProps {
+interface MarkingLayoutProps {
     assessment: Assessment;
     isMobile?: boolean;
     isTablet?: boolean;
 }
 
-export default function GradingLayout({ assessment, isMobile = false, isTablet = false }: GradingLayoutProps) {
+export default function MarkingLayout({ assessment, isMobile = false, isTablet = false }: MarkingLayoutProps) {
     const pageContainerRef = useRef<HTMLDivElement>(null);
     const [question, setQuestion] = useState<Question | null>(null);
-    const [gradingMode, setGradingMode] = useState<GradingMode>('question-by-question');
+    const [markingMode, setMarkingMode] = useState<MarkingMode>('question-by-question');
     const [currentStudentIndex, setCurrentStudentIndex] = useState<number>(0);
     
     // Centralized student data state
@@ -26,11 +26,11 @@ export default function GradingLayout({ assessment, isMobile = false, isTablet =
     return (
         <div className={`flex h-full w-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
                 <div className="flex-1 h-full overflow-auto" ref={pageContainerRef}>
-                    <GradingPdfViewer
+                    <MarkingPdfViewer
                         assessment={assessment}
                         question={question}
                         pageContainerRef={pageContainerRef}
-                        gradingMode={gradingMode}
+                        markingMode={markingMode}
                         currentStudentIndex={currentStudentIndex}
                         onStudentIndexChange={setCurrentStudentIndex}
                         studentAllResults={studentAllResults}
@@ -41,13 +41,13 @@ export default function GradingLayout({ assessment, isMobile = false, isTablet =
                     />
                 </div>
 
-                <GradingRightPanel
+                <MarkingRightPanel
                     selectedAssessment={assessment}
                     pageContainerRef={pageContainerRef}
                     question={question}
                     onQuestionSelect={(q) => setQuestion(q)}
-                    gradingMode={gradingMode}
-                    onGradingModeChange={setGradingMode}
+                    markingMode={markingMode}
+                    onMarkingModeChange={setMarkingMode}
                     currentStudentIndex={currentStudentIndex}
                     onStudentIndexChange={setCurrentStudentIndex}
                     studentAllResults={studentAllResults}

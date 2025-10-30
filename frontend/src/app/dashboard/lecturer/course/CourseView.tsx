@@ -3,7 +3,7 @@ import CourseLeftPanel from '@dashboard/lecturer/course/CourseLeftPanel';
 import CourseOverview from '@dashboard/lecturer/course/overview/CourseOverview';
 import AssessmentOverview from '@dashboard/lecturer/course/overview/AssessmentOverview';
 import MappingLayout from '@dashboard/lecturer/course/mapping/MappingView';
-import GradingLayout from '@dashboard/lecturer/course/grading/GradingView';
+import MarkingLayout from '@dashboard/lecturer/course/marking/MarkingView';
 
 import { Course, Assessment } from '@/types/course';
 
@@ -17,7 +17,7 @@ interface CourseViewProps {
 export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = false, isTablet = false }: CourseViewProps) {
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
     const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
-    const [activeMode, setActiveMode] = useState<'view' | 'map' | 'grade'>('view');
+    const [activeMode, setActiveMode] = useState<'view' | 'map' | 'mark'>('view');
 
     const prevAssessmentId = useRef<string | null>(null);
 
@@ -82,8 +82,8 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
                     />
                 )}
 
-                {activeMode === 'grade' && selectedAssessment && (
-                    <GradingLayout 
+                {activeMode === 'mark' && selectedAssessment && (
+                    <MarkingLayout 
                         assessment={selectedAssessment}
                         isMobile={isMobile}
                         isTablet={isTablet}

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
-import { Assessment, Question, GradingMode, QuestionWithResult, StudentAllResults, UploadedAnswer } from '@/types/course';
+import { Assessment, Question, MarkingMode, QuestionWithResult, StudentAllResults, UploadedAnswer } from '@/types/course';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import PdfAnnotatorBar from '@dashboard/lecturer/course/components/PdfAnnotatorBar';
 import AnnotationLayer, { AnnotationLayerProps } from '@dashboard/lecturer/course/components/AnnotationLayer';
@@ -18,11 +18,11 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     import.meta.url
 ).toString();
 
-interface GradingPdfViewerProps {
+interface MarkingPdfViewerProps {
     assessment: Assessment;
     question: Question | null;
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
-    gradingMode: GradingMode;
+    markingMode: MarkingMode;
     currentStudentIndex?: number;
     onStudentIndexChange?: (index: number) => void;
     studentAllResults?: StudentAllResults | null;
@@ -32,17 +32,17 @@ interface GradingPdfViewerProps {
 
 type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
-export default function GradingPdfViewer({ 
+export default function MarkingPdfViewer({ 
     assessment, 
     question, 
     pageContainerRef, 
-    gradingMode,
+    markingMode,
     currentStudentIndex: propCurrentIndex,
     onStudentIndexChange,
     studentAllResults: propStudentAllResults,
     onStudentAllResultsChange,
     onRefreshStudentData
-}: GradingPdfViewerProps) {
+}: MarkingPdfViewerProps) {
     const [answers, setAnswers] = useState<UploadedAnswer[]>([]);
     const [localCurrentIndex, setLocalCurrentIndex] = useState(0);
     
@@ -71,7 +71,7 @@ export default function GradingPdfViewer({
     const [pdfVersion, setPdfVersion] = useState(0); // Force re-render
 
     // New state for student-by-student mode - use shared state when available
-    const studentAllResults = gradingMode === 'student-by-student' ? propStudentAllResults : null;
+    const studentAllResults = markingMode === 'student-by-student' ? propStudentAllResults : null;
     const setStudentAllResults = onStudentAllResultsChange || (() => {});
     const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
     const [renderedPages, setRenderedPages] = useState<Set<number>>(new Set());
@@ -164,7 +164,7 @@ export default function GradingPdfViewer({
         let cancelled = false;
 
         // Only run for question-by-question mode
-        if (gradingMode !== 'question-by-question') return;
+        if (markingMode !== 'question-by-question') return;
 
         setSelectedMark(null);
         setPdfUrl(null);
@@ -235,14 +235,14 @@ export default function GradingPdfViewer({
             // Clean up PDF URL when switching students
             cleanupPdfUrl(pdfUrl);
         };
-    }, [currentAnswer?.id, question?.id, assessment.id, gradingMode]);
+    }, [currentAnswer?.id, question?.id, assessment.id, markingMode]);
 
     // New useEffect for student-by-student mode data loading
     useEffect(() => {
         let cancelled = false;
 
         const loadStudentAllResults = async () => {
-            if (gradingMode !== 'student-by-student' || !currentAnswer) return;
+            if (markingMode !== 'student-by-student' || !currentAnswer) return;
 
             try {
                 // Load PDF
@@ -288,7 +288,7 @@ export default function GradingPdfViewer({
             }
         };
 
-        if (gradingMode === 'student-by-student') {
+        if (markingMode === 'student-by-student') {
             // Clear all previous data to prevent stale state
             setSelectedMark(null); // Clear question-by-question state
             setPdfUrl(null);
@@ -302,7 +302,7 @@ export default function GradingPdfViewer({
             }
             
             loadStudentAllResults();
-        } else if (gradingMode === 'question-by-question') {
+        } else if (markingMode === 'question-by-question') {
             // Clear student-by-student state when switching to question-by-question
             setRenderedPages(new Set());
             if (setStudentAllResults && !propStudentAllResults) {
@@ -312,11 +312,11 @@ export default function GradingPdfViewer({
 
         return () => {
             cancelled = true;
-            if (gradingMode === 'student-by-student') {
+            if (markingMode === 'student-by-student') {
                 cleanupPdfUrl(pdfUrl);
             }
         };
-    }, [currentAnswer?.id, assessment.id, gradingMode]);
+    }, [currentAnswer?.id, assessment.id, markingMode]);
 
 
     const saveAnnotations = async (questionId?: string, pageNumber?: number) => {
@@ -363,7 +363,7 @@ export default function GradingPdfViewer({
 
     // Auto-save annotations whenever they change
     useEffect(() => {
-        if (gradingMode === 'question-by-question' && currentAnswer && question) {
+        if (markingMode === 'question-by-question' && currentAnswer && question) {
             const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
             if (annotationsByPage[annotationKey]) {
                 // Clear existing timeout
@@ -382,7 +382,7 @@ export default function GradingPdfViewer({
                     }
                 };
             }
-        } else if (gradingMode === 'student-by-student' && currentAnswer && studentAllResults) {
+        } else if (markingMode === 'student-by-student' && currentAnswer && studentAllResults) {
             // In student mode, we need to save annotations for all modified pages
             if (saveTimeoutRef.current) {
                 clearTimeout(saveTimeoutRef.current);
@@ -408,7 +408,7 @@ export default function GradingPdfViewer({
                 }
             };
         }
-    }, [annotationsByPage, currentAnswer?.id, question?.id, gradingMode, studentAllResults]);
+    }, [annotationsByPage, currentAnswer?.id, question?.id, markingMode, studentAllResults]);
 
     // Cleanup effect to save any pending changes on unmount or student change
     useEffect(() => {
@@ -606,11 +606,11 @@ export default function GradingPdfViewer({
         return () => document.removeEventListener('keydown', handleKeyPress);
     }, [currentIndex, answers.length]);
 
-    if (gradingMode === 'question-by-question' && !question) {
+    if (markingMode === 'question-by-question' && !question) {
         return <p className="text-muted-foreground p-4">No question selected.</p>;
     }
 
-    if (gradingMode === 'student-by-student' && !currentAnswer) {
+    if (markingMode === 'student-by-student' && !currentAnswer) {
         return <p className="text-muted-foreground p-4">No student selected.</p>;
     }
 
@@ -644,7 +644,7 @@ export default function GradingPdfViewer({
                                 setPdfReady(false);
                             }}
                         >
-                            {pdfReady && gradingMode === 'question-by-question' && question && (
+                            {pdfReady && markingMode === 'question-by-question' && question && (
                                 <div className="relative" id={`page-${question.page_number}`}>
                                     <Page
                                         key={`page-${question.page_number}-${containerWidth}-${pdfVersion}`}
@@ -732,7 +732,7 @@ export default function GradingPdfViewer({
                             )}
 
                             {/* Student-by-student mode: Render all pages with question overlays */}
-                            {pdfReady && gradingMode === 'student-by-student' && numPages && (
+                            {pdfReady && markingMode === 'student-by-student' && numPages && (
                                 <div className="space-y-8">
                                     {Array.from(new Array(numPages), (el, index) => {
                                         const pageNumber = index + 1;
@@ -807,7 +807,7 @@ export default function GradingPdfViewer({
                         </Button>
                         <p className="text-sm text-muted-foreground">
                             Student {currentIndex + 1} of {answers.length}
-                            {gradingMode === 'student-by-student' && currentAnswer && (
+                            {markingMode === 'student-by-student' && currentAnswer && (
                                 <span className="block text-xs">
                                     {currentAnswer.student_name || `Student ${currentAnswer.student_id}`}
                                 </span>
@@ -824,7 +824,7 @@ export default function GradingPdfViewer({
                 </>
             ) : (
                 <p className="text-sm text-muted-foreground">
-                    {gradingMode === 'question-by-question' 
+                    {markingMode === 'question-by-question' 
                         ? 'Loading answer sheet PDF...' 
                         : 'Loading student answer sheet...'
                     }

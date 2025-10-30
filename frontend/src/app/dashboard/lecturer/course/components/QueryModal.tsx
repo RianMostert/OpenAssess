@@ -22,12 +22,12 @@ interface QuestionItem {
     questionId: string;
     currentMark?: number;
     requestedChange: string;
-    queryType: 'regrade' | 'clarification' | 'technical_issue';
+    queryType: 'remark' | 'clarification' | 'technical_issue';
 }
 
 interface QuestionFormData {
     requestedChange: string;
-    queryType: 'regrade' | 'clarification' | 'technical_issue';
+    queryType: 'remark' | 'clarification' | 'technical_issue';
 }
 
 export default function QueryModal({ 
@@ -92,7 +92,7 @@ export default function QueryModal({
                     ...forms,
                     [questionId]: {
                         requestedChange: '',
-                        queryType: 'regrade'
+                        queryType: 'remark'
                     }
                 }));
                 return [...prev, questionId];
@@ -113,7 +113,7 @@ export default function QueryModal({
             allIds.forEach(id => {
                 newForms[id] = {
                     requestedChange: '',
-                    queryType: 'regrade'
+                    queryType: 'remark'
                 };
             });
             setQuestionForms(newForms);
@@ -282,11 +282,11 @@ export default function QueryModal({
                                                                 Query Type
                                                             </label>
                                                             <select
-                                                                value={questionForms[q.id]?.queryType || 'regrade'}
+                                                                value={questionForms[q.id]?.queryType || 'remark'}
                                                                 onChange={(e) => updateQuestionForm(q.id, 'queryType', e.target.value)}
                                                                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                             >
-                                                                <option value="regrade">Regrade Request</option>
+                                                                <option value="remark">Remark Request</option>
                                                                 <option value="clarification">Clarification</option>
                                                                 <option value="technical_issue">Technical Issue</option>
                                                             </select>

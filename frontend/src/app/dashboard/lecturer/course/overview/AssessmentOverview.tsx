@@ -36,7 +36,7 @@ interface AssessmentStats {
 interface AssessmentOverviewProps {
     course: Course;
     assessment: Assessment;
-    setActiveMode: (mode: 'view' | 'map' | 'grade') => void;
+    setActiveMode: (mode: 'view' | 'map' | 'mark') => void;
     onAssessmentUpdate?: (updatedAssessment: Assessment) => void;
     isMobile?: boolean;
     isTablet?: boolean;
@@ -258,19 +258,19 @@ export default function AssessmentOverview({
                     <div className={`grid ${isMobile ? 'grid-cols-1' : isTablet ? 'grid-cols-2' : 'grid-cols-3'} gap-4 flex-shrink-0`}>
                         <div className="bg-card p-4 rounded-lg border">
                             <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-sm font-medium text-muted-foreground">Grading Progress</h3>
+                                <h3 className="text-sm font-medium text-muted-foreground">Marking Progress</h3>
                                 <button
-                                    onClick={() => setActiveMode('grade')}
+                                    onClick={() => setActiveMode('mark')}
                                     className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 transition-colors"
                                 >
-                                    Grade
+                                    Mark
                                 </button>
                             </div>
                             <p className="text-2xl font-bold text-blue-600">
                                 {assessmentStats?.grading_completion.completion_percentage || 0}%
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
-                                {assessmentStats?.grading_completion.graded_submissions || 0} of {assessmentStats?.grading_completion.total_submissions || 0} graded
+                                {assessmentStats?.grading_completion.graded_submissions || 0} of {assessmentStats?.grading_completion.total_submissions || 0} marked
                             </p>
                         </div>
 
@@ -405,8 +405,8 @@ export default function AssessmentOverview({
                                         <tr className="border-b">
                                             <th className="text-left p-3 font-medium">Title</th>
                                             <th className="text-left p-3 font-medium">Max Marks</th>
-                                            <th className="text-left p-3 font-medium">Grading Progress</th>
-                                            <th className="text-left p-3 font-medium">Average Grade</th>
+                                            <th className="text-left p-3 font-medium">Marking Progress</th>
+                                            <th className="text-left p-3 font-medium">Average Mark</th>
                                         </tr>
                                     </thead>
                                     <tbody>

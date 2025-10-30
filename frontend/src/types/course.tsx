@@ -26,8 +26,8 @@ export interface Question {
     assessment_id: string;
 }
 
-// New types for grading modes
-export type GradingMode = 'question-by-question' | 'student-by-student';
+// New types for marking modes
+export type MarkingMode = 'question-by-question' | 'student-by-student';
 
 export interface QuestionWithResult {
     id: string;

@@ -32,7 +32,7 @@ const TEST_ASSESSMENT_DATA = {
 };
 
 test.describe('Lecturer - Full Integration Workflow', () => {
-  test('Complete lecturer workflow: Create course → Upload files → Grade → Publish', async ({ page }) => {
+  test('Complete lecturer workflow: Create course → Upload files → Mark → Publish', async ({ page }) => {
     // ============================================
     // LOGIN
     // ============================================
@@ -221,17 +221,17 @@ test.describe('Lecturer - Full Integration Workflow', () => {
     }
 
     // ============================================
-    // STEP 8: NAVIGATE TO GRADING
+    // STEP 8: NAVIGATE TO MARKING
     // ============================================
-    console.log('Step 8: Navigating to grading...');
+    console.log('Step 8: Navigating to marking...');
 
-    const gradingBtn = page.locator('button:has-text("Grade")').first();
-    if (await gradingBtn.count() === 0) {
-      console.log('Grading button not found - skipping');
+    const markingBtn = page.locator('button:has-text("Mark")').first();
+    if (await markingBtn.count() === 0) {
+      console.log('Marking button not found - skipping');
     } else {
-      await gradingBtn.click();
+      await markingBtn.click();
       await page.waitForTimeout(1500);
-      console.log('\u2713 Opened grading view');
+      console.log('\u2713 Opened marking view');
       
       // Go back to assessment view
       const viewBtn = page.locator('button:has-text("View")');

@@ -126,7 +126,7 @@ export default function QueryHistoryModal({
 
     const getQueryTypeLabel = (type: string) => {
         const typeMap = {
-            'regrade': 'Regrade Request',
+            'remark': 'Remark Request',
             'clarification': 'Clarification',
             'technical_issue': 'Technical Issue'
         };

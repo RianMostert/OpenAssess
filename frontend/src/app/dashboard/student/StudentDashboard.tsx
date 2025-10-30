@@ -32,7 +32,7 @@ interface Assessment {
     assessment_id: string;
     title: string;
     upload_date: string;
-    status: 'not_submitted' | 'submitted_pending' | 'graded' | 'partially_graded';
+    status: 'not_submitted' | 'submitted_pending' | 'marked' | 'partially_marked';
     total_marks: number | null;
     total_possible_marks: number;
     percentage: number | null;
@@ -164,12 +164,12 @@ export default function StudentDashboard({
                 label: 'Pending Review', 
                 className: 'bg-yellow-100 text-yellow-800' 
             },
-            partially_graded: { 
-                label: 'Partially Graded', 
+            partially_marked: { 
+                label: 'Partially Marked', 
                 className: 'bg-blue-100 text-blue-800' 
             },
-            graded: { 
-                label: 'Graded', 
+            marked: { 
+                label: 'Marked', 
                 className: 'bg-green-100 text-green-800' 
             }
         };
@@ -312,7 +312,7 @@ export default function StudentDashboard({
                         Student Dashboard
                     </h1>
                     <p className="text-gray-600">
-                        Welcome back! Here are your assessments and grades.
+                        Welcome back! Here are your assessments and marks.
                     </p>
                 </div>
 
@@ -338,10 +338,10 @@ export default function StudentDashboard({
                     
                     <div className="bg-white rounded-lg shadow-sm p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Pending Grades
+                            Pending Marks
                         </h3>
                         <p className="text-3xl font-bold text-yellow-600">
-                            {assessments.filter(a => a.status === 'submitted_pending' || a.status === 'partially_graded').length}
+                            {assessments.filter(a => a.status === 'submitted_pending' || a.status === 'partially_marked').length}
                         </p>
                     </div>
                     
@@ -350,7 +350,7 @@ export default function StudentDashboard({
                             Completed
                         </h3>
                         <p className="text-3xl font-bold text-green-600">
-                            {assessments.filter(a => a.status === 'graded').length}
+                            {assessments.filter(a => a.status === 'marked').length}
                         </p>
                     </div>
                 </div>

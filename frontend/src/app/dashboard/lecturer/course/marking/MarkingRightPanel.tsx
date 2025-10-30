@@ -15,16 +15,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, ChevronLeft, ChevronRight, User, Users, Search } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
-import { Question, GradingMode, UploadedAnswer, StudentAllResults } from '@/types/course';
+import { Question, MarkingMode, UploadedAnswer, StudentAllResults } from '@/types/course';
 
-interface GradingRightPanelProps {
+interface MarkingRightPanelProps {
     selectedAssessment: { id: string; title: string };
     currentPage?: number;
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
     question: Question | null;
     onQuestionSelect: (question: Question) => void;
-    gradingMode: GradingMode;
-    onGradingModeChange: (mode: GradingMode) => void;
+    markingMode: MarkingMode;
+    onMarkingModeChange: (mode: MarkingMode) => void;
     currentStudentIndex?: number;
     onStudentIndexChange?: (index: number) => void;
     studentAllResults?: StudentAllResults | null;
@@ -32,20 +32,20 @@ interface GradingRightPanelProps {
     width?: number;
 }
 
-export default function GradingRightPanel({
+export default function MarkingRightPanel({
     selectedAssessment,
     currentPage,
     pageContainerRef,
     question,
     onQuestionSelect,
-    gradingMode,
-    onGradingModeChange,
+    markingMode,
+    onMarkingModeChange,
     currentStudentIndex: propCurrentStudentIndex,
     onStudentIndexChange,
     studentAllResults: propStudentResults,
     onStudentAllResultsChange,
     width = 230,
-}: GradingRightPanelProps) {
+}: MarkingRightPanelProps) {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
@@ -54,7 +54,7 @@ export default function GradingRightPanel({
     const [students, setStudents] = useState<UploadedAnswer[]>([]);
     
     // Use shared student results when available, fallback to local state
-    const studentResults = gradingMode === 'student-by-student' ? propStudentResults : null;
+    const studentResults = markingMode === 'student-by-student' ? propStudentResults : null;
     
     // Use prop-based student index, fallback to local state for backward compatibility
     const currentStudentIndex = propCurrentStudentIndex ?? 0;
@@ -160,13 +160,13 @@ export default function GradingRightPanel({
     // const fetchStudentResults = async (studentId: string) => { ... }
 
     useEffect(() => {
-        if (gradingMode === 'question-by-question') {
+        if (markingMode === 'question-by-question') {
             fetchQuestions();
             fetchStudents(); // Also fetch students for navigation
-        } else if (gradingMode === 'student-by-student') {
+        } else if (markingMode === 'student-by-student') {
             fetchStudents();
         }
-    }, [selectedAssessment, gradingMode]);
+    }, [selectedAssessment, markingMode]);
 
     // Filter students based on search input
     useEffect(() => {
@@ -203,7 +203,7 @@ export default function GradingRightPanel({
             <div className="flex items-center justify-between mb-4 px-2 pt-2">
                 {!collapsed && (
                     <h2 className="text-xl font-semibold flex items-center gap-2">
-                        {gradingMode === 'question-by-question' ? (
+                        {markingMode === 'question-by-question' ? (
                             <>
                                 <Users className="w-5 h-5" />
                                 Questions
@@ -220,7 +220,7 @@ export default function GradingRightPanel({
                     variant="ghost"
                     size="icon"
                     onClick={() => setCollapsed((prev) => !prev)}
-                    title={collapsed ? `Expand ${gradingMode === 'question-by-question' ? 'Question' : 'Student'} Panel` : `Collapse ${gradingMode === 'question-by-question' ? 'Question' : 'Student'} Panel`}
+                    title={collapsed ? `Expand ${markingMode === 'question-by-question' ? 'Question' : 'Student'} Panel` : `Collapse ${markingMode === 'question-by-question' ? 'Question' : 'Student'} Panel`}
                 >
                     {collapsed ? <ChevronLeft /> : <ChevronRight />}
                 </Button>
@@ -228,14 +228,14 @@ export default function GradingRightPanel({
 
             {!collapsed && (
                 <div className="flex-1 overflow-y-auto px-2">
-                    {/* Grading Mode Selection */}
+                    {/* Marking Mode Selection */}
                     <div className="mb-4">
-                        <div className="text-xs font-medium text-muted-foreground mb-2">GRADING MODE</div>
+                        <div className="text-xs font-medium text-muted-foreground mb-2">MARKING MODE</div>
                         <div className="flex flex-col gap-1">
                             <button 
-                                onClick={() => onGradingModeChange('question-by-question')}
+                                onClick={() => onMarkingModeChange('question-by-question')}
                                 className={`px-3 py-2 rounded-md text-sm text-left transition-colors ${
-                                    gradingMode === 'question-by-question' 
+                                    markingMode === 'question-by-question' 
                                         ? 'bg-primary text-primary-foreground shadow-sm' 
                                         : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
                                 }`}
@@ -244,14 +244,14 @@ export default function GradingRightPanel({
                                     <Users className="w-4 h-4" />
                                     <div>
                                         <div className="font-medium">Question by Question</div>
-                                        <div className="text-xs opacity-75">Grade one question across all students</div>
+                                        <div className="text-xs opacity-75">Mark one question across all students</div>
                                     </div>
                                 </div>
                             </button>
                             <button 
-                                onClick={() => onGradingModeChange('student-by-student')}
+                                onClick={() => onMarkingModeChange('student-by-student')}
                                 className={`px-3 py-2 rounded-md text-sm text-left transition-colors ${
-                                    gradingMode === 'student-by-student' 
+                                    markingMode === 'student-by-student' 
                                         ? 'bg-primary text-primary-foreground shadow-sm' 
                                         : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
                                 }`}
@@ -260,7 +260,7 @@ export default function GradingRightPanel({
                                     <User className="w-4 h-4" />
                                     <div>
                                         <div className="font-medium">Student by Student</div>
-                                        <div className="text-xs opacity-75">Grade all questions for each student</div>
+                                        <div className="text-xs opacity-75">Mark all questions for each student</div>
                                     </div>
                                 </div>
                             </button>
@@ -268,7 +268,7 @@ export default function GradingRightPanel({
                     </div>
 
                     {/* Question-by-Question Mode */}
-                    {gradingMode === 'question-by-question' && (
+                    {markingMode === 'question-by-question' && (
                         <>
                             {loading ? (
                                 <div className="text-center py-4 text-muted-foreground">Loading questions...</div>
@@ -329,7 +329,7 @@ export default function GradingRightPanel({
                     )}
 
                     {/* Student-by-Student Mode */}
-                    {gradingMode === 'student-by-student' && (
+                    {markingMode === 'student-by-student' && (
                         <>
                             {loading ? (
                                 <div className="text-center py-4 text-muted-foreground">Loading students...</div>

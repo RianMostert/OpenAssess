@@ -25,7 +25,7 @@ interface CoursePanelProps {
     selectedCourse?: Course | null;
     setSelectedCourse?: (course: Course | null) => void;
     width?: number;
-    setActiveMode?: (mode: 'view' | 'map' | 'grade') => void;
+    setActiveMode?: (mode: 'view' | 'map' | 'mark') => void;
     isCollapsed?: boolean;
     onToggleCollapse?: () => void;
     isMobile?: boolean;

@@ -36,7 +36,7 @@ test.describe('Complete Student User Flow', () => {
       // Check dashboard stats
       await expect(page.locator('text="Total Courses"')).toBeVisible();
       await expect(page.locator('text="Total Assessments"')).toBeVisible();
-      await expect(page.locator('text="Pending Grades"')).toBeVisible();
+      await expect(page.locator('text="Pending Marks"')).toBeVisible();
       await expect(page.locator('text="Completed"')).toBeVisible();
 
       // Check assessments section
