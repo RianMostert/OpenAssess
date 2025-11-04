@@ -94,10 +94,10 @@ export default function Home() {
   // Loading state
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-brand-primary-50 font-raleway">
         <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+          <p className="mt-4 text-brand-primary-700 font-semibold">Loading...</p>
         </div>
       </div>
     );
@@ -106,20 +106,17 @@ export default function Home() {
   // Student Dashboard (role: "student")
   if (isStudent(userRole)) {
     return (
-      <div className="flex flex-col h-screen overflow-hidden bg-gray-50">
+      <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-raleway">
         {/* Simple Student Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="bg-gradient-to-r from-brand-primary to-brand-primary-700 border-b border-brand-primary-800 px-6 py-4 shadow-md">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                Assessment Portal
+              <h1 className="text-2xl font-bold text-white">
+                OpenAssess
               </h1>
-              <span className="ml-3 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                {getRoleDisplayName(userRole)}
-              </span>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-brand-primary-100 font-medium">
                 {userInfo?.email}
               </span>
               <button
@@ -127,7 +124,7 @@ export default function Home() {
                   localStorage.removeItem('authToken');
                   router.push('/auth');
                 }}
-                className="text-sm text-red-600 hover:text-red-800"
+                className="text-sm bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-150 font-semibold"
               >
                 Logout
               </button>

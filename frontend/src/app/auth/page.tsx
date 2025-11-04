@@ -128,14 +128,25 @@ export default function AuthPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-sm">
-                <h1 className="text-2xl font-bold mb-6 text-center">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-brand-primary-50 font-raleway">
+            <div className="bg-white p-8 rounded-2xl shadow-2xl border-4 border-brand-accent w-full max-w-md">
+                {/* App Branding */}
+                <div className="text-center mb-6">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-brand-primary to-brand-primary-700 bg-clip-text text-transparent mb-2">
+                        OpenAssess
+                    </h1>
+                    <p className="text-brand-accent-700 font-semibold text-sm">
+                        Assessment Management System
+                    </p>
+                </div>
+
+                {/* Auth Mode Title */}
+                <h2 className="text-2xl font-bold mb-6 text-center text-brand-primary">
                     {isLogin ? "Login" : "Sign Up"}
-                </h1>
+                </h2>
                 {!isLogin && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                        <p className="text-sm text-blue-800">
+                    <div className="mb-4 p-3 bg-brand-accent-50 border-2 border-brand-accent-300 rounded-xl">
+                        <p className="text-sm text-brand-primary font-medium">
                             <strong>Note:</strong> If you're a student and your instructor has already uploaded your details, 
                             you can use this form to set your password for the first time.
                         </p>
@@ -151,7 +162,7 @@ export default function AuthPage() {
                                 onChange={(e) => setFirstName(e.target.value)}
                                 required
                                 disabled={loading}
-                                className="w-full px-4 py-2 border rounded-xl"
+                                className="w-full px-4 py-2 border-2 border-brand-accent-300 rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                             />
                             <input
                                 type="text"
@@ -160,7 +171,7 @@ export default function AuthPage() {
                                 onChange={(e) => setLastName(e.target.value)}
                                 required
                                 disabled={loading}
-                                className="w-full px-4 py-2 border rounded-xl"
+                                className="w-full px-4 py-2 border-2 border-brand-accent-300 rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                             />
                             <input
                                 type="text"
@@ -168,15 +179,15 @@ export default function AuthPage() {
                                 value={studentNumber}
                                 onChange={(e) => setStudentNumber(e.target.value)}
                                 disabled={loading}
-                                className="w-full px-4 py-2 border rounded-xl"
+                                className="w-full px-4 py-2 border-2 border-brand-accent-300 rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                             />
                             <div className="flex justify-between items-center">
-                                <label className="font-medium">Role:</label>
+                                <label className="font-semibold text-brand-primary">Role:</label>
                                 <div className="flex gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setRole("student")}
-                                        className={`px-3 py-1 rounded-xl border ${role === "student" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+                                        className={`px-4 py-2 rounded-xl border-2 font-semibold transition-colors ${role === "student" ? "bg-brand-primary text-white border-brand-primary" : "bg-white text-brand-primary border-brand-primary hover:bg-brand-primary-50"}`}
                                         disabled={loading}
                                     >
                                         Student
@@ -184,7 +195,7 @@ export default function AuthPage() {
                                     <button
                                         type="button"
                                         onClick={() => setRole("staff")}
-                                        className={`px-3 py-1 rounded-xl border ${role === "staff" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+                                        className={`px-4 py-2 rounded-xl border-2 font-semibold transition-colors ${role === "staff" ? "bg-brand-primary text-white border-brand-primary" : "bg-white text-brand-primary border-brand-primary hover:bg-brand-primary-50"}`}
                                         disabled={loading}
                                     >
                                         Staff
@@ -204,7 +215,7 @@ export default function AuthPage() {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             disabled={loading}
-                            className="w-full px-4 py-2 border rounded-xl"
+                            className="w-full px-4 py-2 border-2 border-brand-accent-300 rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                         />
                     </div>
                     <div>
@@ -218,7 +229,7 @@ export default function AuthPage() {
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
-                            className="w-full px-4 py-2 border rounded-xl"
+                            className="w-full px-4 py-2 border-2 border-brand-accent-300 rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                         />
                     </div>
                     {!isLogin && (
@@ -229,13 +240,13 @@ export default function AuthPage() {
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             required
                             disabled={loading}
-                            className="w-full px-4 py-2 border rounded-xl"
+                            className="w-full px-4 py-2 border-2 border-brand-accent-300 rounded-xl focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                         />
                     )}
                     <button
                         type="submit"
                         disabled={loading}
-                        className={`w-full py-2 rounded-xl text-white flex items-center justify-center gap-2 ${loading ? 'bg-blue-300' : 'bg-blue-500 hover:bg-blue-600'
+                        className={`w-full py-2 rounded-xl text-white flex items-center justify-center gap-2 font-semibold transition-colors ${loading ? 'bg-brand-primary-300 cursor-not-allowed' : 'bg-brand-primary hover:bg-brand-primary-700'
                             }`}
                     >
                         {loading && (
@@ -268,7 +279,7 @@ export default function AuthPage() {
                     <button
                         onClick={toggleMode}
                         disabled={loading}
-                        className="text-blue-500 underline"
+                        className="text-brand-accent-700 hover:text-brand-accent-800 underline font-medium"
                     >
                         {isLogin ? "Sign Up" : "Login"}
                     </button>

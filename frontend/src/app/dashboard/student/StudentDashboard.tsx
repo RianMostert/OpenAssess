@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
-import QueryModal from '@/app/dashboard/lecturer/course/components/QueryModal';
+import QueryModal from './components/QueryModal';
 import QueryHistoryModal from './components/QueryHistoryModal';
 
 interface StudentDashboardProps {
@@ -158,29 +158,29 @@ export default function StudentDashboard({
         const statusConfig = {
             not_submitted: { 
                 label: 'Not Submitted', 
-                className: 'bg-red-100 text-red-800' 
+                className: 'bg-red-100 text-red-800 border border-red-200' 
             },
             submitted_pending: { 
                 label: 'Pending Review', 
-                className: 'bg-yellow-100 text-yellow-800' 
+                className: 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
             },
             partially_marked: { 
                 label: 'Partially Marked', 
-                className: 'bg-blue-100 text-blue-800' 
+                className: 'bg-brand-accent-100 text-brand-accent-800 border border-brand-accent-200' 
             },
             marked: { 
                 label: 'Marked', 
-                className: 'bg-green-100 text-green-800' 
+                className: 'bg-green-100 text-green-800 border border-green-200' 
             }
         };
 
         const config = statusConfig[status] || { 
             label: 'Unknown', 
-            className: 'bg-gray-100 text-gray-800' 
+            className: 'bg-gray-100 text-gray-800 border border-gray-200' 
         };
         
         return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+            <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${config.className}`}>
                 {config.label}
             </span>
         );
@@ -296,13 +296,13 @@ export default function StudentDashboard({
 
     if (loading) {
         return (
-            <div className="flex-1 bg-gray-50 p-6">
+            <div className="flex-1 bg-gradient-to-br from-gray-50 to-brand-primary-50 p-6 font-raleway">
                 <div className="max-w-6xl mx-auto">
                     <div className="animate-pulse">
-                        <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+                        <div className="h-10 bg-gradient-to-r from-brand-primary-200 to-brand-accent-200 rounded-lg w-1/4 mb-4"></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className="h-32 bg-gray-200 rounded"></div>
+                                <div key={i} className="h-32 bg-gradient-to-br from-brand-primary-100 to-brand-accent-100 rounded-xl"></div>
                             ))}
                         </div>
                     </div>
@@ -312,64 +312,25 @@ export default function StudentDashboard({
     }
 
     return (
-        <div className="flex-1 bg-gray-50 p-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="flex-1 bg-gradient-to-br from-gray-50 to-brand-primary-50 font-raleway overflow-hidden flex flex-col">
+            <div className="max-w-7xl mx-auto p-6 w-full flex flex-col flex-1 overflow-hidden">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <div className="mb-6 flex-shrink-0">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-brand-primary to-brand-primary-700 bg-clip-text text-transparent mb-2">
                         Student Dashboard
                     </h1>
-                    <p className="text-gray-600">
+                    <p className="text-gray-700 text-lg">
                         Welcome back! Here are your assessments and marks.
                     </p>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Total Courses
-                        </h3>
-                        <p className="text-3xl font-bold text-blue-600">
-                            {courses.length}
-                        </p>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Total Assessments
-                        </h3>
-                        <p className="text-3xl font-bold text-indigo-600">
-                            {assessments.length}
-                        </p>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Pending Marks
-                        </h3>
-                        <p className="text-3xl font-bold text-yellow-600">
-                            {assessments.filter(a => a.status === 'submitted_pending' || a.status === 'partially_marked').length}
-                        </p>
-                    </div>
-                    
-                    <div className="bg-white rounded-lg shadow-sm p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Completed
-                        </h3>
-                        <p className="text-3xl font-bold text-green-600">
-                            {assessments.filter(a => a.status === 'marked').length}
-                        </p>
-                    </div>
-                </div>
-
                 {/* Assessments Table */}
-                <div className="bg-white rounded-lg shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <h2 className="text-xl font-semibold text-gray-900">
+                <div className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col flex-1">
+                    <div className="px-6 py-5 bg-gradient-to-r from-brand-primary to-brand-primary-700 border-b border-brand-primary-800 flex-shrink-0">
+                        <h2 className="text-2xl font-bold text-white">
                             My Assessments
                         </h2>
-                        <p className="text-gray-600 text-sm mt-1">
+                        <p className="text-brand-primary-100 text-sm mt-1">
                             All your assessments across all courses
                         </p>
                     </div>
@@ -378,18 +339,18 @@ export default function StudentDashboard({
                         <div className="p-6">
                             <div className="animate-pulse space-y-4">
                                 {[1, 2, 3].map(i => (
-                                    <div key={i} className="h-16 bg-gray-200 rounded"></div>
+                                    <div key={i} className="h-16 bg-gradient-to-r from-brand-primary-100 to-brand-accent-100 rounded"></div>
                                 ))}
                             </div>
                         </div>
                     ) : assessments.length === 0 ? (
                         <div className="text-center py-12">
-                            <div className="text-gray-400 mb-4">
-                                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="text-brand-primary-300 mb-4">
+                                <svg className="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            <h3 className="text-xl font-semibold text-gray-800 mb-2">
                                 No Assessments Found
                             </h3>
                             <p className="text-gray-600">
@@ -397,36 +358,47 @@ export default function StudentDashboard({
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div
+                            className="overflow-auto flex-1"
+                            style={{
+                                // Keep table contained and stop before the bottom of the viewport.
+                                // Adjust values per device so the table never flows off screen.
+                                maxHeight: isMobile
+                                    ? 'calc(100vh - 360px)' // mobile: leave extra space for header/nav
+                                    : isTablet
+                                    ? 'calc(100vh - 310px)' // tablet: slightly less reserved
+                                    : 'calc(100vh - 305px)' // desktop: reserve header + padding
+                            }}
+                        >
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
+                                <thead className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">
                                             Course
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">
                                             Assessment
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">
                                             Status
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">
                                             Mark
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">
                                             Actions
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                                <tbody className="bg-white divide-y divide-gray-100">
                                     {assessments.map((assessment) => (
-                                        <tr key={assessment.assessment_id} className="hover:bg-gray-50">
+                                        <tr key={assessment.assessment_id} className="hover:bg-brand-primary-50 transition-colors duration-150">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div>
-                                                    <div className="text-sm font-medium text-gray-900">
+                                                    <div className="text-sm font-semibold text-gray-900">
                                                         {assessment.course_title}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
+                                                    <div className="text-sm text-brand-accent-700 font-medium">
                                                         {assessment.course_code}
                                                     </div>
                                                 </div>
@@ -443,11 +415,11 @@ export default function StudentDashboard({
                                                 <div className="text-sm text-gray-900">
                                                     {assessment.total_marks !== null ? (
                                                         <div>
-                                                            <span className="font-medium">
+                                                            <span className="font-bold text-brand-primary">
                                                                 {assessment.total_marks}/{assessment.total_possible_marks}
                                                             </span>
                                                             {assessment.percentage !== null && (
-                                                                <span className="text-gray-500 ml-2">
+                                                                <span className="text-brand-accent-700 ml-2 font-semibold">
                                                                     ({assessment.percentage}%)
                                                                 </span>
                                                             )}
@@ -465,10 +437,10 @@ export default function StudentDashboard({
                                                                 ? handleViewQueryHistory(assessment.assessment_id)
                                                                 : handleQueryMark(assessment.assessment_id)
                                                             }
-                                                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-900"
+                                                            className="flex items-center space-x-1 text-brand-primary hover:text-brand-primary-700 font-medium transition-colors duration-150"
                                                             title={hasActiveQuery(assessment.assessment_id) ? "View queries" : "Create new query"}
                                                         >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                             </svg>
                                                             <span>Query</span>
@@ -476,10 +448,10 @@ export default function StudentDashboard({
                                                         {assessment.has_annotated_pdf && (
                                                             <button
                                                                 onClick={() => handleDownloadPdf(assessment.assessment_id)}
-                                                                className="text-purple-600 hover:text-purple-900 flex items-center space-x-1"
+                                                                className="text-brand-accent-700 hover:text-brand-accent-800 flex items-center space-x-1 font-medium transition-colors duration-150"
                                                                 title="Download annotated PDF"
                                                             >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                 </svg>
                                                                 <span>PDF</span>

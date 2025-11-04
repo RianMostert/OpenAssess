@@ -29,7 +29,7 @@ export default function StudentNavBar({
     if (isMobile) {
         // Mobile: Horizontal bottom navigation
         return (
-            <div className="flex justify-around items-center p-2 bg-background border-t border-zinc-800">
+            <div className="flex justify-around items-center p-2 bg-background border-t border-brand-accent">
                 {navItems.map((item) => (
                     <Button
                         key={item.name}
@@ -51,7 +51,7 @@ export default function StudentNavBar({
 
     // Tablet/Desktop: Vertical sidebar navigation
     return (
-        <div className="flex flex-col justify-start items-center p-4 min-h-full border-r border-zinc-800" style={{ width: "60px", minWidth: "60px" }}>
+        <div className="flex flex-col justify-start items-center p-4 min-h-full border-r border-brand-accent" style={{ width: "60px", minWidth: "60px" }}>
             {navItems.map((item) => (
                 <Button
                     key={item.name}

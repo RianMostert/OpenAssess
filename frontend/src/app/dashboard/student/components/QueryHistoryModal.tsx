@@ -109,16 +109,16 @@ export default function QueryHistoryModal({
 
     const getStatusBadge = (status: string) => {
         const statusConfig = {
-            pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' },
-            under_review: { label: 'Under Review', className: 'bg-blue-100 text-blue-800' },
-            approved: { label: 'Approved', className: 'bg-green-100 text-green-800' },
-            rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800' },
-            resolved: { label: 'Resolved', className: 'bg-gray-100 text-gray-800' }
+            pending: { label: 'Pending', className: 'bg-yellow-100 text-yellow-800 border border-yellow-200' },
+            under_review: { label: 'Under Review', className: 'bg-brand-accent-100 text-brand-accent-800 border border-brand-accent-200' },
+            approved: { label: 'Approved', className: 'bg-green-100 text-green-800 border border-green-200' },
+            rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 border border-red-200' },
+            resolved: { label: 'Resolved', className: 'bg-gray-100 text-gray-800 border border-gray-200' }
         };
 
         const config = statusConfig[status as keyof typeof statusConfig];
         return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${config?.className || 'bg-gray-100 text-gray-800'}`}>
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${config?.className || 'bg-gray-100 text-gray-800 border border-gray-200'}`}>
                 {config?.label || status}
             </span>
         );
@@ -137,17 +137,17 @@ export default function QueryHistoryModal({
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl border-4 border-brand-accent max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                     {/* Header */}
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900">Query History</h2>
-                            <p className="text-gray-600 text-sm mt-1">{assessmentTitle}</p>
+                            <h2 className="text-xl font-bold text-brand-primary">Query History</h2>
+                            <p className="text-gray-700 text-sm mt-1 font-medium">{assessmentTitle}</p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-400 hover:text-brand-primary transition-colors"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -157,36 +157,36 @@ export default function QueryHistoryModal({
 
                     {loading ? (
                         <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                            <p className="text-gray-600 mt-2">Loading query history...</p>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary mx-auto"></div>
+                            <p className="text-gray-700 mt-2 font-medium">Loading query history...</p>
                         </div>
                     ) : (
                         <div className="space-y-6">
                             {/* Query Batches */}
                             {batches.length > 0 && (
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Query Batches</h3>
+                                    <h3 className="text-lg font-bold text-brand-primary mb-4">Query Batches</h3>
                                     <div className="space-y-4">
                                         {batches.map((batch, batchIndex) => (
-                                            <div key={batch.batch_id} className="border border-gray-200 rounded-lg p-4">
+                                            <div key={batch.batch_id} className="border-2 border-brand-accent-300 rounded-lg p-4 bg-brand-accent-50">
                                                 <div className="flex justify-between items-center mb-3">
                                                     <div className="flex items-center space-x-3">
-                                                        <h4 className="font-medium text-gray-900">
+                                                        <h4 className="font-semibold text-brand-primary">
                                                             Batch {batchIndex + 1} ({batch.queries.length} questions)
                                                         </h4>
                                                         {getStatusBadge(batch.status)}
                                                     </div>
-                                                    <span className="text-sm text-gray-500">
+                                                    <span className="text-sm text-gray-600 font-medium">
                                                         {new Date(batch.created_at).toLocaleDateString()}
                                                     </span>
                                                 </div>
                                                 
                                                 <div className="space-y-3">
                                                     {batch.queries.map((query, queryIndex) => (
-                                                        <div key={query.id} className="bg-gray-50 rounded-lg p-3">
+                                                        <div key={query.id} className="bg-white rounded-lg p-3 border border-brand-accent-200">
                                                             <div className="flex justify-between items-start mb-2">
                                                                 <div className="flex items-center space-x-2">
-                                                                    <span className="font-medium text-sm text-gray-700">
+                                                                    <span className="font-semibold text-sm text-brand-primary">
                                                                         {query.question_id ? 
                                                                             `Question ${query.question_number || queryIndex + 1}` : 
                                                                             'Assessment-wide Query'
@@ -194,7 +194,7 @@ export default function QueryHistoryModal({
                                                                     </span>
                                                                     {getStatusBadge(query.status)}
                                                                 </div>
-                                                                <span className="text-xs text-gray-500">
+                                                                <span className="text-xs text-gray-600 font-medium">
                                                                     {getQueryTypeLabel(query.query_type)}
                                                                 </span>
                                                             </div>
@@ -231,13 +231,13 @@ export default function QueryHistoryModal({
                             {/* Individual Queries */}
                             {individualQueries.length > 0 && (
                                 <div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Individual Queries</h3>
+                                    <h3 className="text-lg font-bold text-brand-primary mb-4">Individual Queries</h3>
                                     <div className="space-y-3">
                                         {individualQueries.map((query) => (
-                                            <div key={query.id} className="border border-gray-200 rounded-lg p-4">
+                                            <div key={query.id} className="border-2 border-brand-accent-300 rounded-lg p-4 bg-white">
                                                 <div className="flex justify-between items-start mb-3">
                                                     <div className="flex items-center space-x-3">
-                                                        <h4 className="font-medium text-gray-900">
+                                                        <h4 className="font-semibold text-brand-primary">
                                                             {query.question_id ? 
                                                                 `Question ${query.question_number || 'N/A'}` : 
                                                                 'Assessment-wide Query'
@@ -246,10 +246,10 @@ export default function QueryHistoryModal({
                                                         {getStatusBadge(query.status)}
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-xs text-gray-500">
+                                                        <div className="text-xs text-gray-600 font-medium">
                                                             {getQueryTypeLabel(query.query_type)}
                                                         </div>
-                                                        <div className="text-xs text-gray-500">
+                                                        <div className="text-xs text-gray-600">
                                                             {new Date(query.created_at).toLocaleDateString()}
                                                         </div>
                                                     </div>
@@ -302,13 +302,13 @@ export default function QueryHistoryModal({
                             onClick={() => {
                                 onCreateNewQuery();
                             }}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            className="px-6 py-2.5 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-700 transition-colors font-semibold"
                         >
                             Create New Query
                         </button>
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                            className="px-6 py-2.5 text-brand-primary bg-white border-2 border-brand-primary rounded-lg hover:bg-brand-primary-50 transition-colors font-semibold"
                         >
                             Close
                         </button>

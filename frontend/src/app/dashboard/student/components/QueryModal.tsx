@@ -208,15 +208,15 @@ export default function QueryModal({
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-2xl border-4 border-brand-accent max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold text-gray-900">
+                        <h2 className="text-xl font-bold text-brand-primary">
                             Submit Mark Query
                         </h2>
                         <button
                             onClick={onClose}
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-400 hover:text-brand-primary transition-colors"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -224,9 +224,9 @@ export default function QueryModal({
                         </button>
                     </div>
 
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-700">Assessment:</p>
-                        <p className="text-gray-900">{assessmentTitle}</p>
+                    <div className="mb-4 p-3 bg-brand-accent-50 rounded-lg border border-brand-accent-200">
+                        <p className="text-sm font-semibold text-brand-primary">Assessment:</p>
+                        <p className="text-gray-900 font-medium">{assessmentTitle}</p>
                         <p className="text-xs text-gray-600 mt-1">
                             Select questions below and provide specific explanations for each one.
                         </p>
@@ -236,13 +236,13 @@ export default function QueryModal({
                         {/* Question Selection */}
                         <div>
                             <div className="flex items-center justify-between mb-2">
-                                <label className="block text-sm font-medium text-gray-700">
+                                <label className="block text-sm font-semibold text-brand-primary">
                                     Select Questions to Query <span className="text-red-500">*</span>
                                 </label>
                                 <button
                                     type="button"
                                     onClick={handleSelectAll}
-                                    className="text-sm text-blue-600 hover:text-blue-800"
+                                    className="text-sm text-brand-accent-700 hover:text-brand-accent-800 font-medium"
                                 >
                                     {selectedQuestionIds.length === questions.length ? 'Deselect All' : 'Select All'}
                                 </button>
@@ -255,19 +255,19 @@ export default function QueryModal({
                             ) : (
                                 <div className="space-y-2">
                                     {questions.map(q => (
-                                        <div key={q.id} className="border border-gray-300 rounded-lg">
-                                            <label className="flex items-center p-3 hover:bg-gray-50 cursor-pointer">
+                                        <div key={q.id} className="border-2 border-brand-accent-200 rounded-lg hover:border-brand-accent-400 transition-colors">
+                                            <label className="flex items-center p-3 hover:bg-brand-accent-50 cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedQuestionIds.includes(q.id)}
                                                     onChange={() => handleQuestionToggle(q.id)}
-                                                    className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    className="mr-3 h-4 w-4 text-brand-primary focus:ring-brand-primary border-gray-300 rounded"
                                                 />
                                                 <div className="flex-1">
-                                                    <div className="font-medium text-gray-900">
+                                                    <div className="font-semibold text-brand-primary">
                                                         Question {q.question_number}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
+                                                    <div className="text-sm text-gray-600">
                                                         {q.current_mark !== null ? `${q.current_mark}/${q.max_marks}` : 'Ungraded'} marks
                                                     </div>
                                                 </div>
@@ -275,40 +275,25 @@ export default function QueryModal({
                                             
                                             {/* Show form for selected questions */}
                                             {selectedQuestionIds.includes(q.id) && (
-                                                <div className="px-3 pb-3 border-t border-gray-200 bg-gray-50">
+                                                <div className="px-3 pb-3 border-t-2 border-brand-accent-200 bg-brand-accent-50">
                                                     <div className="mt-3 space-y-3">
-                                                        {/* <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                                Query Type
-                                                            </label>
-                                                            <select
-                                                                value={questionForms[q.id]?.queryType || 'remark'}
-                                                                onChange={(e) => updateQuestionForm(q.id, 'queryType', e.target.value)}
-                                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                            >
-                                                                <option value="remark">Remark Request</option>
-                                                                <option value="clarification">Clarification</option>
-                                                                <option value="technical_issue">Technical Issue</option>
-                                                            </select>
-                                                        </div> */}
-                                                        
                                                         <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            <label className="block text-sm font-semibold text-brand-primary mb-1">
                                                                 Explanation <span className="text-red-500">*</span>
                                                             </label>
                                                             <textarea
                                                                 value={questionForms[q.id]?.requestedChange || ''}
                                                                 onChange={(e) => updateQuestionForm(q.id, 'requestedChange', e.target.value)}
                                                                 rows={3}
-                                                                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                className="w-full px-3 py-2 text-sm border-2 border-brand-accent-300 rounded-md focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                                                                 placeholder="Explain your query for this specific question..."
                                                                 required
                                                                 minLength={10}
                                                                 maxLength={1000}
                                                             />
-                                                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                                            <div className="flex justify-between text-xs text-gray-600 mt-1">
                                                                 <span>Minimum 10 characters</span>
-                                                                <span>{(questionForms[q.id]?.requestedChange || '').length}/1000</span>
+                                                                <span className="font-medium">{(questionForms[q.id]?.requestedChange || '').length}/1000</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -320,7 +305,7 @@ export default function QueryModal({
                             )}
                             
                             {selectedQuestionIds.length > 0 && (
-                                <div className="mt-2 text-sm text-blue-600">
+                                <div className="mt-2 text-sm text-brand-accent-700 font-semibold">
                                     {selectedQuestionIds.length} question{selectedQuestionIds.length === 1 ? '' : 's'} selected
                                 </div>
                             )}
@@ -329,20 +314,20 @@ export default function QueryModal({
                         {/* Assessment-level note */}
                         {selectedQuestionIds.length > 0 && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-semibold text-brand-primary mb-2">
                                     Assessment-level Note <span className="text-gray-500">(Optional)</span>
                                 </label>
                                 <textarea
                                     value={assessmentLevelNote}
                                     onChange={(e) => setAssessmentLevelNote(e.target.value)}
                                     rows={2}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-3 py-2 border-2 border-brand-accent-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary"
                                     placeholder="Any overall context or comments about this assessment..."
                                     maxLength={500}
                                 />
-                                <div className="flex justify-between text-sm text-gray-500 mt-1">
+                                <div className="flex justify-between text-sm text-gray-600 mt-1">
                                     <span>Optional overall context for your queries</span>
-                                    <span>{assessmentLevelNote.length}/500</span>
+                                    <span className="font-medium">{assessmentLevelNote.length}/500</span>
                                 </div>
                             </div>
                         )}
@@ -352,7 +337,7 @@ export default function QueryModal({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+                                className="px-6 py-2.5 text-brand-primary bg-white border-2 border-brand-primary rounded-lg hover:bg-brand-primary-50 transition-colors font-semibold"
                             >
                                 Cancel
                             </button>
@@ -362,7 +347,7 @@ export default function QueryModal({
                                     const form = questionForms[id];
                                     return !form || !form.requestedChange.trim() || form.requestedChange.length < 10;
                                 })}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+                                className="px-6 py-2.5 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-semibold"
                             >
                                 {loading ? 'Submitting...' : `Submit ${selectedQuestionIds.length} Quer${selectedQuestionIds.length === 1 ? 'y' : 'ies'}`}
                             </button>

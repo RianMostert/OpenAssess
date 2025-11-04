@@ -6,7 +6,7 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import StudentDashboard from './StudentDashboard';
 import StudentNavBar from './StudentNavBar';
 import CourseView from '@dashboard/lecturer/course/CourseView';
-import LecturerNavBar from '@dashboard/lecturer/NavBar';
+// import LecturerNavBar from '@dashboard/lecturer/NavBar';
 import LecturerProfileView from '@dashboard/lecturer/profile/ProfileView';
 
 interface StudentDashboardWrapperProps {
@@ -146,7 +146,7 @@ export default function StudentDashboardWrapper({
             )}
             
             {/* Lecturer Navigation */}
-            {isMobile ? (
+            {/* {isMobile ? (
                 <div className="order-2 border-t border-zinc-800">
                     <LecturerNavBar 
                         activeNavItem={activeNavItem} 
@@ -166,7 +166,7 @@ export default function StudentDashboardWrapper({
                         isTablet={isTablet}
                     />
                 </div>
-            )}
+            )} */}
 
             {/* Main content area */}
             <div className={`flex-1 min-h-0 overflow-hidden ${isMobile ? 'order-1' : ''}`}>
