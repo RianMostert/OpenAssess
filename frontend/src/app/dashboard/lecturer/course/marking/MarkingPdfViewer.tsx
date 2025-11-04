@@ -630,6 +630,8 @@ export default function MarkingPdfViewer({
                         style={{ 
                             height: 'calc(100vh - 220px)',
                             touchAction: 'pan-x pan-y', // Allow panning but prevent zoom
+                            overflowX: 'hidden', // Prevent horizontal scrolling
+                            overflowY: 'auto', // Allow vertical scrolling
                         }}
                         ref={pageContainerRef}
                     >

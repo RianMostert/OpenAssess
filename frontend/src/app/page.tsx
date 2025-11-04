@@ -18,7 +18,7 @@ import CourseView from '@dashboard/lecturer/course/CourseView';
 import LecturerProfileView from '@dashboard/lecturer/profile/ProfileView';
 
 // Import Student Components
-import StudentDashboard from '@/app/dashboard/student/StudentDashboard';
+import StudentDashboardWrapper from '@/app/dashboard/student/StudentDashboardWrapper';
 
 export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
@@ -136,7 +136,7 @@ export default function Home() {
         </div>
         
         {/* Student Dashboard Content */}
-        <StudentDashboard 
+        <StudentDashboardWrapper 
           isMobile={isMobile}
           isTablet={isTablet}
         />

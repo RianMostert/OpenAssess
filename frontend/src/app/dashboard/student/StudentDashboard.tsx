@@ -174,7 +174,11 @@ export default function StudentDashboard({
             }
         };
 
-        const config = statusConfig[status];
+        const config = statusConfig[status] || { 
+            label: 'Unknown', 
+            className: 'bg-gray-100 text-gray-800' 
+        };
+        
         return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
                 {config.label}
@@ -228,7 +232,11 @@ export default function StudentDashboard({
             resolved: { label: 'Resolved', className: 'bg-gray-100 text-gray-800' }
         };
 
-        const config = statusConfig[status];
+        const config = statusConfig[status] || { 
+            label: 'Unknown', 
+            className: 'bg-gray-100 text-gray-800' 
+        };
+        
         return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
                 {config.label}

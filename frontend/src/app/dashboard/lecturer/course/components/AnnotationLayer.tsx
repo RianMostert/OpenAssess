@@ -165,11 +165,18 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         } else if (tool === 'text-note') {
             // Convert to percentage for storage
             const percentagePos = positionToPercentage(pos, pageSize);
+            
+            // Clamp initial position to prevent going off-screen
+            const estimatedWidthPercent = 10;
+            const estimatedHeightPercent = 10;
+            const clampedX = Math.max(0, Math.min(percentagePos.x, 100 - estimatedWidthPercent));
+            const clampedY = Math.max(0, Math.min(percentagePos.y, 100 - estimatedHeightPercent));
+            
             const text: TextElement = {
                 id: `text_${Date.now()}`,
                 tool,
-                x: percentagePos.x,
-                y: percentagePos.y,
+                x: clampedX,
+                y: clampedY,
                 text: '',
                 fontSize: 16,
                 fill: '#000000',
@@ -181,11 +188,18 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         } else if (tool === 'sticky-note') {
             // Convert to percentage for storage
             const percentagePos = positionToPercentage(pos, pageSize);
+            
+            // Clamp initial position to prevent going off-screen
+            const estimatedWidthPercent = 15;
+            const estimatedHeightPercent = 20;
+            const clampedX = Math.max(0, Math.min(percentagePos.x, 100 - estimatedWidthPercent));
+            const clampedY = Math.max(0, Math.min(percentagePos.y, 100 - estimatedHeightPercent));
+            
             const note: StickyNoteElement = {
                 id: `sticky_${Date.now()}`,
                 tool,
-                x: percentagePos.x,
-                y: percentagePos.y,
+                x: clampedX,
+                y: clampedY,
                 text: '',
                 fontSize: 16,
                 fill: '#000000',
@@ -320,12 +334,19 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             cursor: 'move',
                             color: 'red',
                             fontSize: `${scaledFontSize}px`,
+                            userSelect: 'none',
+                            WebkitUserSelect: 'none',
                         }}
                         onMouseDown={(e) => {
                             e.stopPropagation();
+                            e.preventDefault(); // Prevent text selection
                             setSelectedId(textNote.id);
                             const startX = e.clientX;
                             const startY = e.clientY;
+
+                            // Prevent text selection during drag
+                            document.body.style.userSelect = 'none';
+                            document.body.style.webkitUserSelect = 'none';
 
                             const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
                                 const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
@@ -339,19 +360,35 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 const dxPercent = (dx / pageSize.width) * 100;
                                 const dyPercent = (dy / pageSize.height) * 100;
 
+                                // Calculate new position
+                                let newX = textNote.x + dxPercent;
+                                let newY = textNote.y + dyPercent;
+
+                                // Clamp position to prevent going off-screen
+                                // Assuming text note width is ~20% and height is ~10% when not specified
+                                const estimatedWidthPercent = textNote.width || 20;
+                                const estimatedHeightPercent = textNote.height || 10;
+                                
+                                newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
+                                newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
+
                                 setAnnotations({
                                     ...annotations,
                                     texts: annotations.texts.map(t =>
                                         t.id === textNote.id ? { 
                                             ...t, 
-                                            x: textNote.x + dxPercent, 
-                                            y: textNote.y + dyPercent 
+                                            x: newX, 
+                                            y: newY 
                                         } : t
                                     ),
                                 });
                             };
 
                             const handleEnd = () => {
+                                // Re-enable text selection
+                                document.body.style.userSelect = '';
+                                document.body.style.webkitUserSelect = '';
+                                
                                 document.removeEventListener('mousemove', handleMove as EventListener);
                                 document.removeEventListener('mouseup', handleEnd);
                                 document.removeEventListener('touchmove', handleMove as EventListener);
@@ -365,10 +402,15 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                         }}
                         onTouchStart={(e) => {
                             e.stopPropagation();
+                            e.preventDefault(); // Prevent text selection
                             setSelectedId(textNote.id);
                             const touch = e.touches[0];
                             const startX = touch.clientX;
                             const startY = touch.clientY;
+
+                            // Prevent text selection during drag
+                            document.body.style.userSelect = 'none';
+                            document.body.style.webkitUserSelect = 'none';
 
                             const handleMove = (moveEvent: TouchEvent) => {
                                 moveEvent.preventDefault(); // Prevent scrolling
@@ -383,19 +425,35 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 const dxPercent = (dx / pageSize.width) * 100;
                                 const dyPercent = (dy / pageSize.height) * 100;
 
+                                // Calculate new position
+                                let newX = textNote.x + dxPercent;
+                                let newY = textNote.y + dyPercent;
+
+                                // Clamp position to prevent going off-screen
+                                // Assuming text note width is ~20% and height is ~10% when not specified
+                                const estimatedWidthPercent = textNote.width || 20;
+                                const estimatedHeightPercent = textNote.height || 10;
+                                
+                                newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
+                                newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
+
                                 setAnnotations({
                                     ...annotations,
                                     texts: annotations.texts.map(t =>
                                         t.id === textNote.id ? { 
                                             ...t, 
-                                            x: textNote.x + dxPercent, 
-                                            y: textNote.y + dyPercent 
+                                            x: newX, 
+                                            y: newY 
                                         } : t
                                     ),
                                 });
                             };
 
                             const handleEnd = () => {
+                                // Re-enable text selection
+                                document.body.style.userSelect = '';
+                                document.body.style.webkitUserSelect = '';
+                                
                                 document.removeEventListener('touchmove', handleMove);
                                 document.removeEventListener('touchend', handleEnd);
                             };
@@ -454,12 +512,19 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             left: pixelPos.x,
                             zIndex: 50,
                             cursor: 'move',
+                            userSelect: 'none',
+                            WebkitUserSelect: 'none',
                         }}
                         onMouseDown={(e) => {
                             e.stopPropagation();
+                            e.preventDefault(); // Prevent text selection
                             setSelectedId(note.id);
                             const startX = e.clientX;
                             const startY = e.clientY;
+
+                            // Prevent text selection during drag
+                            document.body.style.userSelect = 'none';
+                            document.body.style.webkitUserSelect = 'none';
 
                             const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
                                 const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
@@ -473,14 +538,26 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 const dxPercent = (dx / pageSize.width) * 100;
                                 const dyPercent = (dy / pageSize.height) * 100;
 
+                                // Calculate new position
+                                let newX = note.x + dxPercent;
+                                let newY = note.y + dyPercent;
+
+                                // Clamp position to prevent going off-screen
+                                // Sticky notes are typically around 15% width and 20% height
+                                const estimatedWidthPercent = 15;
+                                const estimatedHeightPercent = 20;
+                                
+                                newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
+                                newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
+
                                 setAnnotations({
                                     ...annotations,
                                     stickyNotes: annotations.stickyNotes.map((s) =>
                                         s.id === note.id
                                             ? { 
                                                 ...s, 
-                                                x: note.x + dxPercent, 
-                                                y: note.y + dyPercent 
+                                                x: newX, 
+                                                y: newY 
                                             }
                                             : s
                                     ),
@@ -489,6 +566,10 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             };
 
                             const handleEnd = () => {
+                                // Re-enable text selection
+                                document.body.style.userSelect = '';
+                                document.body.style.webkitUserSelect = '';
+                                
                                 document.removeEventListener('mousemove', handleMove as EventListener);
                                 document.removeEventListener('mouseup', handleEnd);
                                 document.removeEventListener('touchmove', handleMove as EventListener);
@@ -502,10 +583,15 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                         }}
                         onTouchStart={(e) => {
                             e.stopPropagation();
+                            e.preventDefault(); // Prevent text selection
                             setSelectedId(note.id);
                             const touch = e.touches[0];
                             const startX = touch.clientX;
                             const startY = touch.clientY;
+
+                            // Prevent text selection during drag
+                            document.body.style.userSelect = 'none';
+                            document.body.style.webkitUserSelect = 'none';
 
                             const handleMove = (moveEvent: TouchEvent) => {
                                 moveEvent.preventDefault(); // Prevent scrolling
@@ -520,14 +606,26 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 const dxPercent = (dx / pageSize.width) * 100;
                                 const dyPercent = (dy / pageSize.height) * 100;
 
+                                // Calculate new position
+                                let newX = note.x + dxPercent;
+                                let newY = note.y + dyPercent;
+
+                                // Clamp position to prevent going off-screen
+                                // Sticky notes are typically around 15% width and 20% height
+                                const estimatedWidthPercent = 15;
+                                const estimatedHeightPercent = 20;
+                                
+                                newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
+                                newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
+
                                 setAnnotations({
                                     ...annotations,
                                     stickyNotes: annotations.stickyNotes.map((s) =>
                                         s.id === note.id
                                             ? { 
                                                 ...s, 
-                                                x: note.x + dxPercent, 
-                                                y: note.y + dyPercent 
+                                                x: newX, 
+                                                y: newY 
                                             }
                                             : s
                                     ),
@@ -536,6 +634,10 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             };
 
                             const handleEnd = () => {
+                                // Re-enable text selection
+                                document.body.style.userSelect = '';
+                                document.body.style.webkitUserSelect = '';
+                                
                                 document.removeEventListener('touchmove', handleMove);
                                 document.removeEventListener('touchend', handleEnd);
                             };

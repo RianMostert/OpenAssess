@@ -513,36 +513,61 @@ def bulk_upload_facilitators(
     errors = []
 
     for row_num, row in enumerate(reader, 1):
-        try:
-            email = row.get("email", "").strip()
-            if not email:
-                errors.append(f"Row {row_num}: Email is required")
-                continue
+        email = row.get("email", "").strip()
+        if not email:
+            errors.append(f"Row {row_num}: Email is required")
+            continue
 
+        try:
             # Find existing user by email
             user = db.query(User).filter(User.email == email).first()
             if not user:
                 # Create new user if doesn't exist
                 first_name = row.get("first_name", "").strip()
                 last_name = row.get("last_name", "").strip()
+                student_number = row.get("student_number", "").strip() or None
                 
                 if not first_name or not last_name:
                     errors.append(f"Row {row_num}: First name and last name required for new user {email}")
                     continue
 
-                from app.core.security import hash_password
-                user = User(
-                    id=uuid.uuid4(),
-                    first_name=first_name,
-                    last_name=last_name,
-                    email=email,
-                    student_number=row.get("student_number", "").strip() or None,
-                    password_hash=hash_password("*"),  # Temporary password
-                    primary_role_id=primary_role_id,  # Set appropriate primary role
-                    is_admin=False,
-                )
-                db.add(user)
-                db.flush()  # Get the user ID
+                # Check if student_number already exists (if provided)
+                if student_number:
+                    existing_student = db.query(User).filter(User.student_number == student_number).first()
+                    if existing_student:
+                        # User exists with this student number but different email
+                        # Use the existing user instead
+                        user = existing_student
+                    else:
+                        # Create new user
+                        from app.core.security import hash_password
+                        user = User(
+                            id=uuid.uuid4(),
+                            first_name=first_name,
+                            last_name=last_name,
+                            email=email,
+                            student_number=student_number,
+                            password_hash=hash_password("*"),  # Temporary password
+                            primary_role_id=primary_role_id,  # Set appropriate primary role
+                            is_admin=False,
+                        )
+                        db.add(user)
+                        db.flush()  # Get the user ID
+                else:
+                    # No student number provided, create new user
+                    from app.core.security import hash_password
+                    user = User(
+                        id=uuid.uuid4(),
+                        first_name=first_name,
+                        last_name=last_name,
+                        email=email,
+                        student_number=None,
+                        password_hash=hash_password("*"),  # Temporary password
+                        primary_role_id=primary_role_id,  # Set appropriate primary role
+                        is_admin=False,
+                    )
+                    db.add(user)
+                    db.flush()  # Get the user ID
 
             # Check if user is already enrolled in the course
             existing_role = (
@@ -565,6 +590,10 @@ def bulk_upload_facilitators(
                 course_role_id=course_role_id,
             )
             db.add(user_course_role)
+            
+            # Commit after each successful addition to avoid rollback issues
+            db.commit()
+            
             added_facilitators.append({
                 "email": email,
                 "name": f"{user.first_name} {user.last_name}",
@@ -572,9 +601,8 @@ def bulk_upload_facilitators(
             })
 
         except Exception as e:
+            db.rollback()  # Rollback only affects uncommitted changes
             errors.append(f"Row {row_num}: {str(e)}")
-
-    db.commit()
 
     return {
         "message": f"Successfully added {len(added_facilitators)} users",

@@ -21,6 +21,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     fontSize = 14,
 }) => {
     const [expanded, setExpanded] = useState(false);
+    const [expandToLeft, setExpandToLeft] = useState(false);
     const noteRef = useRef<HTMLDivElement>(null);
 
     // Calculate scaled dimensions
@@ -48,6 +49,13 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     const toggleExpand = (e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
         if (!expanded) {
+            if (noteRef.current) {
+                const rect = noteRef.current.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const spaceOnRight = viewportWidth - rect.right;
+                
+                setExpandToLeft(spaceOnRight < expandedWidth);
+            }
             setExpanded(true);
             onClick?.();
         }
@@ -62,6 +70,11 @@ const StickyNote: React.FC<StickyNoteProps> = ({
             style={{
                 width: expanded ? `${expandedWidth}px` : `${collapsedSize}px`,
                 height: expanded ? `${expandedHeight}px` : `${collapsedSize}px`,
+                transformOrigin: expandToLeft ? 'top right' : 'top left',
+                position: 'relative',
+                ...(expanded && expandToLeft ? {
+                    transform: `translateX(${collapsedSize - expandedWidth}px)`,
+                } : {}),
             }}
         >
             {expanded ? (
