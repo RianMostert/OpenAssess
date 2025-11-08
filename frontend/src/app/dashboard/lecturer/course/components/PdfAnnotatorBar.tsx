@@ -31,14 +31,18 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
 
     return (
         <TooltipProvider>
-            <div className="flex items-center justify-center p-4 border-b border-zinc-800">
+            <div className="flex items-center justify-center py-2 px-4 border-b-2 border-brand-accent-400 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 font-raleway">
                 <div className="flex space-x-2">
                     {toolButtons.map(({ key, label, icon }) => (
                         <Tooltip key={key}>
                             <Button
                                 variant="outline"
                                 onClick={() => handleToolChange(key)}
-                                className={`transition-colors duration-150 touch-manipulation min-h-[44px] min-w-[44px] toolbar-button touch-target ${selectedTool === key ? 'border-blue-500 bg-blue-50' : ''}`}
+                                className={`transition-colors duration-150 touch-manipulation min-h-[36px] px-3 py-1 text-sm font-semibold border-2 border-brand-accent-400 ${
+                                    selectedTool === key 
+                                        ? 'border-brand-primary-600 bg-brand-primary-600 text-white hover:bg-brand-primary-700' 
+                                        : 'text-brand-primary-700 hover:bg-brand-primary-50 bg-white'
+                                }`}
                             >
                                 {/* {icon} */}
                                 {label}

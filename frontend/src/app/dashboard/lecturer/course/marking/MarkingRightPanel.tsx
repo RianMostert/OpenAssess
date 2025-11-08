@@ -53,6 +53,10 @@ export default function MarkingRightPanel({
     // New state for student mode
     const [students, setStudents] = useState<UploadedAnswer[]>([]);
     
+    // Accordion state to prevent unnecessary re-renders
+    const [accordionValue, setAccordionValue] = useState<string>('question');
+    const [studentAccordionValue, setStudentAccordionValue] = useState<string>('progress');
+    
     // Use shared student results when available, fallback to local state
     const studentResults = markingMode === 'student-by-student' ? propStudentResults : null;
     
@@ -69,7 +73,7 @@ export default function MarkingRightPanel({
     const StudentSearchComponent = () => (
         <div className="space-y-2">
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-primary-400 w-4 h-4" />
                 <Input
                     type="text"
                     placeholder="Search by student number..."
@@ -77,30 +81,30 @@ export default function MarkingRightPanel({
                     onChange={(e) => setStudentSearch(e.target.value)}
                     onFocus={() => setSearchFocused(true)}
                     onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                    className="pl-10"
+                    className="pl-10 border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                     autoComplete="off"
                 />
             </div>
             
             {/* Search Results */}
             {searchFocused && studentSearch.trim() !== '' && (
-                <div className="bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                <div className="bg-white border-2 border-brand-accent-400 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
                     {filteredStudents.length > 0 ? (
                         filteredStudents.map((student) => (
                             <button
                                 key={student.id}
                                 onClick={() => handleStudentSelect(student)}
                                 onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
-                                className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-b-0"
+                                className="w-full text-left px-3 py-2 hover:bg-brand-primary-50 text-sm border-b-2 border-brand-accent-200 last:border-b-0 transition-colors"
                             >
-                                <div className="font-medium">{student.student_number || student.student_id}</div>
+                                <div className="font-semibold text-brand-primary-800">{student.student_number || student.student_id}</div>
                                 {student.student_name && (
-                                    <div className="text-xs text-muted-foreground">{student.student_name}</div>
+                                    <div className="text-xs text-brand-primary-600">{student.student_name}</div>
                                 )}
                             </button>
                         ))
                     ) : (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">
+                        <div className="px-3 py-2 text-sm text-brand-primary-600">
                             No students found
                         </div>
                     )}
@@ -108,13 +112,13 @@ export default function MarkingRightPanel({
             )}
             
             {/* Current Student Display */}
-            <div className="bg-muted p-3 rounded-md">
-                <div className="text-xs font-medium text-muted-foreground mb-1">CURRENT STUDENT</div>
-                <div className="font-semibold">
+            <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-400">
+                <div className="text-xs font-bold text-brand-primary-700 mb-1 uppercase tracking-wider">Current Student</div>
+                <div className="font-bold text-brand-primary-800">
                     {students[currentStudentIndex]?.student_number || students[currentStudentIndex]?.student_id || `Student ${currentStudentIndex + 1}`}
                 </div>
                 {students[currentStudentIndex]?.student_name && (
-                    <div className="text-sm text-muted-foreground">{students[currentStudentIndex].student_name}</div>
+                    <div className="text-sm text-brand-primary-600 font-medium">{students[currentStudentIndex].student_name}</div>
                 )}
             </div>
         </div>
@@ -193,16 +197,15 @@ export default function MarkingRightPanel({
 
     return (
         <div
-            className={`transition-all duration-300 ease-in-out border-l border-zinc-800 h-full bg-background`}
+            className={`flex flex-col transition-all duration-300 ease-in-out border-l-2 border-brand-accent-400 h-full bg-white font-raleway`}
             style={{
                 width: collapsed ? '40px' : `${width}px`,
                 minWidth: collapsed ? '40px' : `${width}px`,
-                overflow: 'hidden',
             }}
         >
-            <div className="flex items-center justify-between mb-4 px-2 pt-2">
+            <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b-2 border-brand-accent-200 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 flex-shrink-0">
                 {!collapsed && (
-                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-brand-primary-800 flex items-center gap-2">
                         {markingMode === 'question-by-question' ? (
                             <>
                                 <Users className="w-5 h-5" />
@@ -221,107 +224,128 @@ export default function MarkingRightPanel({
                     size="icon"
                     onClick={() => setCollapsed((prev) => !prev)}
                     title={collapsed ? `Expand ${markingMode === 'question-by-question' ? 'Question' : 'Student'} Panel` : `Collapse ${markingMode === 'question-by-question' ? 'Question' : 'Student'} Panel`}
+                    className="text-brand-primary-600 hover:text-brand-primary-800 hover:bg-brand-primary-100"
                 >
                     {collapsed ? <ChevronLeft /> : <ChevronRight />}
                 </Button>
             </div>
 
             {!collapsed && (
-                <div className="flex-1 overflow-y-auto px-2">
+                <div className="flex-1 overflow-y-auto px-2 min-h-0">
                     {/* Marking Mode Selection */}
                     <div className="mb-4">
-                        <div className="text-xs font-medium text-muted-foreground mb-2">MARKING MODE</div>
-                        <div className="flex flex-col gap-1">
+                        <div className="text-xs font-bold text-brand-primary-700 mb-2 uppercase tracking-wider">Marking Mode</div>
+                        <div className="flex flex-col gap-2">
                             <button 
                                 onClick={() => onMarkingModeChange('question-by-question')}
-                                className={`px-3 py-2 rounded-md text-sm text-left transition-colors ${
+                                className={`px-3 py-2.5 rounded-lg text-sm text-left transition-all border-2 ${
                                     markingMode === 'question-by-question' 
-                                        ? 'bg-primary text-primary-foreground shadow-sm' 
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                                        ? 'bg-brand-primary-600 text-white border-brand-primary-700 shadow-md' 
+                                        : 'bg-white text-brand-primary-700 border-brand-accent-400 hover:border-brand-primary-500 hover:bg-brand-primary-50'
                                 }`}
                             >
                                 <div className="flex items-center gap-2">
                                     <Users className="w-4 h-4" />
                                     <div>
-                                        <div className="font-medium">Question by Question</div>
-                                        <div className="text-xs opacity-75">Mark one question across all students</div>
+                                        <div className="font-semibold">Question by Question</div>
+                                        <div className={`text-xs ${markingMode === 'question-by-question' ? 'opacity-90' : 'opacity-70'}`}>
+                                            Mark one question across all students
+                                        </div>
                                     </div>
                                 </div>
                             </button>
                             <button 
                                 onClick={() => onMarkingModeChange('student-by-student')}
-                                className={`px-3 py-2 rounded-md text-sm text-left transition-colors ${
+                                className={`px-3 py-2.5 rounded-lg text-sm text-left transition-all border-2 ${
                                     markingMode === 'student-by-student' 
-                                        ? 'bg-primary text-primary-foreground shadow-sm' 
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                                        ? 'bg-brand-primary-600 text-white border-brand-primary-700 shadow-md' 
+                                        : 'bg-white text-brand-primary-700 border-brand-accent-400 hover:border-brand-primary-500 hover:bg-brand-primary-50'
                                 }`}
                             >
                                 <div className="flex items-center gap-2">
                                     <User className="w-4 h-4" />
                                     <div>
-                                        <div className="font-medium">Student by Student</div>
-                                        <div className="text-xs opacity-75">Mark all questions for each student</div>
+                                        <div className="font-semibold">Student by Student</div>
+                                        <div className={`text-xs ${markingMode === 'student-by-student' ? 'opacity-90' : 'opacity-70'}`}>
+                                            Mark all questions for each student
+                                        </div>
                                     </div>
                                 </div>
                             </button>
                         </div>
                     </div>
 
+                    {/* Student Search - Common for both modes */}
+                    <div className="mb-4">
+                        <div className="text-xs font-bold text-brand-primary-700 mb-2 uppercase tracking-wider">Student Navigation</div>
+                        <StudentSearchComponent />
+                    </div>
+
                     {/* Question-by-Question Mode */}
                     {markingMode === 'question-by-question' && (
                         <>
                             {loading ? (
-                                <div className="text-center py-4 text-muted-foreground">Loading questions...</div>
+                                <div className="text-center py-4 text-brand-primary-600 font-medium">Loading questions...</div>
                             ) : questions.length === 0 ? (
-                                <div className="text-center py-4 text-muted-foreground text-sm">
-                                    No questions available. Please map questions first in Mapping Mode.
+                                <div className="text-center py-6 px-3">
+                                    <div className="text-brand-primary-300 mb-3">
+                                        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-sm text-brand-primary-600 font-medium">
+                                        No questions available. Please map questions first in Mapping Mode.
+                                    </p>
                                 </div>
                             ) : question ? (
                                 <>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="outline" className="w-full mb-4">
-                                                Question {question.question_number}
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent className="max-h-64 overflow-auto" align="end">
-                                            {questions.map((q) => (
-                                                <DropdownMenuItem
-                                                    key={q.id}
-                                                    onClick={() => onQuestionSelect(q)}
-                                                    className={
-                                                        q.id === question.id ? 'font-semibold bg-muted' : ''
-                                                    }
+                                    <div className="mb-4">
+                                        <div className="text-xs font-bold text-brand-primary-700 mb-2 uppercase tracking-wider">Question</div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button 
+                                                    variant="outline" 
+                                                    className="w-full border-2 border-brand-accent-400 text-brand-primary-700 hover:bg-brand-primary-50 hover:border-brand-primary-500 font-semibold"
                                                 >
-                                                    Question {q.question_number}
-                                                </DropdownMenuItem>
-                                            ))}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                                    Question {question.question_number}
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="max-h-64 overflow-auto border-2 border-brand-accent-400 bg-white shadow-lg" align="end">
+                                                {questions.map((q) => (
+                                                    <DropdownMenuItem
+                                                        key={q.id}
+                                                        onClick={() => onQuestionSelect(q)}
+                                                        className={`cursor-pointer font-medium ${
+                                                            q.id === question.id 
+                                                                ? 'bg-brand-primary-100 text-brand-primary-800' 
+                                                                : 'text-brand-primary-700 hover:bg-brand-primary-50'
+                                                        }`}
+                                                    >
+                                                        Question {q.question_number}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
 
-                                    <Accordion type="single" defaultValue="question" collapsible>
-                                        <AccordionItem value="question">
-                                            <AccordionTrigger className="text-left">Details</AccordionTrigger>
-                                            <AccordionContent className="p-2 text-sm space-y-1">
-                                                <p><strong>Question #:</strong> {question.question_number}</p>
-                                                <p><strong>Max Marks:</strong> {question.max_marks ?? '—'}</p>
-                                                <p><strong>Increment:</strong> {question.increment ?? '—'}</p>
-                                                <p><strong>Memo:</strong> {question.memo ?? '—'}</p>
-                                                <p><strong>Marking Note:</strong> {question.marking_note ?? '—'}</p>
-                                                <p><strong>Page:</strong> {question.page_number}</p>
-                                                <p><strong>Box:</strong> {`x: ${question.x}, y: ${question.y}, w: ${question.width}, h: ${question.height}`}</p>
+                                    <Accordion type="single" value={accordionValue} onValueChange={setAccordionValue} collapsible>
+                                        <AccordionItem value="question" className="border-b-2 border-brand-accent-200">
+                                            <AccordionTrigger className="text-left font-semibold text-brand-primary-700 hover:text-brand-primary-900 hover:no-underline">
+                                                Details
+                                            </AccordionTrigger>
+                                            <AccordionContent className="p-3 text-sm space-y-2 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-200 mt-2">
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Question #:</strong> {question.question_number}</p>
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Max Marks:</strong> {question.max_marks ?? '—'}</p>
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Increment:</strong> {question.increment ?? '—'}</p>
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Memo:</strong> {question.memo ?? '—'}</p>
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Marking Note:</strong> {question.marking_note ?? '—'}</p>
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Page:</strong> {question.page_number}</p>
                                             </AccordionContent>
                                         </AccordionItem>
                                     </Accordion>
-
-                                    {/* Student Navigation for Question Mode */}
-                                    <div className="mt-4 space-y-2">
-                                        <div className="text-xs font-medium text-muted-foreground mb-2">STUDENT NAVIGATION</div>
-                                        <StudentSearchComponent />
-                                    </div>
                                 </>
                             ) : (
-                                <div className="text-center py-4 text-muted-foreground text-sm">
+                                <div className="text-center py-4 text-brand-primary-600 font-medium text-sm">
                                     Select a question to view details
                                 </div>
                             )}
@@ -332,76 +356,87 @@ export default function MarkingRightPanel({
                     {markingMode === 'student-by-student' && (
                         <>
                             {loading ? (
-                                <div className="text-center py-4 text-muted-foreground">Loading students...</div>
+                                <div className="text-center py-4 text-brand-primary-600 font-medium">Loading students...</div>
                             ) : students.length === 0 ? (
-                                <div className="text-center py-4 text-muted-foreground text-sm">
-                                    No student answer sheets available. Please upload answer sheets first.
+                                <div className="text-center py-6">
+                                    <svg
+                                        className="mx-auto h-12 w-12 text-brand-accent-400 mb-3"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                                        />
+                                    </svg>
+                                    <p className="text-brand-primary-700 font-semibold text-sm mb-1">No Students Available</p>
+                                    <p className="text-brand-primary-600 text-xs">Please upload answer sheets first.</p>
                                 </div>
                             ) : (
                                 <>
-                                    {/* Student Search */}
-                                    <div className="mb-4">
-                                        <StudentSearchComponent />
-                                    </div>
-
                                     {/* Student Progress Summary */}
-                                    <Accordion type="single" defaultValue="progress" collapsible>
-                                        <AccordionItem value="progress">
-                                            <AccordionTrigger className="text-left">Progress Summary</AccordionTrigger>
-                                            <AccordionContent className="p-2 text-sm space-y-2">
+                                    <Accordion type="single" value={studentAccordionValue} onValueChange={setStudentAccordionValue} collapsible>
+                                        <AccordionItem value="progress" className="border-b-2 border-brand-accent-200">
+                                            <AccordionTrigger className="text-left font-semibold text-brand-primary-700 hover:text-brand-primary-900 hover:no-underline">
+                                                Progress Summary
+                                            </AccordionTrigger>
+                                            <AccordionContent className="p-3 text-sm space-y-2">
                                                 {studentResults ? (
                                                     <div className="space-y-2">
-                                                        <div className="bg-muted p-2 rounded">
-                                                            <div className="font-medium text-xs text-muted-foreground">Questions Marked</div>
-                                                            <div className="text-lg font-semibold">
+                                                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-400">
+                                                            <div className="font-bold text-xs text-brand-primary-700 uppercase tracking-wider mb-1">Questions Marked</div>
+                                                            <div className="text-2xl font-bold text-brand-primary-800">
                                                                 {studentResults.questions.filter(q => q.mark !== null && q.mark !== undefined).length}/{studentResults.questions.length}
                                                             </div>
                                                         </div>
-                                                        <div className="bg-muted p-2 rounded">
-                                                            <div className="font-medium text-xs text-muted-foreground">Total Score</div>
-                                                            <div className="text-lg font-semibold">
+                                                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-400">
+                                                            <div className="font-bold text-xs text-brand-primary-700 uppercase tracking-wider mb-1">Total Score</div>
+                                                            <div className="text-2xl font-bold text-brand-primary-800">
                                                                 {studentResults.questions.reduce((sum, q) => sum + (q.mark || 0), 0)} / {studentResults.questions.reduce((sum, q) => sum + (q.max_marks || 0), 0)}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="text-muted-foreground">Loading student results...</div>
+                                                    <div className="text-brand-primary-600 font-medium">Loading student results...</div>
                                                 )}
                                             </AccordionContent>
                                         </AccordionItem>
                                         
-                                        <AccordionItem value="questions">
-                                            <AccordionTrigger className="text-left">Question Breakdown</AccordionTrigger>
-                                            <AccordionContent className="p-2 text-sm space-y-1">
+                                        <AccordionItem value="questions" className="border-b-2 border-brand-accent-200">
+                                            <AccordionTrigger className="text-left font-semibold text-brand-primary-700 hover:text-brand-primary-900 hover:no-underline">
+                                                Question Breakdown
+                                            </AccordionTrigger>
+                                            <AccordionContent className="p-3 text-sm space-y-2">
                                                 {studentResults ? (
                                                     <div className="space-y-2">
                                                         {studentResults.questions.map((questionData) => (
-                                                            <div key={questionData.id} className="border rounded p-2 text-xs">
-                                                                <div className="flex justify-between items-center">
-                                                                    <span className="font-medium">Q{questionData.question_number}</span>
-                                                                    <span className={`px-2 py-1 rounded ${
+                                                            <div key={questionData.id} className="border-2 border-brand-accent-400 rounded-lg p-3 text-xs bg-white hover:shadow-md transition-shadow">
+                                                                <div className="flex justify-between items-center mb-2">
+                                                                    <span className="font-bold text-brand-primary-800">Q{questionData.question_number}</span>
+                                                                    <span className={`px-2.5 py-1 rounded-lg font-semibold ${
                                                                         questionData.mark !== null && questionData.mark !== undefined
-                                                                            ? 'bg-green-100 text-green-800' 
-                                                                            : 'bg-gray-100 text-gray-600'
+                                                                            ? 'bg-green-100 text-green-800 border-2 border-green-300' 
+                                                                            : 'bg-gray-100 text-gray-600 border-2 border-gray-300'
                                                                     }`}>
                                                                         {questionData.mark ?? '—'}/{questionData.max_marks}
                                                                     </span>
                                                                 </div>
-                                                                <div className="text-muted-foreground mt-1">
-                                                                    <div className="text-muted-foreground mt-1">
-                                                    Page {questionData.page_number}
-                                                    {questionData.comment && (
-                                                        <div className="mt-1 text-xs truncate">
-                                                            {questionData.comment}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                                <div className="text-brand-primary-600 font-medium">
+                                                                    Page {questionData.page_number}
                                                                 </div>
+                                                                {questionData.comment && (
+                                                                    <div className="mt-2 text-xs text-brand-primary-700 bg-brand-primary-50 p-2 rounded-lg border border-brand-accent-300">
+                                                                        <strong className="text-brand-primary-900">Comment:</strong> {questionData.comment}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="text-muted-foreground">Loading question details...</div>
+                                                    <div className="text-brand-primary-600 font-medium">Loading questions...</div>
                                                 )}
                                             </AccordionContent>
                                         </AccordionItem>

@@ -228,12 +228,16 @@ export default function EditQuestionController({
             })()}
 
             {/* Inline form */}
-            <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg z-50 w-80 space-y-3">
+            <div className="fixed bottom-4 right-4 bg-white p-5 rounded-xl shadow-2xl z-50 w-96 space-y-3 border-2 border-brand-accent-400 font-raleway">
+                <h3 className="text-lg font-bold text-brand-primary-800 pb-2 border-b-2 border-brand-accent-200">
+                    Edit Question
+                </h3>
                 <Input
                     name="question_number"
                     placeholder="Question Number"
                     value={formData.question_number}
                     onChange={handleChange}
+                    className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                 />
                 <div className="flex gap-2">
                     <Input
@@ -242,6 +246,7 @@ export default function EditQuestionController({
                         placeholder="Max Marks"
                         value={formData.max_marks || ''}
                         onChange={handleChange}
+                        className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                     />
                     <Input
                         type="number"
@@ -249,6 +254,7 @@ export default function EditQuestionController({
                         placeholder="Increment"
                         value={formData.increment || ''}
                         onChange={handleChange}
+                        className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                     />
                 </div>
                 <Textarea
@@ -256,27 +262,39 @@ export default function EditQuestionController({
                     placeholder="Memo"
                     value={formData.memo}
                     onChange={handleChange}
+                    className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                 />
                 <Textarea
                     name="marking_note"
                     placeholder="Marking Note"
                     value={formData.marking_note}
                     onChange={handleChange}
+                    className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                 />
-                <div className="flex justify-between gap-2">
+                <div className="flex justify-between gap-2 pt-2">
                     <Button 
                         variant="destructive" 
                         onClick={handleDelete} 
                         disabled={loading}
                         size="sm"
+                        className="bg-red-600 hover:bg-red-700 font-semibold"
                     >
                         {loading ? 'Deleting...' : 'Delete'}
                     </Button>
                     <div className="flex gap-2">
-                        <Button variant="ghost" onClick={onClose} disabled={loading}>
+                        <Button 
+                            variant="ghost" 
+                            onClick={onClose} 
+                            disabled={loading}
+                            className="text-brand-primary-700 hover:text-brand-primary-800 hover:bg-brand-primary-50 font-semibold"
+                        >
                             Cancel
                         </Button>
-                        <Button onClick={handleSubmit} disabled={loading}>
+                        <Button 
+                            onClick={handleSubmit} 
+                            disabled={loading}
+                            className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white font-semibold"
+                        >
                             {loading ? 'Saving...' : 'Save'}
                         </Button>
                     </div>

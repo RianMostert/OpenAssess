@@ -6,7 +6,6 @@ import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import StudentDashboard from './StudentDashboard';
 import StudentNavBar from './StudentNavBar';
 import CourseView from '@dashboard/lecturer/course/CourseView';
-// import LecturerNavBar from '@dashboard/lecturer/NavBar';
 import LecturerProfileView from '@dashboard/lecturer/profile/ProfileView';
 
 interface StudentDashboardWrapperProps {
@@ -38,23 +37,11 @@ export default function StudentDashboardWrapper({
     const [activeView, setActiveView] = useState<'student' | 'lecturer'>('student');
     const [hasLecturerAccess, setHasLecturerAccess] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
     const [activeNavItem, setActiveNavItem] = useState('courses');
 
     useEffect(() => {
         checkLecturerAccess();
     }, []);
-
-    // Auto-collapse sidebar on mobile/tablet for lecturer view
-    useEffect(() => {
-        if (activeView === 'lecturer') {
-            if (isMobile || isTablet) {
-                setIsLeftSidebarCollapsed(true);
-            } else {
-                setIsLeftSidebarCollapsed(false);
-            }
-        }
-    }, [isMobile, isTablet, activeView]);
 
     const checkLecturerAccess = async () => {
         try {
@@ -62,7 +49,6 @@ export default function StudentDashboardWrapper({
             
             if (response.ok) {
                 const courses: Course[] = await response.json();
-                // Check if student has facilitator or convener role in any course
                 const hasAccess = courses.some(course => 
                     course.my_role === 'facilitator' || course.my_role === 'convener'
                 );
@@ -73,10 +59,6 @@ export default function StudentDashboardWrapper({
         } finally {
             setLoading(false);
         }
-    };
-
-    const toggleLeftSidebar = () => {
-        setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed);
     };
 
     if (loading) {
@@ -145,35 +127,12 @@ export default function StudentDashboardWrapper({
                 />
             )}
             
-            {/* Lecturer Navigation */}
-            {/* {isMobile ? (
-                <div className="order-2 border-t border-zinc-800">
-                    <LecturerNavBar 
-                        activeNavItem={activeNavItem} 
-                        itemSelected={setActiveNavItem}
-                        isMobile={isMobile}
-                        isTablet={isTablet}
-                    />
-                </div>
-            ) : (
-                <div className={`flex flex-col border-r border-zinc-800 transition-all duration-300 ${
-                    isLeftSidebarCollapsed ? 'w-0 overflow-hidden' : isTablet ? 'w-16' : 'w-16'
-                }`}>
-                    <LecturerNavBar 
-                        activeNavItem={activeNavItem} 
-                        itemSelected={setActiveNavItem}
-                        isMobile={isMobile}
-                        isTablet={isTablet}
-                    />
-                </div>
-            )} */}
-
             {/* Main content area */}
             <div className={`flex-1 min-h-0 overflow-hidden ${isMobile ? 'order-1' : ''}`}>
                 {activeNavItem === 'courses' && (
                     <CourseView 
-                        onToggleCollapse={toggleLeftSidebar} 
-                        isCollapsed={isLeftSidebarCollapsed}
+                        onToggleCollapse={() => {}}
+                        isCollapsed={false}
                         isMobile={isMobile}
                         isTablet={isTablet}
                     />

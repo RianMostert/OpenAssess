@@ -192,22 +192,22 @@ export default function QueryReviewModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 font-raleway">
             <div className="bg-white rounded-lg shadow-xl w-full h-full max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
                 {/* Header */}
-                <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
+                <div className="p-4 border-b-2 border-brand-accent-400 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 flex justify-between items-center flex-shrink-0">
                     <div>
-                        <h2 className="text-xl font-semibold text-gray-900">
+                        <h2 className="text-xl font-bold text-brand-primary-800">
                             Review Query Batch - {batch.student_name}
                         </h2>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-brand-primary-600 mt-1 font-medium">
                             {batch.assessment_title} | {batch.question_count} question{batch.question_count > 1 ? 's' : ''} | 
                             Created: {new Date(batch.created_at).toLocaleDateString()}
                         </p>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                        className="text-brand-primary-400 hover:text-brand-primary-800 hover:bg-brand-primary-100 rounded-lg p-2 flex-shrink-0 transition-colors"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -218,23 +218,23 @@ export default function QueryReviewModal({
                 {loading ? (
                     <div className="flex-1 flex items-center justify-center">
                         <div className="text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-                            <p className="mt-2 text-gray-600">Loading query details...</p>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary-600 mx-auto"></div>
+                            <p className="mt-2 text-brand-primary-700 font-medium">Loading query details...</p>
                         </div>
                     </div>
                 ) : (
                     <div className="flex-1 flex min-h-0 overflow-hidden">
                         {/* PDF Viewer - Left Side */}
                         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                            <div className="p-3 border-b bg-gray-50 flex-shrink-0">
-                                <h3 className="font-medium text-gray-900">Student Answer Sheet</h3>
+                            <div className="p-3 border-b-2 border-brand-accent-400 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 flex-shrink-0">
+                                <h3 className="font-bold text-brand-primary-800">Student Answer Sheet</h3>
                                 {questions.length > 0 && (
-                                    <p className="text-sm text-gray-600 mt-1">
+                                    <p className="text-sm text-brand-primary-600 mt-1 font-medium">
                                         Questions highlighted: {questions.map(q => `Q${q.question_number}`).join(', ')}
                                     </p>
                                 )}
                             </div>
-                            <div className="flex-1 min-h-0 overflow-hidden">
+                            <div className="flex-1 min-h-0 overflow-hidden" ref={pdfContainerRef}>
                                 {assessment && (
                                     <QueryReviewPdfViewer
                                         assessment={assessment}
@@ -247,50 +247,50 @@ export default function QueryReviewModal({
                         </div>
 
                         {/* Response Form - Right Side */}
-                        <div className="w-80 flex flex-col border-l bg-gray-50 flex-shrink-0">
-                            <div className="p-3 border-b bg-white flex-shrink-0">
-                                <h3 className="font-medium text-gray-900">Query Responses</h3>
-                                <p className="text-sm text-gray-600 mt-1">
+                        <div className="w-80 flex flex-col border-l-2 border-brand-accent-400 bg-white flex-shrink-0">
+                            <div className="p-3 border-b-2 border-brand-accent-400 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 flex-shrink-0">
+                                <h3 className="font-bold text-brand-primary-800">Query Responses</h3>
+                                <p className="text-sm text-brand-primary-600 mt-1 font-medium">
                                     Respond to each query individually
                                 </p>
                             </div>
                             
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-brand-primary-50 to-white">
                                 {queries.map((query, index) => (
-                                    <div key={query.id} className="bg-white p-3 rounded-lg border shadow-sm">
+                                    <div key={query.id} className="bg-white p-3 rounded-lg border-2 border-brand-accent-400 shadow-sm hover:shadow-md transition-shadow">
                                         <div className="mb-3">
                                             <div className="flex items-center justify-between mb-2">
-                                                <h4 className="font-medium text-gray-900 text-sm">
+                                                <h4 className="font-bold text-brand-primary-800 text-sm">
                                                     {query.question_number ? `Question ${query.question_number}` : 'Assessment-wide'}
                                                 </h4>
-                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                <span className="text-xs text-brand-primary-700 bg-brand-accent-100 px-2 py-1 rounded font-semibold border border-brand-accent-300">
                                                     {query.query_type}
                                                 </span>
                                             </div>
-                                            <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded text-wrap break-words">
+                                            <p className="text-sm text-brand-primary-700 bg-brand-primary-50 p-2 rounded-lg text-wrap break-words border border-brand-accent-200">
                                                 {query.requested_change}
                                             </p>
                                             {query.current_mark !== undefined && (
-                                                <p className="text-xs text-gray-600 mt-1">
-                                                    Current mark: {query.current_mark}
+                                                <p className="text-xs text-brand-primary-600 mt-2 font-medium">
+                                                    Current mark: <span className="font-bold text-brand-primary-800">{query.current_mark}</span>
                                                 </p>
                                             )}
                                         </div>
 
                                         {/* Response Type */}
                                         <div className="mb-3">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Response</label>
-                                            <div className="space-y-1">
+                                            <label className="block text-sm font-bold text-brand-primary-700 mb-2 uppercase tracking-wider text-xs">Response</label>
+                                            <div className="space-y-2">
                                                 {(['approved', 'rejected', 'resolved'] as const).map(status => (
-                                                    <label key={status} className="flex items-center">
+                                                    <label key={status} className="flex items-center cursor-pointer hover:bg-brand-primary-50 p-2 rounded-lg transition-colors">
                                                         <input
                                                             type="radio"
                                                             value={status}
                                                             checked={responses[query.id]?.status === status}
                                                             onChange={(e) => updateResponse(query.id, 'status', e.target.value)}
-                                                            className="mr-2"
+                                                            className="mr-3 w-4 h-4 text-brand-primary-600 focus:ring-brand-primary-500"
                                                         />
-                                                        <span className="text-sm capitalize">{status}</span>
+                                                        <span className="text-sm capitalize font-medium text-brand-primary-700">{status}</span>
                                                     </label>
                                                 ))}
                                             </div>
@@ -299,7 +299,7 @@ export default function QueryReviewModal({
                                         {/* New Mark (if applicable) */}
                                         {responses[query.id]?.status === 'approved' && query.question_id && (
                                             <div className="mb-3">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                <label className="block text-sm font-bold text-brand-primary-700 mb-1 uppercase tracking-wider text-xs">
                                                     New Mark (Optional)
                                                 </label>
                                                 <input
@@ -307,7 +307,7 @@ export default function QueryReviewModal({
                                                     step="0.5"
                                                     value={responses[query.id]?.newMark || ''}
                                                     onChange={(e) => updateResponse(query.id, 'newMark', e.target.value)}
-                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full px-3 py-2 border-2 border-brand-accent-400 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-600 font-medium text-brand-primary-800"
                                                     placeholder="Enter new mark"
                                                 />
                                             </div>
@@ -315,14 +315,14 @@ export default function QueryReviewModal({
 
                                         {/* Response Text */}
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-bold text-brand-primary-700 mb-1 uppercase tracking-wider text-xs">
                                                 Your Response (Optional)
                                             </label>
                                             <textarea
                                                 value={responses[query.id]?.response || ''}
                                                 onChange={(e) => updateResponse(query.id, 'response', e.target.value)}
                                                 rows={3}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 resize-none"
+                                                className="w-full px-3 py-2 border-2 border-brand-accent-400 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-600 resize-none font-medium text-brand-primary-800"
                                                 placeholder="Explain your decision..."
                                             />
                                         </div>
@@ -331,18 +331,18 @@ export default function QueryReviewModal({
                             </div>
 
                             {/* Submit Button */}
-                            <div className="p-4 border-t bg-white flex-shrink-0">
+                            <div className="p-4 border-t-2 border-brand-accent-400 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 flex-shrink-0">
                                 <div className="flex space-x-3">
                                     <button
                                         onClick={onClose}
-                                        className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm"
+                                        className="flex-1 px-4 py-2 text-brand-primary-700 bg-white border-2 border-brand-accent-400 rounded-lg hover:bg-brand-primary-50 hover:border-brand-primary-500 text-sm font-semibold transition-colors"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         onClick={submitAllResponses}
                                         disabled={submitting}
-                                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 text-sm"
+                                        className="flex-1 px-4 py-2 bg-brand-primary-600 text-white rounded-lg hover:bg-brand-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-semibold transition-colors shadow-md"
                                     >
                                         {submitting ? 'Submitting...' : 'Submit All'}
                                     </button>

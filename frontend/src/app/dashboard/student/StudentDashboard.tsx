@@ -145,6 +145,22 @@ export default function StudentDashboard({
                     console.error(`Error fetching assessments for course ${course.title}:`, error);
                 }
             }
+
+            // Add dummy data for display purposes
+            const dummyAssessments: AssessmentWithCourse[] = [
+                { assessment_id: 'dummy-1', title: 'Assignment 1: Introduction to React', upload_date: '2024-09-15', status: 'marked', total_marks: 85, total_possible_marks: 100, percentage: 85, uploaded_file_id: 'file-1', question_count: 5, has_annotated_pdf: true, course_title: 'Web Development', course_code: 'CS301' },
+                { assessment_id: 'dummy-2', title: 'Midterm Exam', upload_date: '2024-10-01', status: 'marked', total_marks: 78, total_possible_marks: 100, percentage: 78, uploaded_file_id: 'file-2', question_count: 8, has_annotated_pdf: true, course_title: 'Data Structures', course_code: 'CS202' },
+                { assessment_id: 'dummy-3', title: 'Lab Report 3', upload_date: '2024-10-10', status: 'partially_marked', total_marks: 42, total_possible_marks: 50, percentage: 84, uploaded_file_id: 'file-3', question_count: 4, has_annotated_pdf: false, course_title: 'Database Systems', course_code: 'CS305' },
+                { assessment_id: 'dummy-4', title: 'Project Proposal', upload_date: '2024-10-15', status: 'submitted_pending', total_marks: null, total_possible_marks: 50, percentage: null, uploaded_file_id: 'file-4', question_count: 3, has_annotated_pdf: false, course_title: 'Software Engineering', course_code: 'CS401' },
+                { assessment_id: 'dummy-5', title: 'Quiz 2', upload_date: '2024-10-20', status: 'marked', total_marks: 18, total_possible_marks: 20, percentage: 90, uploaded_file_id: 'file-5', question_count: 10, has_annotated_pdf: true, course_title: 'Algorithms', course_code: 'CS303' },
+                { assessment_id: 'dummy-6', title: 'Assignment 2: State Management', upload_date: '2024-10-25', status: 'marked', total_marks: 92, total_possible_marks: 100, percentage: 92, uploaded_file_id: 'file-6', question_count: 6, has_annotated_pdf: true, course_title: 'Web Development', course_code: 'CS301' },
+                { assessment_id: 'dummy-7', title: 'Final Project Draft', upload_date: '2024-10-28', status: 'not_submitted', total_marks: null, total_possible_marks: 100, percentage: null, uploaded_file_id: null, question_count: 0, has_annotated_pdf: false, course_title: 'Mobile Development', course_code: 'CS404' },
+                { assessment_id: 'dummy-8', title: 'Lab 5: SQL Queries', upload_date: '2024-10-30', status: 'marked', total_marks: 45, total_possible_marks: 50, percentage: 90, uploaded_file_id: 'file-8', question_count: 5, has_annotated_pdf: true, course_title: 'Database Systems', course_code: 'CS305' },
+                { assessment_id: 'dummy-9', title: 'Case Study Analysis', upload_date: '2024-11-01', status: 'submitted_pending', total_marks: null, total_possible_marks: 75, percentage: null, uploaded_file_id: 'file-9', question_count: 4, has_annotated_pdf: false, course_title: 'Software Engineering', course_code: 'CS401' },
+                { assessment_id: 'dummy-10', title: 'Homework 4', upload_date: '2024-11-03', status: 'marked', total_marks: 28, total_possible_marks: 30, percentage: 93.33, uploaded_file_id: 'file-10', question_count: 6, has_annotated_pdf: true, course_title: 'Algorithms', course_code: 'CS303' },
+            ];
+            
+            allAssessments.push(...dummyAssessments);
             
             setAssessments(allAssessments);
         } catch (error) {
@@ -192,7 +208,6 @@ export default function StudentDashboard({
             if (response.ok) {
                 const queriesData = await response.json();
                 setQueries(queriesData);
-                console.log('Fetched queries:', queriesData); // Debug log
             } else {
                 console.error('Failed to fetch queries, status:', response.status);
                 console.error('Response text:', await response.text());
@@ -493,12 +508,10 @@ export default function StudentDashboard({
                         assessmentId={selectedAssessment.assessment_id}
                         assessmentTitle={selectedAssessment.title}
                         onCreateNewQuery={() => {
-                            console.log('Create new query clicked, selectedAssessment:', selectedAssessment);
                             // Keep the selected assessment and switch modals
                             setQueryHistoryModalOpen(false);
                             // Small delay to ensure the history modal closes before opening the query modal
                             setTimeout(() => {
-                                console.log('Opening query modal, selectedAssessment:', selectedAssessment);
                                 setQueryModalOpen(true);
                             }, 100);
                         }}

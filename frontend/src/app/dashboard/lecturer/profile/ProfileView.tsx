@@ -68,38 +68,38 @@ export default function ProfileView({ isMobile = false, isTablet = false }: Prof
     }
 
     return (
-        <div className="flex-1 bg-gray-50 p-6 min-h-screen">
+        <div className="flex-1 bg-gradient-to-br from-brand-primary-50 to-brand-accent-50 p-6 min-h-screen font-raleway">
             <div className="max-w-2xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Profile
+                    <h1 className="text-3xl font-bold text-brand-primary-800 mb-2">
+                        Profile Settings
                     </h1>
-                    <p className="text-gray-600">
-                        Manage your account information and preferences.
+                    <p className="text-brand-primary-600 font-medium">
+                        Manage your account information and preferences
                     </p>
                 </div>
 
                 {/* Profile Card */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold text-gray-900">
+                <div className="bg-white rounded-lg shadow-md border-2 border-brand-accent-400 p-6">
+                    <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-brand-accent-200">
+                        <h2 className="text-xl font-bold text-brand-primary-800">
                             Account Information
                         </h2>
                         <Button 
                             variant="destructive" 
                             onClick={handleLogout}
                             size="sm"
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            className="bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md"
                         >
                             Logout
                         </Button>
                     </div>
                     
                     <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium text-gray-500">Name</label>
-                            <p className="text-gray-900">
+                        <div className="p-3 rounded-lg bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 border border-brand-accent-200">
+                            <label className="text-xs font-bold text-brand-primary-700 uppercase tracking-wider">Name</label>
+                            <p className="text-brand-primary-900 font-semibold mt-1">
                                 {userInfo?.first_name && userInfo?.last_name 
                                     ? `${userInfo.first_name} ${userInfo.last_name}` 
                                     : 'Not available'
@@ -107,29 +107,23 @@ export default function ProfileView({ isMobile = false, isTablet = false }: Prof
                             </p>
                         </div>
                         
-                        <Separator />
-                        
-                        <div>
-                            <label className="text-sm font-medium text-gray-500">Email</label>
-                            <p className="text-gray-900">
+                        <div className="p-3 rounded-lg bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 border border-brand-accent-200">
+                            <label className="text-xs font-bold text-brand-primary-700 uppercase tracking-wider">Email</label>
+                            <p className="text-brand-primary-900 font-semibold mt-1 break-all">
                                 {userInfo?.email || 'Not available'}
                             </p>
                         </div>
                         
-                        <Separator />
-                        
-                        <div>
-                            <label className="text-sm font-medium text-gray-500">Role</label>
-                            <p className="text-gray-900">
+                        <div className="p-3 rounded-lg bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 border border-brand-accent-200">
+                            <label className="text-xs font-bold text-brand-primary-700 uppercase tracking-wider">Role</label>
+                            <p className="text-brand-primary-900 font-semibold mt-1">
                                 {getRoleName(userInfo?.primary_role_id, userInfo?.primary_role)}
                             </p>
                         </div>
                         
-                        <Separator />
-                        
-                        <div>
-                            <label className="text-sm font-medium text-gray-500">User ID</label>
-                            <p className="text-gray-900 font-mono text-sm">
+                        <div className="p-3 rounded-lg bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 border border-brand-accent-200">
+                            <label className="text-xs font-bold text-brand-primary-700 uppercase tracking-wider">User ID</label>
+                            <p className="text-brand-primary-900 font-mono text-sm font-semibold mt-1 break-all">
                                 {userInfo?.sub || 'Not available'}
                             </p>
                         </div>

@@ -82,10 +82,10 @@ export default function CreateQuestionFormModal({
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
+            <DialogContent className="font-raleway bg-white">
                 <DialogHeader>
-                    <DialogTitle>Create Question</DialogTitle>
-                    <DialogDescription className="sr-only">
+                    <DialogTitle className="text-2xl font-bold text-brand-primary-800">Create Question</DialogTitle>
+                    <DialogDescription className="text-brand-primary-600">
                         Provide details for the selected question area
                     </DialogDescription>
                 </DialogHeader>
@@ -94,10 +94,11 @@ export default function CreateQuestionFormModal({
                     <div>
                         <Input
                             placeholder="Question Number"
+                            className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                             {...register('question_number', { required: 'This is required' })}
                         />
                         {errors.question_number && (
-                            <p className="text-sm text-red-500 mt-1">
+                            <p className="text-sm text-red-500 mt-1 font-medium">
                                 {errors.question_number.message}
                             </p>
                         )}
@@ -108,34 +109,48 @@ export default function CreateQuestionFormModal({
                             type="number"
                             step="0.1"
                             placeholder="Max Marks"
+                            className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                             {...register('max_marks')}
                         />
                         <Input
                             type="number"
                             step="0.1"
                             placeholder="Increment"
+                            className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                             {...register('increment')}
                         />
                     </div>
 
                     <div>
-                        <Textarea placeholder="Memo" {...register('memo')} />
+                        <Textarea 
+                            placeholder="Memo" 
+                            className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
+                            {...register('memo')} 
+                        />
                     </div>
 
                     <div>
-                        <Textarea placeholder="Marking Note" {...register('marking_note')} />
+                        <Textarea 
+                            placeholder="Marking Note" 
+                            className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
+                            {...register('marking_note')} 
+                        />
                     </div>
 
-                    <div className="text-sm text-muted-foreground space-y-1">
-                        <p>Page: {initialData.page_number}</p>
-                        <p>
+                    <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-200">
+                        <p className="text-sm font-semibold text-brand-primary-700">Page: {initialData.page_number}</p>
+                        <p className="text-sm text-brand-primary-600">
                             Box: ({initialData.x.toFixed(1)}, {initialData.y.toFixed(1)}) •{' '}
                             {initialData.width.toFixed(1)} x {initialData.height.toFixed(1)}
                         </p>
                     </div>
 
                     <DialogFooter>
-                        <Button type="submit" disabled={loading}>
+                        <Button 
+                            type="submit" 
+                            disabled={loading}
+                            className="bg-brand-primary-600 hover:bg-brand-primary-700 text-white font-semibold"
+                        >
                             {loading ? 'Creating...' : 'Create Question'}
                         </Button>
                     </DialogFooter>

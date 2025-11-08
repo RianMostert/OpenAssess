@@ -76,16 +76,29 @@ export default function EditCourseModal({
 
     return (
         <Dialog open={open} onOpenChange={setOpen} >
-            <DialogContent>
+            <DialogContent className="bg-white border-4 border-brand-accent font-raleway">
                 <DialogHeader>
-                    <DialogTitle>Edit Course</DialogTitle>
+                    <DialogTitle className="text-brand-primary text-xl font-bold">Edit Course</DialogTitle>
                     <DialogDescription className='sr-only'>Dialog goes here</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
-                    <Input placeholder="Course Title" {...register('title', { required: true })} />
-                    <Input placeholder="Course Code (optional)" {...register('code')} />
+                    <Input 
+                        placeholder="Course Title" 
+                        {...register('title', { required: true })} 
+                        className="border-2 border-brand-accent-300 focus:ring-brand-primary focus:border-brand-primary bg-white"
+                    />
+                    <Input 
+                        placeholder="Course Code (optional)" 
+                        {...register('code')} 
+                        className="border-2 border-brand-accent-300 focus:ring-brand-primary focus:border-brand-primary bg-white"
+                    />
                     <DialogFooter>
-                        <Button type="submit">Update Course</Button>
+                        <Button 
+                            type="submit" 
+                            className="bg-brand-primary hover:bg-brand-primary-700 text-white font-semibold"
+                        >
+                            Update Course
+                        </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>

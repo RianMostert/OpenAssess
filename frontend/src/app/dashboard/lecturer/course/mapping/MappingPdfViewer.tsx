@@ -234,12 +234,12 @@ export default function MappingPdfViewer({
     }, [pageContainerRef, setCurrentPage]);
 
     return (
-        <div className="flex flex-col h-full w-full p-4">
+        <div className="flex flex-col h-full w-full p-4 font-raleway">
             {pdfUrl ? (
                 <>
                     <div
                         ref={pageContainerRef}
-                        className="border rounded relative overflow-auto w-full pdf-container"
+                        className="border-2 border-brand-accent-400 rounded-lg relative overflow-auto w-full pdf-container shadow-md"
                         style={{ 
                             height: 'calc(100vh - 160px)',
                             touchAction: 'pan-x pan-y', // Allow panning but prevent zoom for better drawing experience
@@ -347,16 +347,16 @@ export default function MappingPdfViewer({
                         )}
                     </div>
 
-                    <div className="flex items-center justify-center gap-4 mt-4">
+                    <div className="flex items-center justify-center gap-4 mt-4 font-raleway">
                         <Button
                             variant="outline"
                             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                             disabled={currentPage <= 1}
-                            className="touch-manipulation min-h-[44px]"
+                            className="touch-manipulation min-h-[44px] border-2 border-brand-accent-400 text-brand-primary-700 hover:bg-brand-primary-50 hover:text-brand-primary-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Previous
                         </Button>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm font-semibold text-brand-primary-700 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 px-4 py-2 rounded-lg border-2 border-brand-accent-200">
                             Page {currentPage} of {numPages}
                         </p>
                         <Button
@@ -365,7 +365,7 @@ export default function MappingPdfViewer({
                                 setCurrentPage((prev) => Math.min(prev + 1, numPages || prev))
                             }
                             disabled={currentPage >= (numPages || 0)}
-                            className="touch-manipulation min-h-[44px]"
+                            className="touch-manipulation min-h-[44px] border-2 border-brand-accent-400 text-brand-primary-700 hover:bg-brand-primary-50 hover:text-brand-primary-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Next
                         </Button>

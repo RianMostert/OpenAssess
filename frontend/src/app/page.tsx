@@ -11,8 +11,10 @@ import {
   canAccessLecturerDashboard 
 } from '@/types/auth';
 
+// Import Shared Components
+import TopBar from '@/app/components/TopBar';
+
 // Import Lecturer Components
-import LecturerTopBar from '@/app/dashboard/lecturer/TopBar';
 import LecturerNavBar from '@/app/dashboard/lecturer/NavBar';
 import CourseView from '@dashboard/lecturer/course/CourseView';
 import LecturerProfileView from '@dashboard/lecturer/profile/ProfileView';
@@ -107,30 +109,11 @@ export default function Home() {
   if (isStudent(userRole)) {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-raleway">
-        {/* Simple Student Header */}
-        <div className="bg-gradient-to-r from-brand-primary to-brand-primary-700 border-b border-brand-primary-800 px-6 py-4 shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-white">
-                OpenAssess
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-brand-primary-100 font-medium">
-                {userInfo?.email}
-              </span>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('authToken');
-                  router.push('/auth');
-                }}
-                className="text-sm bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-150 font-semibold"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
+        <TopBar 
+          userEmail={userInfo?.email}
+          isMobile={isMobile}
+          isTablet={isTablet}
+        />
         
         {/* Student Dashboard Content */}
         <StudentDashboardWrapper 
@@ -144,37 +127,35 @@ export default function Home() {
   // Lecturer Dashboard (role: "staff" or "administrator")
   if (canAccessLecturerDashboard(userRole)) {
     return (
-      <div className="flex flex-col h-screen overflow-hidden">
-        <LecturerTopBar
-          toggleLeftSidebar={toggleLeftSidebar}
-          leftSidebarCollapsed={isLeftSidebarCollapsed}
-          rightSidebarCollapsed={false}
+      <div className="flex flex-col h-screen overflow-hidden font-raleway">
+        <TopBar 
+          userEmail={userInfo?.email}
           isMobile={isMobile}
           isTablet={isTablet}
         />
 
         <div className={`flex flex-1 ${isMobile ? 'flex-col' : 'flex-row'}`}>
-          {/* Navigation - Show as bottom bar on mobile, side bar on tablet/desktop */}
+          {/* Navigation - Always visible, show as bottom bar on mobile, side bar on tablet/desktop */}
           {isMobile ? (
-            <div className="order-2 border-t border-zinc-800">
+            <div className="order-2">
               <LecturerNavBar 
                 activeNavItem={activeNavItem} 
                 itemSelected={setActiveNavItem}
+                onToggleSidebar={toggleLeftSidebar}
+                isSidebarVisible={!isLeftSidebarCollapsed}
                 isMobile={isMobile}
                 isTablet={isTablet}
               />
             </div>
           ) : (
-            <div className={`flex flex-col border-r border-zinc-800 transition-all duration-300 ${
-              isLeftSidebarCollapsed ? 'w-0 overflow-hidden' : isTablet ? 'w-16' : 'w-16'
-            }`}>
-              <LecturerNavBar 
-                activeNavItem={activeNavItem} 
-                itemSelected={setActiveNavItem}
-                isMobile={isMobile}
-                isTablet={isTablet}
-              />
-            </div>
+            <LecturerNavBar 
+              activeNavItem={activeNavItem} 
+              itemSelected={setActiveNavItem}
+              onToggleSidebar={toggleLeftSidebar}
+              isSidebarVisible={!isLeftSidebarCollapsed}
+              isMobile={isMobile}
+              isTablet={isTablet}
+            />
           )}
 
           {/* Main content area */}

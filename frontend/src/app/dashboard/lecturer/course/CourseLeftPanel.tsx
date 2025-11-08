@@ -6,14 +6,13 @@ import { Button } from '@/components/ui/button';
 import {
     DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, PanelLeft, FileText } from 'lucide-react';
 import CreateCourseModel from '@/app/dashboard/lecturer/course/components/CreateCourseModel';
 import EditCourseModel from '@dashboard/lecturer/course/components/EditCourseModel';
 import CreateAssessmentModel from '@/app/dashboard/lecturer/course/components/CreateAssessmentModel';
 import EditAssessmentModel from '@/app/dashboard/lecturer/course/components/EditAssessmentModel';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Course, Assessment } from '@/types/course';
-import { set } from 'react-hook-form';
 
 type CourseWithAssessments = Course & { assessments: Assessment[] };
 
@@ -88,7 +87,6 @@ export default function CoursePanel({
             } else {
                 const idRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/my-course-ids`);
                 const courseIds: string[] = await idRes.json();
-                console.log('Course IDs:', courseIds);
 
                 const courseResponses = await Promise.all(
                     courseIds.map(async (id) => {
@@ -143,8 +141,6 @@ export default function CoursePanel({
         const course = courses.find(c => c.id === courseId);
         if (!course) return;
 
-        console.log('Editing course:', course);
-
         setEditingCourse({
             id: course.id,
             title: course.title,
@@ -157,8 +153,6 @@ export default function CoursePanel({
     const addAssessment = (courseId: string) => {
         const course = courses.find(c => c.id === courseId);
         if (!course) return;
-
-        console.log('Adding assessment to course:', course);
 
         setCreatingAssessmentFor({
             id: course.id,
@@ -173,20 +167,30 @@ export default function CoursePanel({
         fetchCourses();
     }, []);
 
-    if (loading) return <div className={`border-zinc-800 border-r ${isMobile ? 'p-2' : 'p-4'}`}>Loading courses...</div>;
+    if (loading) return <div className={`border-brand-accent border-r ${isMobile ? 'p-2' : 'p-4'} bg-gradient-to-br from-gray-50 to-brand-primary-50 font-raleway`}>Loading courses...</div>;
 
     // Mobile: Show as overlay/modal when not collapsed
     if (isMobile && !isCollapsed) {
         return (
             <div className="fixed inset-0 z-50 bg-black bg-opacity-50" onClick={onToggleCollapse}>
                 <div 
-                    className="absolute left-0 top-0 h-full bg-background border-r border-zinc-800 p-4 overflow-y-auto"
+                    className="absolute left-0 top-0 h-full bg-gradient-to-br from-gray-50 to-brand-primary-50 border-r border-brand-accent shadow-xl p-4 overflow-y-auto font-raleway"
                     style={{ width: `${Math.min(width, window.innerWidth * 0.8)}px` }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold">Your Courses</h2>
-                        <CreateCourseModel onCourseAdded={fetchCourses} />
+                        <h2 className="text-lg font-bold text-brand-primary">Your Courses</h2>
+                        <div className="flex items-center gap-2">
+                            <CreateCourseModel onCourseAdded={fetchCourses} />
+                            {/* <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={onToggleCollapse}
+                                className="border-2 border-brand-accent-300 hover:bg-brand-accent-50"
+                            >
+                                <PanelLeft className="h-4 w-4 text-brand-primary" />
+                            </Button> */}
+                        </div>
                     </div>
                     {/* Course list content */}
                     <Accordion type="multiple">
@@ -348,21 +352,35 @@ export default function CoursePanel({
         );
     }
 
+    // Desktop/Tablet: Don't render anything when collapsed
+    if (isCollapsed) {
+        return null;
+    }
+
     return (
-        <div className={`transition-all duration-300 ease-in-out border-zinc-800 border-r overflow-hidden`}
+        <div className="border-brand-accent border-r bg-gradient-to-br from-gray-50 to-brand-primary-50 overflow-y-auto font-raleway"
             style={{
-                width: isCollapsed ? '0px' : `${isTablet ? Math.min(width, 200) : width}px`,
-                minWidth: isCollapsed ? '0px' : `${isTablet ? Math.min(width, 200) : width}px`,
-                padding: isCollapsed ? '0px' : isTablet ? '0.5rem' : '1rem'
+                width: `${isTablet ? Math.min(width, 200) : width}px`,
+                minWidth: `${isTablet ? Math.min(width, 200) : width}px`,
+                padding: isTablet ? '0.5rem' : '1rem'
             }}>
-            {!isCollapsed && (
-                <>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className={`font-semibold ${isTablet ? 'text-lg' : 'text-xl'}`}>
-                            {isTablet ? 'Courses' : 'Your Courses'}
-                        </h2>
-                        <CreateCourseModel onCourseAdded={fetchCourses} />
-                    </div>
+            <div className="flex items-center justify-between mb-4">
+                <h2 className={`font-bold text-brand-primary ${isTablet ? 'text-lg' : 'text-xl'}`}>
+                    {isTablet ? 'Courses' : 'Your Courses'}
+                </h2>
+                <div className="flex items-center gap-2">
+                    <CreateCourseModel onCourseAdded={fetchCourses} />
+                    {/* <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={onToggleCollapse}
+                        className="border-2 border-brand-accent-300 hover:bg-brand-accent-50"
+                        title="Hide Courses Panel"
+                    >
+                        <PanelLeft className="h-4 w-4 text-brand-primary" />
+                    </Button> */}
+                </div>
+            </div>
 
                     <Accordion type="multiple">
                         {courses.map((course) => (
@@ -520,8 +538,6 @@ export default function CoursePanel({
                             }}
                         />
                     )}
-                </>
-            )}
-        </div >
+                </div>
     );
 }

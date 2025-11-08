@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FileText } from 'lucide-react';
 import CourseLeftPanel from '@dashboard/lecturer/course/CourseLeftPanel';
 import CourseOverview from '@dashboard/lecturer/course/overview/CourseOverview';
 import AssessmentOverview from '@dashboard/lecturer/course/overview/AssessmentOverview';
@@ -33,7 +34,7 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
     };
 
     return (
-        <div className={`flex h-full w-full min-h-0 ${isMobile ? 'flex-col' : 'flex-row'}`}>
+        <div className={`flex h-full w-full min-h-0 bg-gradient-to-br from-gray-50 to-brand-primary-50 font-raleway ${isMobile ? 'flex-col' : 'flex-row'}`}>
             <CourseLeftPanel
                 selectedCourse={selectedCourse}
                 setSelectedCourse={setSelectedCourse}
@@ -69,8 +70,11 @@ export default function CourseView({ isCollapsed, onToggleCollapse, isMobile = f
                 )}
 
                 {!selectedCourse && (
-                    <div className={`${isMobile ? 'p-4' : 'p-6'} text-muted-foreground h-full flex items-center justify-center`}>
-                        Select a course to get started
+                    <div className={`${isMobile ? 'p-4' : 'p-6'} text-gray-600 h-full flex items-center justify-center`}>
+                        <div className="text-center">
+                            <FileText className="h-16 w-16 mx-auto mb-4 text-brand-accent-400" />
+                            <p className="text-lg font-semibold text-brand-primary">Select a course to get started</p>
+                        </div>
                     </div>
                 )}
 

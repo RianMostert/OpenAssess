@@ -235,7 +235,7 @@ export default function QueryReviewPdfViewer({
     const renderPageWithAnnotations = (pageNumber: number) => {
         const annotationKey = `${studentId}-${pageNumber}`;
         const annotations = annotationsByPage[annotationKey];
-        const pageWidth = containerWidth ? containerWidth - 40 : 800; // Leave some margin
+        const pageWidth = containerWidth ? containerWidth - 80 : 800; // Account for padding and margins
 
         // Helper function to get page size for coordinate calculations
         const getPageSize = () => {
@@ -253,11 +253,17 @@ export default function QueryReviewPdfViewer({
         };
 
         return (
-            <div key={`${pageNumber}-${pdfVersion}`} className="relative mb-6 border rounded shadow-sm" id={`page-${pageNumber}`}>
+            <div key={`${pageNumber}-${pdfVersion}`} className="relative mb-6 border-2 border-brand-accent-300 rounded-lg shadow-sm bg-white" id={`page-${pageNumber}`}>
+                {/* Page number indicator */}
+                <div className="absolute top-2 right-2 bg-brand-primary-600 text-white text-xs px-3 py-1 rounded-full font-bold shadow-md z-[100]">
+                    Page {pageNumber}
+                </div>
+                
                 <Page
                     pageNumber={pageNumber}
                     width={pageWidth}
                     onRenderSuccess={() => {
+                        console.log(`Page ${pageNumber} rendered successfully`);
                         setRenderedPages(prev => new Set([...prev, pageNumber]));
                     }}
                     renderTextLayer={true}
@@ -284,26 +290,24 @@ export default function QueryReviewPdfViewer({
                         };
                         const pixelCoords = percentageToPixels(percentageCoords, pageSize);
                         
-                        return (
-                            <div
-                                key={question.id}
-                                className="absolute border-2 border-blue-500 bg-blue-100 bg-opacity-30 rounded pointer-events-none"
-                                style={{
-                                    left: `${pixelCoords.x}px`,
-                                    top: `${pixelCoords.y}px`,
-                                    width: `${pixelCoords.width}px`,
-                                    height: `${pixelCoords.height}px`,
-                                    zIndex: 10,
-                                }}
-                            >
-                                <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded">
-                                    Q{question.question_number}
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                {/* Existing annotations overlay */}
+                                        return (
+                                            <div
+                                                key={question.id}
+                                                className="absolute border-2 border-blue-500 bg-blue-100 bg-opacity-30 rounded pointer-events-none"
+                                                style={{
+                                                    left: `${pixelCoords.x}px`,
+                                                    top: `${pixelCoords.y}px`,
+                                                    width: `${pixelCoords.width}px`,
+                                                    height: `${pixelCoords.height}px`,
+                                                    zIndex: 10,
+                                                }}
+                                            >
+                                                <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded font-semibold">
+                                                    Q{question.question_number}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}                {/* Existing annotations overlay */}
                 {renderedPages.has(pageNumber) && annotations && (
                     <div className="absolute inset-0 pointer-events-none">
                         {/* Konva Stage for line rendering */}
@@ -412,18 +416,18 @@ export default function QueryReviewPdfViewer({
     }
 
     return (
-        <div className="flex flex-col h-full w-full">
+        <div className="flex flex-col h-full w-full overflow-hidden">
             {pdfUrl ? (
                 <div
-                    className="border rounded relative overflow-auto pdf-container flex-1"
+                    className="border-2 border-brand-accent-400 rounded-lg relative overflow-auto pdf-container h-full w-full bg-white"
                     style={{ 
                         touchAction: 'pan-x pan-y',
                     }}
-                    ref={pageContainerRef}
                 >
                     <Document
                         file={pdfUrl}
                         onLoadSuccess={({ numPages }) => {
+                            console.log('PDF loaded with numPages:', numPages);
                             setNumPages(numPages);
                             setPdfReady(true);
                         }}
@@ -433,7 +437,7 @@ export default function QueryReviewPdfViewer({
                         }}
                     >
                         {pdfReady && numPages && (
-                            <div className="p-4">
+                            <div className="p-4 w-fit">
                                 {Array.from({ length: numPages }, (_, i) => i + 1).map(pageNumber => (
                                     renderPageWithAnnotations(pageNumber)
                                 ))}
@@ -442,7 +446,7 @@ export default function QueryReviewPdfViewer({
                     </Document>
                 </div>
             ) : (
-                <p className="text-sm text-muted-foreground p-4">
+                <p className="text-sm text-brand-primary-600 p-4 font-medium">
                     Loading PDF...
                 </p>
             )}

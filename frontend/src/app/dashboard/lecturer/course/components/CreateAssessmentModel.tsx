@@ -123,9 +123,9 @@ export default function CreateAssessmentModal({
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent>
+            <DialogContent className="bg-white border-4 border-brand-accent font-raleway">
                 <DialogHeader>
-                    <DialogTitle>Create Assessment</DialogTitle>
+                    <DialogTitle className="text-brand-primary text-xl font-bold">Create Assessment</DialogTitle>
                     <DialogDescription className="sr-only">Add a title and optionally upload a PDF</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
@@ -133,13 +133,17 @@ export default function CreateAssessmentModal({
                         <Input
                             placeholder="Assessment Title"
                             {...register('title', { required: 'Title is required' })}
+                            className="border-2 border-brand-accent-300 focus:ring-brand-primary focus:border-brand-primary bg-white"
                         />
                         {errors.title && (
-                            <p className="text-sm text-red-500 mt-1">{errors.title.message}</p>
+                            <p className="text-sm text-red-500 mt-1 font-medium">{errors.title.message}</p>
                         )}
                     </div>
 
                     <div>
+                        <label className="block text-sm font-semibold text-brand-primary mb-2">
+                            Upload Question Paper (PDF)
+                        </label>
                         <input
                             type="file"
                             accept=".pdf"
@@ -149,14 +153,19 @@ export default function CreateAssessmentModal({
                                     setFile(selectedFile);
                                 }
                             }}
+                            className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-2 file:border-brand-accent-300 file:text-sm file:font-semibold file:bg-brand-accent-50 file:text-brand-primary hover:file:bg-brand-accent-100 cursor-pointer"
                         />
                         {file && (
-                            <p className="text-sm text-gray-500 mt-1">Selected: {file.name}</p>
+                            <p className="text-sm text-brand-accent-700 mt-2 font-medium">Selected: {file.name}</p>
                         )}
                     </div>
 
                     <DialogFooter>
-                        <Button type="submit" disabled={uploading}>
+                        <Button 
+                            type="submit" 
+                            disabled={uploading}
+                            className="bg-brand-primary hover:bg-brand-primary-700 text-white font-semibold disabled:opacity-50"
+                        >
                             {uploading ? 'Uploading...' : 'Create Assessment'}
                         </Button>
                     </DialogFooter>
