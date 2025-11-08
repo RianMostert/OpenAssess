@@ -13,7 +13,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreVertical, ChevronLeft, ChevronRight, User, Users, Search } from 'lucide-react';
+import { MoreVertical, ChevronLeft, ChevronRight, User, Users, Search, Eye, EyeOff } from 'lucide-react';
 import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { Question, MarkingMode, UploadedAnswer, StudentAllResults } from '@/types/course';
 
@@ -68,61 +68,11 @@ export default function MarkingRightPanel({
     const [studentSearch, setStudentSearch] = useState('');
     const [filteredStudents, setFilteredStudents] = useState<UploadedAnswer[]>([]);
     const [searchFocused, setSearchFocused] = useState(false);
+    
+    // Anonymous marking mode
+    const [anonymousMode, setAnonymousMode] = useState(false);
 
-    // Student Search Component - reusable for both modes
-    const StudentSearchComponent = () => (
-        <div className="space-y-2">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-primary-400 w-4 h-4" />
-                <Input
-                    type="text"
-                    placeholder="Search by student number..."
-                    value={studentSearch}
-                    onChange={(e) => setStudentSearch(e.target.value)}
-                    onFocus={() => setSearchFocused(true)}
-                    onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-                    className="pl-10 border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
-                    autoComplete="off"
-                />
-            </div>
-            
-            {/* Search Results */}
-            {searchFocused && studentSearch.trim() !== '' && (
-                <div className="bg-white border-2 border-brand-accent-400 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
-                    {filteredStudents.length > 0 ? (
-                        filteredStudents.map((student) => (
-                            <button
-                                key={student.id}
-                                onClick={() => handleStudentSelect(student)}
-                                onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
-                                className="w-full text-left px-3 py-2 hover:bg-brand-primary-50 text-sm border-b-2 border-brand-accent-200 last:border-b-0 transition-colors"
-                            >
-                                <div className="font-semibold text-brand-primary-800">{student.student_number || student.student_id}</div>
-                                {student.student_name && (
-                                    <div className="text-xs text-brand-primary-600">{student.student_name}</div>
-                                )}
-                            </button>
-                        ))
-                    ) : (
-                        <div className="px-3 py-2 text-sm text-brand-primary-600">
-                            No students found
-                        </div>
-                    )}
-                </div>
-            )}
-            
-            {/* Current Student Display */}
-            <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-400">
-                <div className="text-xs font-bold text-brand-primary-700 mb-1 uppercase tracking-wider">Current Student</div>
-                <div className="font-bold text-brand-primary-800">
-                    {students[currentStudentIndex]?.student_number || students[currentStudentIndex]?.student_id || `Student ${currentStudentIndex + 1}`}
-                </div>
-                {students[currentStudentIndex]?.student_name && (
-                    <div className="text-sm text-brand-primary-600 font-medium">{students[currentStudentIndex].student_name}</div>
-                )}
-            </div>
-        </div>
-    );
+    // Student search UI is rendered inline to avoid remounting that causes input to lose focus
 
     const fetchQuestions = async () => {
         setLoading(true);
@@ -277,8 +227,74 @@ export default function MarkingRightPanel({
 
                     {/* Student Search - Common for both modes */}
                     <div className="mb-4">
-                        <div className="text-xs font-bold text-brand-primary-700 mb-2 uppercase tracking-wider">Student Navigation</div>
-                        <StudentSearchComponent />
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="text-xs font-bold text-brand-primary-700 uppercase tracking-wider">Student Navigation</div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setAnonymousMode(!anonymousMode)}
+                                className="h-7 px-2 text-xs"
+                                title={anonymousMode ? "Show student names" : "Hide student names (anonymous marking)"}
+                            >
+                                {anonymousMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        <div className="space-y-2">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-brand-primary-400 w-4 h-4" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search by student number..."
+                                    value={studentSearch}
+                                    onChange={(e) => setStudentSearch(e.target.value)}
+                                    onFocus={() => setSearchFocused(true)}
+                                    onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                                    className="pl-10 border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
+                                    autoComplete="off"
+                                />
+                            </div>
+
+                            {/* Search Results */}
+                            {searchFocused && studentSearch.trim() !== '' && (
+                                <div className="bg-white border-2 border-brand-accent-400 rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+                                    {filteredStudents.length > 0 ? (
+                                        filteredStudents.map((student) => (
+                                            <button
+                                                key={student.id}
+                                                onClick={() => handleStudentSelect(student)}
+                                                onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
+                                                className="w-full text-left px-3 py-2 hover:bg-brand-primary-50 text-sm border-b-2 border-brand-accent-200 last:border-b-0 transition-colors"
+                                            >
+                                                <div className="font-semibold text-brand-primary-800">
+                                                    {anonymousMode ? `Student ${students.findIndex(s => s.id === student.id) + 1}` : (student.student_number || student.student_id)}
+                                                </div>
+                                                {!anonymousMode && student.student_name && (
+                                                    <div className="text-xs text-brand-primary-600">{student.student_name}</div>
+                                                )}
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="px-3 py-2 text-sm text-brand-primary-600">
+                                            No students found
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Current Student Display */}
+                            <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-400">
+                                <div className="text-xs font-bold text-brand-primary-700 mb-1 uppercase tracking-wider">Current Student</div>
+                                <div className="font-bold text-brand-primary-800">
+                                    {anonymousMode 
+                                        ? `Student ${currentStudentIndex + 1}`
+                                        : (students[currentStudentIndex]?.student_number || students[currentStudentIndex]?.student_id || `Student ${currentStudentIndex + 1}`)
+                                    }
+                                </div>
+                                {!anonymousMode && students[currentStudentIndex]?.student_name && (
+                                    <div className="text-sm text-brand-primary-600 font-medium">{students[currentStudentIndex].student_name}</div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Question-by-Question Mode */}

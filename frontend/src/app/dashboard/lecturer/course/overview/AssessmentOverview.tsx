@@ -277,36 +277,40 @@ export default function AssessmentOverview({
                 </div>
             ) : (
                 <div className="flex flex-col space-y-6 flex-1 min-h-0 mt-6">
-                    {/* Compact Action Bar */}
-                    <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-400 p-4 flex-shrink-0">
-                        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4`}>
-                            <div className="flex items-center justify-between">
-                                <div>
+                    {/* Action Cards Grid */}
+                    <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4 flex-shrink-0`}>
+                        {/* Marking Card */}
+                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-400 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
                                     <h3 className="text-xs font-medium text-brand-primary-700 uppercase">Marking</h3>
-                                    <p className="text-lg font-bold text-brand-primary-700">
-                                        {assessmentStats?.grading_completion.completion_percentage || 0}%
-                                    </p>
                                     <p className="text-xs text-brand-primary-600">
-                                        {assessmentStats?.grading_completion.graded_submissions || 0}/{assessmentStats?.grading_completion.total_submissions || 0} marked
+                                        {assessmentStats?.grading_completion.graded_submissions || 0}/{assessmentStats?.grading_completion.total_submissions || 0}
                                     </p>
                                 </div>
+                                <p className="text-lg font-bold text-brand-primary-700">
+                                    {assessmentStats?.grading_completion.completion_percentage || 0}%
+                                </p>
                                 <button
                                     onClick={() => setActiveMode('mark')}
-                                    className="px-3 py-1.5 bg-brand-primary-600 text-white rounded text-sm hover:bg-brand-primary-700 transition-colors"
+                                    className="px-3 py-1.5 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 transition-colors whitespace-nowrap"
                                 >
                                     Mark
                                 </button>
                             </div>
+                        </div>
 
-                            <div className="flex items-center justify-between">
-                                <div>
+                        {/* Submissions Card */}
+                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-400 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
                                     <h3 className="text-xs font-medium text-brand-primary-700 uppercase">Submissions</h3>
-                                    <p className="text-lg font-bold text-brand-accent-700">
-                                        {assessmentStats?.grading_completion.total_submissions || 0}
-                                    </p>
-                                    <p className="text-xs text-brand-primary-600">Answer sheets</p>
+                                    <p className="text-xs text-brand-primary-600">Sheets</p>
                                 </div>
-                                <label className="px-3 py-1.5 bg-purple-500 text-white rounded text-sm hover:bg-purple-600 cursor-pointer transition-colors">
+                                <p className="text-lg font-bold text-brand-accent-700">
+                                    {assessmentStats?.grading_completion.total_submissions || 0}
+                                </p>
+                                <label className="px-3 py-1.5 bg-purple-500 text-white rounded text-sm font-semibold hover:bg-purple-600 cursor-pointer transition-colors whitespace-nowrap">
                                     Upload
                                     <input
                                         type="file"
@@ -317,28 +321,31 @@ export default function AssessmentOverview({
                                     />
                                 </label>
                             </div>
+                        </div>
 
-                            <div className="flex items-center justify-between">
-                                <div>
+                        {/* Publication Card */}
+                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-400 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
                                     <h3 className="text-xs font-medium text-brand-primary-700 uppercase">Publication</h3>
-                                    <p className="text-lg font-bold text-green-600">
-                                        {assessment.published ? 'Live' : 'Unpublished'}
-                                    </p>
                                     <p className="text-xs text-brand-primary-600">
-                                        {assessment.published ? 'Visible to students' : 'Hidden'}
+                                        {assessment.published ? 'Live' : 'Draft'}
                                     </p>
                                 </div>
+                                <p className="text-lg font-bold text-green-600">
+                                    {assessment.published ? 'Published' : 'Unpublished'}
+                                </p>
                                 <div className="flex gap-1">
                                     <button
                                         onClick={handleDownloadStudentCSV}
-                                        className="px-2 py-1.5 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
+                                        className="px-2 py-1.5 bg-blue-500 text-white rounded text-xs font-semibold hover:bg-blue-600 transition-colors"
                                         title="Download CSV"
                                     >
                                         CSV
                                     </button>
                                     <button
                                         onClick={handleExportAnnotatedPdfs}
-                                        className="px-2 py-1.5 bg-orange-500 text-white rounded text-xs hover:bg-orange-600 transition-colors"
+                                        className="px-2 py-1.5 bg-orange-500 text-white rounded text-xs font-semibold hover:bg-orange-600 transition-colors"
                                         title="Export PDFs"
                                     >
                                         PDFs
@@ -346,7 +353,7 @@ export default function AssessmentOverview({
                                     <button
                                         onClick={handleTogglePublishStatus}
                                         disabled={isUpdatingPublishStatus}
-                                        className={`px-2 py-1.5 text-xs rounded transition-colors ${
+                                        className={`px-2 py-1.5 text-xs font-semibold rounded transition-colors ${
                                             assessment.published 
                                                 ? 'bg-red-500 hover:bg-red-600 text-white' 
                                                 : 'bg-green-500 hover:bg-green-600 text-white'

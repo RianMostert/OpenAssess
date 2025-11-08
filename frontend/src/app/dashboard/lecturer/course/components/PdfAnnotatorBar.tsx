@@ -31,7 +31,7 @@ export default function PdfAnnotatorBar({ tool, setTool, onUndo, onRedo }: Props
 
     return (
         <TooltipProvider>
-            <div className="flex items-center justify-center py-2 px-4 border-b-2 border-brand-accent-400 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 font-raleway">
+            <div className="flex items-center justify-center py-2 px-4 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 font-raleway border-2 border-brand-accent-400 rounded-lg">
                 <div className="flex space-x-2">
                     {toolButtons.map(({ key, label, icon }) => (
                         <Tooltip key={key}>

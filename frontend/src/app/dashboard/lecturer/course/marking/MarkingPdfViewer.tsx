@@ -457,6 +457,82 @@ export default function MarkingPdfViewer({
         updateCurrentIndex((i: number) => Math.max(i - 1, 0));
     };
 
+    // Find next unmarked student/question
+    const goToNextUnmarked = async () => {
+        if (markingMode === 'question-by-question' && question) {
+            // Find next student where this question is unmarked
+            for (let i = currentIndex + 1; i < answers.length; i++) {
+                try {
+                    const res = await fetchWithAuth(
+                        `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${answers[i].student_id}`
+                    );
+                    const result = await res.json();
+                    if (result.mark === null || result.mark === undefined) {
+                        updateCurrentIndex(i);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error checking student mark:', err);
+                }
+            }
+        } else if (markingMode === 'student-by-student') {
+            // Find next student with any unmarked question
+            for (let i = currentIndex + 1; i < answers.length; i++) {
+                try {
+                    const res = await fetchWithAuth(
+                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/student/${answers[i].student_id}/assessment/${assessment.id}/all-results`
+                    );
+                    const studentData: StudentAllResults = await res.json();
+                    const hasUnmarked = studentData.questions.some(q => q.mark === null || q.mark === undefined);
+                    if (hasUnmarked) {
+                        updateCurrentIndex(i);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error checking student results:', err);
+                }
+            }
+        }
+    };
+
+    // Find previous unmarked student/question
+    const goToPreviousUnmarked = async () => {
+        if (markingMode === 'question-by-question' && question) {
+            // Find previous student where this question is unmarked
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                try {
+                    const res = await fetchWithAuth(
+                        `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${answers[i].student_id}`
+                    );
+                    const result = await res.json();
+                    if (result.mark === null || result.mark === undefined) {
+                        updateCurrentIndex(i);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error checking student mark:', err);
+                }
+            }
+        } else if (markingMode === 'student-by-student') {
+            // Find previous student with any unmarked question
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                try {
+                    const res = await fetchWithAuth(
+                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/student/${answers[i].student_id}/assessment/${assessment.id}/all-results`
+                    );
+                    const studentData: StudentAllResults = await res.json();
+                    const hasUnmarked = studentData.questions.some(q => q.mark === null || q.mark === undefined);
+                    if (hasUnmarked) {
+                        updateCurrentIndex(i);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error checking student results:', err);
+                }
+            }
+        }
+    };
+
     const handleGrade = async (mark: number) => {
         setSelectedMark(mark);
         // Save mark immediately when selected
@@ -626,7 +702,7 @@ export default function MarkingPdfViewer({
             {pdfUrl ? (
                 <>
                     <div
-                        className="border rounded relative overflow-auto pdf-container"
+                        className="border-2 border-brand-accent-400 rounded-lg relative overflow-auto pdf-container shadow-md"
                         style={{ 
                             height: 'calc(100vh - 220px)',
                             touchAction: 'pan-x pan-y', // Allow panning but prevent zoom
@@ -799,28 +875,43 @@ export default function MarkingPdfViewer({
                         </Document>
                     </div>
 
-                    <div className="flex items-center justify-center gap-4 mt-4">
-                        <Button 
-                            onClick={goToPrevious} 
+                    <div className="flex items-center justify-center gap-4 mt-4 font-raleway">
+                        <Button
+                            variant="outline"
+                            onClick={goToPreviousUnmarked}
                             disabled={currentIndex <= 0}
-                            className="touch-manipulation min-h-[44px]"
+                            className="touch-manipulation min-h-[44px] border-2 border-brand-accent-400 text-brand-primary-700 hover:bg-brand-primary-50 hover:text-brand-primary-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={markingMode === 'question-by-question' ? 'Skip to previous unmarked student for this question' : 'Skip to previous student with unmarked questions'}
+                        >
+                            ← Prev Unmarked
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={goToPrevious}
+                            disabled={currentIndex <= 0}
+                            className="touch-manipulation min-h-[44px] border-2 border-brand-accent-400 text-brand-primary-700 hover:bg-brand-primary-50 hover:text-brand-primary-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Previous Student
                         </Button>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm font-semibold text-brand-primary-700 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 px-4 py-2 rounded-lg border-2 border-brand-accent-200">
                             Student {currentIndex + 1} of {answers.length}
-                            {markingMode === 'student-by-student' && currentAnswer && (
-                                <span className="block text-xs">
-                                    {currentAnswer.student_name || `Student ${currentAnswer.student_id}`}
-                                </span>
-                            )}
                         </p>
-                        <Button 
-                            onClick={goToNext} 
+                        <Button
+                            variant="outline"
+                            onClick={goToNext}
                             disabled={currentIndex >= answers.length - 1}
-                            className="touch-manipulation min-h-[44px]"
+                            className="touch-manipulation min-h-[44px] border-2 border-brand-accent-400 text-brand-primary-700 hover:bg-brand-primary-50 hover:text-brand-primary-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Next Student
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={goToNextUnmarked}
+                            disabled={currentIndex >= answers.length - 1}
+                            className="touch-manipulation min-h-[44px] border-2 border-brand-accent-400 text-brand-primary-700 hover:bg-brand-primary-50 hover:text-brand-primary-900 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={markingMode === 'question-by-question' ? 'Skip to next unmarked student for this question' : 'Skip to next student with unmarked questions'}
+                        >
+                            Next Unmarked →
                         </Button>
                     </div>
                 </>
