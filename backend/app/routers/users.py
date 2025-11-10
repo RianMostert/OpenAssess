@@ -19,6 +19,8 @@ from app.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.models.user_course_role import UserCourseRole
 from app.core.security import hash_password, is_admin_or_self
+from app.core.constants import PrimaryRoles, CourseRoles
+from app.utils.validators import FileValidator
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -34,7 +36,7 @@ def create_user_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not current_user.is_admin:
+    if current_user.primary_role_id != PrimaryRoles.ADMINISTRATOR:
         raise HTTPException(status_code=403, detail="Only admins can create users")
 
     db_user = create_user(db, user)
@@ -45,12 +47,12 @@ def create_user_endpoint(
 def bulk_upload_users(
     file: UploadFile = File(...),
     course_id: str = Form(...),
-    course_role_id: int = Form(3),
+    course_role_id: int = Form(CourseRoles.STUDENT),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if file.content_type != "text/csv":
-        raise HTTPException(status_code=400, detail="Invalid file type")
+    # Validate CSV file
+    FileValidator.validate_csv_file(file.content_type)
 
     contents = file.file.read().decode("utf-8")
     reader = csv.DictReader(io.StringIO(contents))
@@ -85,7 +87,7 @@ def bulk_upload_users(
             email=email.strip(),
             student_number=row.get("student_number", "").strip() or None,
             password_hash=hash_password("*"),  # use * as default temp password
-            primary_role_id=3,
+            primary_role_id=PrimaryRoles.STUDENT,
         )
         db.add(new_user)
         db.flush()
@@ -105,12 +107,12 @@ def bulk_upload_users(
 def bulk_remove_users_from_course(
     file: UploadFile = File(...),
     course_id: str = Form(...),
-    course_role_id: int = Form(3),
+    course_role_id: int = Form(CourseRoles.STUDENT),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if file.content_type != "text/csv":
-        raise HTTPException(status_code=400, detail="Invalid file type")
+    # Validate CSV file
+    FileValidator.validate_csv_file(file.content_type)
 
     contents = file.file.read().decode("utf-8")
     reader = csv.DictReader(io.StringIO(contents))
@@ -164,7 +166,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not current_user.is_admin:
+    if current_user.primary_role_id != PrimaryRoles.ADMINISTRATOR:
         raise HTTPException(status_code=403, detail="Only admins can list users")
 
     if email:
@@ -223,7 +225,7 @@ def delete_user_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not current_user.is_admin:
+    if current_user.primary_role_id != PrimaryRoles.ADMINISTRATOR:
         raise HTTPException(status_code=403, detail="Only admins can delete users")
 
     db_user = delete_user(db, user_id)

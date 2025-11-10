@@ -15,8 +15,9 @@ from app.models.assessment import Assessment
 from app.models.question import Question
 from app.models.question_result import QuestionResult
 from app.models.uploaded_file import UploadedFile
-from app.core.security import can_access_course, has_admin_access
 from app.core.config import settings
+from app.utils.validators import EntityValidator, AccessValidator
+from app.core.constants import PrimaryRoles
 
 router = APIRouter(prefix="/student-results", tags=["Student Results"])
 
@@ -27,7 +28,7 @@ def get_my_courses(
     current_user: User = Depends(get_current_user),
 ):
     """Get all courses the current student is enrolled in"""
-    if current_user.is_admin:
+    if current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR:
         courses_with_teachers = (
             db.query(Course, User)
             .join(User, Course.teacher_id == User.id)
@@ -71,8 +72,8 @@ def get_my_course_assessments(
     current_user: User = Depends(get_current_user),
 ):
     """Get all assessments for a course with the student's status and results"""
-    if not can_access_course(current_user, course_id) and not has_admin_access(current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to view this course")
+    # Validate course access
+    AccessValidator.validate_course_access(db, current_user, course_id)
     
     # Get the user's role in this course
     user_role = next(
@@ -81,7 +82,7 @@ def get_my_course_assessments(
     )
     
     # For students, only show published assessments. For teachers/TAs/admins, show all
-    if user_role == "student" and not current_user.is_admin:
+    if user_role == "student" and current_user.primary_role_id != PrimaryRoles.ADMINISTRATOR:
         assessments = db.query(Assessment).filter(
             Assessment.course_id == course_id,
             Assessment.published
@@ -159,12 +160,9 @@ def get_my_assessment_results(
     current_user: User = Depends(get_current_user),
 ):
     """Get detailed results for a specific assessment for the current student"""
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-    
-    if not can_access_course(current_user, assessment.course_id) and not has_admin_access(current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
+    # Validate assessment exists and user has course access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_course_access(db, current_user, assessment.course_id)
     
     # Check if student can view this assessment (must be published for students)
     user_role = next(
@@ -259,12 +257,9 @@ def get_annotated_pdf_download_info(
     current_user: User = Depends(get_current_user),
 ):
     """Get information about annotated PDF availability for download"""
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-    
-    if not can_access_course(current_user, assessment.course_id) and not has_admin_access(current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
+    # Validate assessment exists and user has course access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_course_access(db, current_user, assessment.course_id)
     
     # Check if student can view this assessment (must be published for students)
     user_role = next(
@@ -312,12 +307,9 @@ def download_annotated_pdf(
     current_user: User = Depends(get_current_user),
 ):
     """Download annotated PDF for a specific assessment submission"""
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-    
-    if not can_access_course(current_user, assessment.course_id) and not has_admin_access(current_user):
-        raise HTTPException(status_code=403, detail="Not authorized to view this assessment")
+    # Validate assessment exists and user has course access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_course_access(db, current_user, assessment.course_id)
     
     # Check if student can view this assessment (must be published for students)
     user_role = next(

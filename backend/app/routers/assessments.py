@@ -1,7 +1,4 @@
-from collections import defaultdict
-import csv
-from io import StringIO
-import os
+import shutil
 from typing import List
 from fastapi import (
     APIRouter,
@@ -13,10 +10,8 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from uuid import UUID, uuid4
 from pathlib import Path
-import shutil
 
 from app.schemas.assessment import AssessmentCreate, AssessmentUpdate, AssessmentOut
 from app.models.assessment import Assessment
@@ -25,17 +20,15 @@ from app.models.question import Question
 from app.models.uploaded_file import UploadedFile
 from app.schemas.uploaded_file import UploadedFileOut
 from app.models.user import User
-from app.models.question_result import QuestionResult
 from app.dependencies import get_current_user
-from app.core.security import (
-    can_access_course,
-    can_create_assessments,
-    can_manage_assessments,
-)
-
+from app.core.security import can_create_assessments
 
 from app.dependencies import get_db
 from app.core.config import settings
+from app.utils.validators import EntityValidator, AccessValidator, FileValidator
+from app.services.file_storage_service import file_storage_service
+from app.services.assessment_service import assessment_service
+from app.services.export_service import csv_export_service
 
 router = APIRouter(prefix="/assessments", tags=["Assessments"])
 
@@ -50,20 +43,14 @@ def upload_question_paper(
     assessment_id: str = Form(...),
     current_user: User = Depends(get_current_user),
 ):
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-
-    destination_dir = storage_path / course_id / assessment_id
-    os.makedirs(destination_dir, exist_ok=True)
-
-    file_path = destination_dir / f"{uuid4()}_{file.filename}"
+    # Validate file type
+    FileValidator.validate_pdf_file(file.filename)
     
-    print(f"Uploading question paper to: {file_path}")
-
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Save file using service
+    file_path = file_storage_service.save_question_paper(
+        file, UUID(course_id), UUID(assessment_id)
+    )
     
-    print(f"Question paper uploaded successfully: {file_path}")
     return {"file_path": str(file_path)}
 
 
@@ -103,16 +90,11 @@ def get_assessment_questions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_access_course(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Not authorized to view questions")
-
+    # Validate assessment exists and user has access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_assessment_access(db, current_user, assessment)
+    
     questions = db.query(Question).filter(Question.assessment_id == assessment.id).all()
-    # if not questions:
-    #     raise HTTPException(status_code=404, detail="No questions found")
     return questions
 
 
@@ -122,14 +104,12 @@ def download_question_paper(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment or not assessment.question_paper_file_path:
+    # Validate assessment exists and user has access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_assessment_access(db, current_user, assessment)
+    
+    if not assessment.question_paper_file_path:
         raise HTTPException(status_code=404, detail="Question paper not found")
-
-    if not can_access_course(current_user, assessment.course_id):
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view this question paper"
-        )
 
     file_path = Path(assessment.question_paper_file_path)
     print(f"Serving question paper: {file_path} (exists: {file_path.exists()})")
@@ -176,71 +156,28 @@ def list_student_answer_sheets(
 
 
 @router.get("/{assessment_id}/results/download", response_class=StreamingResponse)
-def download_assessment_results_csv(assessment_id: UUID, db: Session = Depends(get_db)):
-    questions = (
-        db.query(Question)
-        .filter(Question.assessment_id == assessment_id)
-        .order_by(Question.question_number)
-        .all()
-    )
-
-    if not questions:
-        raise HTTPException(
-            status_code=404, detail="No questions found for this assessment."
+def download_assessment_results_csv(
+    assessment_id: UUID, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Validate assessment exists and user has access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_assessment_access(db, current_user, assessment)
+    
+    try:
+        # Generate CSV using service
+        output = csv_export_service.export_assessment_results(db, assessment_id)
+        
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=assessment_{assessment_id}_results.csv"
+            },
         )
-
-    question_ids = [q.id for q in questions]
-    question_labels = [f" {q.question_number}" for q in questions]
-
-    results = (
-        db.query(QuestionResult, User)
-        .join(User, User.id == QuestionResult.student_id)
-        .filter(QuestionResult.assessment_id == assessment_id)
-        .all()
-    )
-
-    if not results:
-        raise HTTPException(
-            status_code=404, detail="No results found for this assessment."
-        )
-
-    students = defaultdict(
-        lambda: {
-            "first_name": "",
-            "last_name": "",
-            "student_number": "",
-            "marks": {qid: None for qid in question_ids},
-        }
-    )
-
-    for result, user in results:
-        s = students[user.id]
-        s["first_name"] = user.first_name
-        s["last_name"] = user.last_name
-        s["student_number"] = user.student_number
-        s["marks"][result.question_id] = result.mark
-
-    output = StringIO()
-    writer = csv.writer(output)
-
-    header = ["student_number", "first_name", "last_name"] + question_labels + ["total"]
-    writer.writerow(header)
-
-    for s in students.values():
-        marks = [(s["marks"].get(qid) or 0) for qid in question_ids]
-        total = sum(marks)
-        row = [s["student_number"], s["first_name"], s["last_name"]] + marks + [total]
-        writer.writerow(row)
-
-    output.seek(0)
-
-    return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f"attachment; filename=assessment_{assessment_id}_results.csv"
-        },
-    )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/", response_model=AssessmentOut)
@@ -287,15 +224,10 @@ def get_assessment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_access_course(current_user, assessment.course_id):
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view this assessment"
-        )
-
+    # Validate assessment exists and user has access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_assessment_access(db, current_user, assessment)
+    
     return assessment
 
 
@@ -306,12 +238,9 @@ def update_assessment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_manage_assessments(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Only course conveners can modify assessments")
+    # Validate assessment exists and user has convener access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_convener_access(db, current_user, assessment.course_id)
 
     # Clean up old question paper file if a new one is being set
     update_data = update.model_dump(exclude_unset=True)
@@ -341,12 +270,9 @@ def toggle_assessment_publication(
     current_user: User = Depends(get_current_user),
 ):
     """Publish or unpublish an assessment (makes results visible/invisible to students)"""
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_manage_assessments(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Only course conveners can publish/unpublish assessments")
+    # Validate assessment exists and user has convener access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_convener_access(db, current_user, assessment.course_id)
 
     publish = request.get("published", False)
     assessment.published = publish
@@ -362,14 +288,9 @@ def delete_assessment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_manage_assessments(current_user, assessment.course_id):
-        raise HTTPException(
-            status_code=403, detail="Only course conveners can delete assessments"
-        )
+    # Validate assessment exists and user has convener access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_convener_access(db, current_user, assessment.course_id)
 
     db.delete(assessment)
     db.commit()
@@ -383,200 +304,9 @@ def get_assessment_stats(
     current_user: User = Depends(get_current_user),
 ):
     """Get comprehensive statistics for an assessment"""
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_access_course(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Not authorized to view stats")
-
-    # Get all questions for this assessment
-    questions = (
-        db.query(Question)
-        .filter(Question.assessment_id == assessment_id)
-        .order_by(Question.question_number)
-        .all()
-    )
-
-    if not questions:
-        return {
-            "grading_completion": {
-                "total_submissions": 0,
-                "graded_submissions": 0,
-                "ungraded_submissions": 0,
-                "completion_percentage": 0
-            },
-            "grade_distribution": {
-                "average_score": 0,
-                "median_score": 0,
-                "highest_score": 0,
-                "lowest_score": 0,
-                "score_ranges": []
-            },
-            "question_performance": []
-        }
-
-    # Get all students who submitted for this assessment
-    submitted_students = (
-        db.query(UploadedFile.student_id)
-        .filter(UploadedFile.assessment_id == assessment_id)
-        .distinct()
-        .all()
-    )
-    submitted_student_ids = [s.student_id for s in submitted_students]
-    total_submissions = len(submitted_student_ids)
-
-    if total_submissions == 0:
-        return {
-            "grading_completion": {
-                "total_submissions": 0,
-                "graded_submissions": 0,
-                "ungraded_submissions": 0,
-                "completion_percentage": 0
-            },
-            "grade_distribution": {
-                "average_score": 0,
-                "median_score": 0,
-                "highest_score": 0,
-                "lowest_score": 0,
-                "score_ranges": []
-            },
-            "question_performance": []
-        }
-
-    # Calculate grading completion
-    fully_graded_students = (
-        db.query(QuestionResult.student_id)
-        .filter(
-            QuestionResult.assessment_id == assessment_id,
-            QuestionResult.mark.isnot(None),
-            QuestionResult.student_id.in_(submitted_student_ids)
-        )
-        .group_by(QuestionResult.student_id)
-        .having(func.count(QuestionResult.question_id) == len(questions))
-        .all()
-    )
-
-    graded_submissions = len(fully_graded_students)
-    ungraded_submissions = total_submissions - graded_submissions
-    completion_percentage = (graded_submissions / total_submissions * 100) if total_submissions > 0 else 0
-
-    # Calculate grade distribution for fully graded students only
-    if graded_submissions > 0:
-        # Get total scores for each fully graded student
-        student_scores = []
-        fully_graded_student_ids = [s.student_id for s in fully_graded_students]
-        
-        for student_id in fully_graded_student_ids:
-            student_total = (
-                db.query(func.sum(QuestionResult.mark))
-                .filter(
-                    QuestionResult.assessment_id == assessment_id,
-                    QuestionResult.student_id == student_id,
-                    QuestionResult.mark.isnot(None)
-                )
-                .scalar()
-            ) or 0
-            
-            # Convert to percentage
-            total_possible = sum(q.max_marks for q in questions)
-            if total_possible > 0:
-                percentage = (student_total / total_possible) * 100
-                student_scores.append(percentage)
-
-        # Calculate statistics
-        if student_scores:
-            average_score = sum(student_scores) / len(student_scores)
-            sorted_scores = sorted(student_scores)
-            median_score = sorted_scores[len(sorted_scores) // 2] if len(sorted_scores) % 2 == 1 else (sorted_scores[len(sorted_scores) // 2 - 1] + sorted_scores[len(sorted_scores) // 2]) / 2
-            highest_score = max(student_scores)
-            lowest_score = min(student_scores)
-
-            # Create score ranges (0-39, 40-49, 50-59, 60-69, 70-79, 80-89, 90-100)
-            score_ranges = [
-                {"range": "0-39", "count": 0},
-                {"range": "40-49", "count": 0},
-                {"range": "50-59", "count": 0},
-                {"range": "60-69", "count": 0},
-                {"range": "70-79", "count": 0},
-                {"range": "80-89", "count": 0},
-                {"range": "90-100", "count": 0}
-            ]
-            
-            for score in student_scores:
-                if score < 40:
-                    score_ranges[0]["count"] += 1
-                elif score < 50:
-                    score_ranges[1]["count"] += 1
-                elif score < 60:
-                    score_ranges[2]["count"] += 1
-                elif score < 70:
-                    score_ranges[3]["count"] += 1
-                elif score < 80:
-                    score_ranges[4]["count"] += 1
-                elif score < 90:
-                    score_ranges[5]["count"] += 1
-                else:
-                    score_ranges[6]["count"] += 1
-        else:
-            average_score = median_score = highest_score = lowest_score = 0
-            score_ranges = []
-    else:
-        average_score = median_score = highest_score = lowest_score = 0
-        score_ranges = []
-
-    # Calculate question-wise performance
-    question_performance = []
-    for question in questions:
-        # Get all results for this question from submitted students
-        question_results = (
-            db.query(QuestionResult)
-            .filter(
-                QuestionResult.assessment_id == assessment_id,
-                QuestionResult.question_id == question.id,
-                QuestionResult.student_id.in_(submitted_student_ids),
-                QuestionResult.mark.isnot(None)
-            )
-            .all()
-        )
-
-        graded_count = len(question_results)
-        ungraded_count = total_submissions - graded_count
-        
-        if question_results:
-            marks = [qr.mark for qr in question_results]
-            avg_mark = sum(marks) / len(marks)
-            max_mark = max(marks)
-            min_mark = min(marks)
-            avg_percentage = (avg_mark / question.max_marks * 100) if question.max_marks > 0 else 0
-        else:
-            avg_mark = max_mark = min_mark = avg_percentage = 0
-
-        question_performance.append({
-            "question_number": question.question_number,
-            "question_title": question.question_number or f"Question {question.id}",
-            "max_marks": question.max_marks,
-            "graded_count": graded_count,
-            "ungraded_count": ungraded_count,
-            "average_mark": round(avg_mark, 2) if avg_mark else 0,
-            "average_percentage": round(avg_percentage, 1) if avg_percentage else 0,
-            "highest_mark": max_mark if max_mark else 0,
-            "lowest_mark": min_mark if min_mark else 0
-        })
-
-    return {
-        "grading_completion": {
-            "total_submissions": total_submissions,
-            "graded_submissions": graded_submissions,
-            "ungraded_submissions": ungraded_submissions,
-            "completion_percentage": round(completion_percentage, 1)
-        },
-        "grade_distribution": {
-            "average_score": round(average_score, 1) if average_score else 0,
-            "median_score": round(median_score, 1) if median_score else 0,
-            "highest_score": round(highest_score, 1) if highest_score else 0,
-            "lowest_score": round(lowest_score, 1) if lowest_score else 0,
-            "score_ranges": score_ranges
-        },
-        "question_performance": question_performance
-    }
+    # Validate assessment exists and user has access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_assessment_access(db, current_user, assessment)
+    
+    # Get stats from service
+    return assessment_service.get_assessment_with_stats(db, assessment_id)

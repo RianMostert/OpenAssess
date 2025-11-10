@@ -5,15 +5,7 @@ from uuid import UUID
 
 from app.models.user import User
 from app.core.config import settings
-
-# Role ID constants
-PRIMARY_ROLE_ADMINISTRATOR = 1
-PRIMARY_ROLE_STAFF = 2 
-PRIMARY_ROLE_STUDENT = 3
-
-COURSE_ROLE_CONVENER = 1
-COURSE_ROLE_FACILITATOR = 2
-COURSE_ROLE_STUDENT = 3
+from app.core.constants import PrimaryRoles, CourseRoles
 
 # Token config
 SECRET_KEY = settings.SECRET_KEY
@@ -48,12 +40,12 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def has_admin_access(user: User) -> bool:
     """Check if user has administrator access."""
-    return user.primary_role_id == PRIMARY_ROLE_ADMINISTRATOR
+    return user.primary_role_id == PrimaryRoles.ADMINISTRATOR
 
 
 def can_create_courses(user: User) -> bool:
     """Check if user can create courses. Admins and staff can create courses."""
-    return user.primary_role_id in [PRIMARY_ROLE_ADMINISTRATOR, PRIMARY_ROLE_STAFF]
+    return user.primary_role_id in [PrimaryRoles.ADMINISTRATOR, PrimaryRoles.STAFF]
 
 
 def get_course_role_id(user: User, course_id: UUID) -> int | None:
@@ -70,19 +62,19 @@ def is_course_convener(user: User, course_id: UUID) -> bool:
         return True
     
     course_role_id = get_course_role_id(user, course_id)
-    return course_role_id == COURSE_ROLE_CONVENER
+    return course_role_id == CourseRoles.CONVENER
 
 
 def is_course_facilitator(user: User, course_id: UUID) -> bool:
     """Check if user is a facilitator in the course."""
     course_role_id = get_course_role_id(user, course_id)
-    return course_role_id == COURSE_ROLE_FACILITATOR
+    return course_role_id == CourseRoles.FACILITATOR
 
 
 def is_course_student(user: User, course_id: UUID) -> bool:
     """Check if user is enrolled as a student in the course."""
     course_role_id = get_course_role_id(user, course_id)
-    return course_role_id == COURSE_ROLE_STUDENT
+    return course_role_id == CourseRoles.STUDENT
 
 
 def can_manage_course(user: User, course_id: UUID) -> bool:

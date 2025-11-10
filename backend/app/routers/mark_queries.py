@@ -13,6 +13,8 @@ from app.schemas.mark_query import (
     GradeCommitRequest, GradeCommitResponse
 )
 from app.crud import mark_query as crud_mark_query
+from app.utils.validators import EntityValidator, AccessValidator
+from app.core.constants import QueryStatus as QueryStatusConst
 
 router = APIRouter()
 
@@ -69,14 +71,9 @@ def get_assessment_queries(
 ):
     """Get all queries for a specific assessment"""
     
-    # Get the assessment and validate access through course
-    from app.models.assessment import Assessment
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-    
-    # Validate access through course
-    validate_course_access(db, current_user, assessment.course_id)
+    # Validate assessment exists and user has access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_course_access(db, current_user, assessment.course_id)
     
     queries = crud_mark_query.get_assessment_queries(db, assessment_id, status)
     return [_enrich_query_response(db, query) for query in queries]
@@ -90,12 +87,11 @@ def get_query_details(
 ):
     """Get details of a specific query"""
     
-    db_query = crud_mark_query.get_mark_query(db, query_id)
-    if not db_query:
-        raise HTTPException(status_code=404, detail="Query not found")
+    # Validate query exists
+    db_query = EntityValidator.get_mark_query_or_404(db, query_id)
     
     # Validate access through course
-    validate_course_access(db, current_user, db_query.assessment.course_id)
+    AccessValidator.validate_course_access(db, current_user, db_query.assessment.course_id)
     
     return _enrich_query_response(db, db_query)
 
@@ -109,15 +105,14 @@ def respond_to_query(
 ):
     """Respond to a mark query (approve/reject/request more info)"""
     
-    db_query = crud_mark_query.get_mark_query(db, query_id)
-    if not db_query:
-        raise HTTPException(status_code=404, detail="Query not found")
+    # Validate query exists
+    db_query = EntityValidator.get_mark_query_or_404(db, query_id)
     
     # Validate access through course
-    validate_course_access(db, current_user, db_query.assessment.course_id)
+    AccessValidator.validate_course_access(db, current_user, db_query.assessment.course_id)
     
     # Can only respond to pending or under_review queries
-    if db_query.status not in ['pending', 'under_review']:
+    if db_query.status not in [QueryStatusConst.PENDING, QueryStatusConst.UNDER_REVIEW]:
         raise HTTPException(status_code=400, detail="Query has already been resolved")
     
     # If approving a mark change, update the question results
@@ -174,12 +169,11 @@ def update_query_status(
 ):
     """Update just the status of a query (e.g., mark as under review)"""
     
-    db_query = crud_mark_query.get_mark_query(db, query_id)
-    if not db_query:
-        raise HTTPException(status_code=404, detail="Query not found")
+    # Validate query exists
+    db_query = EntityValidator.get_mark_query_or_404(db, query_id)
     
     # Validate access through course
-    validate_course_access(db, current_user, db_query.assessment.course_id)
+    AccessValidator.validate_course_access(db, current_user, db_query.assessment.course_id)
     
     update_data = MarkQueryUpdate(status=status_request.status)
     updated_query = crud_mark_query.update_mark_query(db, query_id, update_data, current_user.id)
@@ -240,12 +234,10 @@ def bulk_update_status(
     # Validate access for all queries
     queries = []
     for query_id in update_request.query_ids:
-        db_query = crud_mark_query.get_mark_query(db, query_id)
-        if not db_query:
-            raise HTTPException(status_code=404, detail=f"Query {query_id} not found")
+        db_query = EntityValidator.get_mark_query_or_404(db, query_id)
         
         # Validate access through course
-        validate_course_access(db, current_user, db_query.assessment.course_id)
+        AccessValidator.validate_course_access(db, current_user, db_query.assessment.course_id)
         queries.append(db_query)
     
     # Prepare bulk update data
@@ -297,12 +289,10 @@ def bulk_review_queries(
     queries = []
     
     for query_id in query_ids:
-        db_query = crud_mark_query.get_mark_query(db, query_id)
-        if not db_query:
-            raise HTTPException(status_code=404, detail=f"Query {query_id} not found")
+        db_query = EntityValidator.get_mark_query_or_404(db, query_id)
         
         # Validate access through course
-        validate_course_access(db, current_user, db_query.assessment.course_id)
+        AccessValidator.validate_course_access(db, current_user, db_query.assessment.course_id)
         queries.append(db_query)
     
     # Prepare bulk update data
@@ -344,10 +334,10 @@ def commit_grades_to_gradebook(
                 continue
             
             # Validate access through course
-            validate_course_access(db, current_user, db_query.assessment.course_id)
+            AccessValidator.validate_course_access(db, current_user, db_query.assessment.course_id)
             
             # Only commit approved queries with new marks
-            if db_query.status != 'approved' or db_query.new_mark is None:
+            if db_query.status != QueryStatusConst.APPROVED or db_query.new_mark is None:
                 failed_ids.append(query_id)
                 errors.append(f"Query {query_id} is not approved or has no new mark")
                 continue
@@ -384,7 +374,7 @@ def commit_grades_to_gradebook(
                 db.add(question_result)
             
             # Mark query as resolved
-            db_query.status = 'resolved'
+            db_query.status = QueryStatusConst.RESOLVED
             db_query.updated_at = datetime.utcnow()
             
             committed_ids.append(query_id)

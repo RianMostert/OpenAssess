@@ -25,7 +25,7 @@ from app.models.question import Question
 from app.models.user import User
 from app.dependencies import get_db, get_current_user
 from app.core.config import settings
-from app.core.security import can_manage_assessments
+from app.utils.validators import EntityValidator, AccessValidator
 
 router = APIRouter(prefix="/question-results", tags=["Question Results"])
 
@@ -34,15 +34,9 @@ storage_path.mkdir(parents=True, exist_ok=True)
 
 
 def validate_marker_access(db: Session, user: User, assessment_id: UUID):
-    assessment = db.query(Assessment).filter_by(id=assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    course_id = assessment.course_id
-    if not can_manage_assessments(user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only teachers or TAs for this course can access"
-        )
+    """Validate that user has marker access to an assessment."""
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_facilitator_or_convener_access(db, user, assessment.course_id)
 
 
 @router.post("/update-mark", response_model=QuestionResultOut)

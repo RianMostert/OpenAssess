@@ -4,10 +4,9 @@ from uuid import UUID
 
 from app.schemas.question import QuestionCreate, QuestionUpdate, QuestionOut
 from app.models.question import Question
-from app.models.assessment import Assessment
 from app.dependencies import get_db, get_current_user
 from app.models.user import User
-from app.core.security import can_access_course, can_manage_assessments
+from app.utils.validators import EntityValidator, AccessValidator
 
 router = APIRouter(prefix="/questions", tags=["Questions"])
 
@@ -18,14 +17,9 @@ def create_question(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = (
-        db.query(Assessment).filter(Assessment.id == question.assessment_id).first()
-    )
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_manage_assessments(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Only course conveners can create questions")
+    # Validate assessment exists and user has convener access
+    assessment = EntityValidator.get_assessment_or_404(db, question.assessment_id)
+    AccessValidator.validate_convener_access(db, current_user, assessment.course_id)
 
     db_question = Question(**question.model_dump())
     db.add(db_question)
@@ -40,18 +34,12 @@ def get_question(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    question = db.query(Question).filter(Question.id == question_id).first()
-    if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
-
-    assessment = (
-        db.query(Assessment).filter(Assessment.id == question.assessment_id).first()
-    )
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_access_course(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Not authorized to view question")
+    # Validate question exists
+    question = EntityValidator.get_question_or_404(db, question_id)
+    
+    # Validate assessment exists and user has course access
+    assessment = EntityValidator.get_assessment_or_404(db, question.assessment_id)
+    AccessValidator.validate_course_access(db, current_user, assessment.course_id)
 
     return question
 
@@ -63,18 +51,12 @@ def update_question(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    question = db.query(Question).filter(Question.id == question_id).first()
-    if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
-
-    assessment = (
-        db.query(Assessment).filter(Assessment.id == question.assessment_id).first()
-    )
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_manage_assessments(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Only course conveners can update questions")
+    # Validate question exists
+    question = EntityValidator.get_question_or_404(db, question_id)
+    
+    # Validate assessment exists and user has convener access
+    assessment = EntityValidator.get_assessment_or_404(db, question.assessment_id)
+    AccessValidator.validate_convener_access(db, current_user, assessment.course_id)
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(question, field, value)
@@ -89,18 +71,12 @@ def delete_question(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    question = db.query(Question).filter(Question.id == question_id).first()
-    if not question:
-        raise HTTPException(status_code=404, detail="Question not found")
-
-    assessment = (
-        db.query(Assessment).filter(Assessment.id == question.assessment_id).first()
-    )
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_manage_assessments(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Only course conveners can delete questions")
+    # Validate question exists
+    question = EntityValidator.get_question_or_404(db, question_id)
+    
+    # Validate assessment exists and user has convener access
+    assessment = EntityValidator.get_assessment_or_404(db, question.assessment_id)
+    AccessValidator.validate_convener_access(db, current_user, assessment.course_id)
 
     db.delete(question)
     db.commit()

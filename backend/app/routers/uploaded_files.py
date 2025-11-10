@@ -25,6 +25,8 @@ from app.models.user import User
 from app.models.assessment import Assessment
 from app.dependencies import get_current_user
 from app.core.security import can_manage_assessments, can_manage_course
+from app.utils.validators import EntityValidator, AccessValidator, FileValidator
+from app.core.constants import PrimaryRoles
 
 
 router = APIRouter(prefix="/uploaded-files", tags=["Uploaded Files"])
@@ -40,12 +42,9 @@ def bulk_upload_answer_sheets(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not can_manage_course(current_user, assessment.course_id):
-        raise HTTPException(status_code=403, detail="Only course conveners can bulk upload files")
+    # Validate assessment exists and user has convener access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    AccessValidator.validate_convener_access(db, current_user, assessment.course_id)
 
     course_id = assessment.course_id
     uploaded_files = []
@@ -99,14 +98,13 @@ def upload_file(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    # Validate assessment exists
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
 
     is_course_staff = can_manage_assessments(current_user, assessment.course_id)
     is_target_student = current_user.id == student_id
 
-    if not (current_user.is_admin or is_course_staff or is_target_student):
+    if not (current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR or is_course_staff or is_target_student):
         raise HTTPException(
             status_code=403,
             detail="Only the student or course staff can upload",
@@ -151,7 +149,7 @@ def download_answer_sheet(
         raise HTTPException(status_code=404, detail="Answer sheet not found")
 
     if not (
-        current_user.is_admin
+        current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR
         or file.student_id == current_user.id
         or can_manage_assessments(current_user, file.assessment.course_id)
     ):
@@ -177,7 +175,7 @@ def get_uploaded_file(
         raise HTTPException(status_code=404, detail="Uploaded file not found")
 
     if not (
-        current_user.is_admin
+        current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR
         or file.student_id == current_user.id
         or can_manage_assessments(current_user, file.assessment.course_id)
     ):
@@ -212,16 +210,13 @@ def update_uploaded_file(
     if not file:
         raise HTTPException(status_code=404, detail="Uploaded file not found")
 
-    assessment = (
-        db.query(Assessment).filter(Assessment.id == file.assessment_id).first()
-    )
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    # Validate assessment exists
+    assessment = EntityValidator.get_assessment_or_404(db, file.assessment_id)
 
     is_course_staff = can_manage_assessments(current_user, assessment.course_id)
     is_target_student = file.student_id == current_user.id
 
-    if not (current_user.is_admin or is_course_staff or is_target_student):
+    if not (current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR or is_course_staff or is_target_student):
         raise HTTPException(
             status_code=403,
             detail="Only the student or course staff can update",
@@ -244,16 +239,13 @@ def delete_uploaded_file(
     if not file:
         raise HTTPException(status_code=404, detail="Uploaded file not found")
 
-    assessment = (
-        db.query(Assessment).filter(Assessment.id == file.assessment_id).first()
-    )
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    # Validate assessment exists
+    assessment = EntityValidator.get_assessment_or_404(db, file.assessment_id)
 
     is_course_staff = can_manage_assessments(current_user, assessment.course_id)
     is_target_student = file.student_id == current_user.id
 
-    if not (current_user.is_admin or is_course_staff or is_target_student):
+    if not (current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR or is_course_staff or is_target_student):
         raise HTTPException(
             status_code=403,
             detail="Only the student or course staff can delete",

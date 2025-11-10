@@ -9,8 +9,7 @@ from app.schemas.mark_query import (
     MarkQueryCreate, MarkQueryOut, MarkQueryBatchCreate, MarkQueryBatchResponse
 )
 from app.crud import mark_query as crud_mark_query
-from app.models.assessment import Assessment
-from app.models.question import Question
+from app.utils.validators import EntityValidator
 
 router = APIRouter()
 
@@ -23,18 +22,12 @@ def create_query(
 ):
     """Submit a new mark query"""
     
-    # Verify the assessment exists
-    assessment = db.query(Assessment).filter(Assessment.id == query_data.assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    # Validate assessment exists
+    assessment = EntityValidator.get_assessment_or_404(db, query_data.assessment_id)
     
-    # Verify the question exists and belongs to the assessment
-    question = db.query(Question).filter(
-        Question.id == query_data.question_id,
-        Question.assessment_id == query_data.assessment_id
-    ).first()
-    
-    if not question:
+    # Validate question exists and belongs to assessment
+    question = EntityValidator.get_question_or_404(db, query_data.question_id)
+    if question.assessment_id != query_data.assessment_id:
         raise HTTPException(status_code=404, detail="Question not found for this assessment")
     
     # Check for existing pending query for this question
@@ -61,14 +54,13 @@ def create_batch_query(
 ):
     """Submit multiple mark queries in a batch"""
     
-    # Verify the assessment exists
-    assessment = db.query(Assessment).filter(Assessment.id == batch_data.assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
+    # Validate assessment exists
+    assessment = EntityValidator.get_assessment_or_404(db, batch_data.assessment_id)
     
     # Validate all questions exist and belong to the assessment
     question_ids = [item.question_id for item in batch_data.question_items if item.question_id]
     if question_ids:
+        from app.models.question import Question
         valid_questions = db.query(Question).filter(
             Question.id.in_(question_ids),
             Question.assessment_id == batch_data.assessment_id
@@ -150,9 +142,8 @@ def get_query(
     current_user: User = Depends(get_current_user),
 ):
     """Get a specific query"""
-    db_query = crud_mark_query.get_mark_query(db, query_id)
-    if not db_query:
-        raise HTTPException(status_code=404, detail="Query not found")
+    # Validate query exists
+    db_query = EntityValidator.get_mark_query_or_404(db, UUID(query_id))
     
     # Ensure the query belongs to the current user
     if db_query.student_id != current_user.id:

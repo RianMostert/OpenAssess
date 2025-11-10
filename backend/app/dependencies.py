@@ -24,6 +24,7 @@ from app.models.course_role import CourseRole
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException
 from app.core.auth import get_current_user
+from app.core.constants import PrimaryRoles, CourseRoles
 
 
 def register_dependencies():
@@ -69,7 +70,7 @@ def require_lecturer_or_facilitator_access():
         db: Session = Depends(get_db),
     ):
         # Check if user is admin
-        if user.primary_role_id == 1:  # Administrator
+        if user.primary_role_id == PrimaryRoles.ADMINISTRATOR:
             return user
         
         role_entry = (
@@ -77,7 +78,7 @@ def require_lecturer_or_facilitator_access():
             .filter(
                 UserCourseRole.user_id == user.id,
                 UserCourseRole.course_id == course_id,
-                UserCourseRole.course_role_id.in_([1, 2])  # Convener or Facilitator
+                UserCourseRole.course_role_id.in_([CourseRoles.CONVENER, CourseRoles.FACILITATOR])
             )
             .first()
         )
@@ -98,7 +99,7 @@ def require_lecturer_or_ta_access():
         db: Session = Depends(get_db),
     ):
         # Check if user is admin
-        if user.primary_role_id == 1:  # Administrator
+        if user.primary_role_id == PrimaryRoles.ADMINISTRATOR:
             return user
             
         role_entry = (
@@ -106,7 +107,7 @@ def require_lecturer_or_ta_access():
             .filter(
                 UserCourseRole.user_id == user.id,
                 UserCourseRole.course_id == course_id,
-                UserCourseRole.course_role_id.in_([1, 2])  # Convener or Facilitator
+                UserCourseRole.course_role_id.in_([CourseRoles.CONVENER, CourseRoles.FACILITATOR])
             )
             .first()
         )
@@ -129,7 +130,7 @@ def validate_course_access(db: Session, user: User, course_id: UUID):
     Note: Use require_lecturer_or_facilitator_access() dependency when course_id is available in path.
     """
     # Check if user is admin
-    if user.primary_role_id == 1:  # Administrator
+    if user.primary_role_id == PrimaryRoles.ADMINISTRATOR:
         return
         
     # Check if user has convener or facilitator role for this course
@@ -138,7 +139,7 @@ def validate_course_access(db: Session, user: User, course_id: UUID):
         .filter(
             UserCourseRole.user_id == user.id,
             UserCourseRole.course_id == course_id,
-            UserCourseRole.course_role_id.in_([1, 2])  # Convener or Facilitator
+            UserCourseRole.course_role_id.in_([CourseRoles.CONVENER, CourseRoles.FACILITATOR])
         )
         .first()
     )

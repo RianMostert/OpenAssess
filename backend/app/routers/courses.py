@@ -3,7 +3,6 @@ import io
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, File, Form, UploadFile
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from uuid import UUID
 from typing import List
 
@@ -11,21 +10,19 @@ from app.schemas.course import CourseCreate, CourseUpdate, CourseOut
 from app.models.course import Course
 from app.schemas.assessment import AssessmentOut
 from app.models.assessment import Assessment
-from app.models.question import Question
-from app.models.question_result import QuestionResult
-from app.models.uploaded_file import UploadedFile
 from app.models.user_course_role import UserCourseRole
 from app.models.course_role import CourseRole
-from app.models.mark_query import MarkQuery
 from app.schemas.user_course_role import CourseUserOut, AddFacilitatorIn
 from app.dependencies import get_db
 from app.models.user import User
 from app.dependencies import get_current_user
 from app.core.security import (
     can_create_courses,
-    can_manage_course,
     can_access_course
 )
+from app.core.constants import CourseRoles, PrimaryRoles
+from app.utils.validators import EntityValidator, AccessValidator, FileValidator
+from app.services.course_service import course_service
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -45,16 +42,11 @@ def create_course(
     db.commit()
     db.refresh(db_course)
 
-    # Get the convener course role (ID = 1)
-    convener_role = db.query(CourseRole).filter(CourseRole.id == 1).first()
-    if not convener_role:
-        raise HTTPException(status_code=500, detail="Convener course role not found in database")
-
     # Link the current user to the course as convener
     user_course_role = UserCourseRole(
         user_id=current_user.id,
         course_id=db_course.id,
-        course_role_id=1,  # Convener role ID
+        course_role_id=CourseRoles.CONVENER,
     )
     db.add(user_course_role)
     db.commit()
@@ -99,16 +91,10 @@ def get_course(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    if not can_access_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403,
-            detail="Only enrolled users can view course details",
-        )
-
+    # Validate course exists and user has access
+    course = EntityValidator.get_course_or_404(db, course_id)
+    AccessValidator.validate_course_access(db, current_user, course_id)
+    
     return course
 
 
@@ -119,14 +105,9 @@ def update_course(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    if not can_manage_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only course conveners/facilitators or admin can update course settings"
-        )
+    # Validate course exists and user has convener access
+    course = EntityValidator.get_course_or_404(db, course_id)
+    AccessValidator.validate_convener_access(db, current_user, course_id)
 
     for field, value in update.model_dump(exclude_unset=True).items():
         setattr(course, field, value)
@@ -141,16 +122,11 @@ def delete_course(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
+    # Validate course exists and user has convener access
+    course = EntityValidator.get_course_or_404(db, course_id)
+    AccessValidator.validate_convener_access(db, current_user, course_id)
+    
     print(f"Deleting course with ID: {course_id} for user: {current_user.id}")
-
-    if not can_manage_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only course conveners or admin can delete the course"
-        )
 
     db.delete(course)
     db.commit()
@@ -179,119 +155,12 @@ def get_course_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not can_access_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Not authorized to view course stats"
-        )
-
-    # Get total students in the course (course_role_id = 3 for student)
-    total_students = (
-        db.query(UserCourseRole)
-        .filter(UserCourseRole.course_id == course_id)
-        .filter(UserCourseRole.course_role_id == 3)
-        .count()
-    )
-
-    # Get all assessments for the course
-    assessments = db.query(Assessment).filter(Assessment.course_id == course_id).all()
+    # Validate course exists and user has access
+    course = EntityValidator.get_course_or_404(db, course_id)
+    AccessValidator.validate_course_access(db, current_user, course_id)
     
-    assessment_stats = []
-    total_scores = []
-    
-    for assessment in assessments:
-        # Get total questions for this assessment
-        total_questions = (
-            db.query(Question)
-            .filter(Question.assessment_id == assessment.id)
-            .count()
-        )
-        
-        # Get submission count (unique students who have uploaded files)
-        submission_count = (
-            db.query(UploadedFile.student_id)
-            .filter(UploadedFile.assessment_id == assessment.id)
-            .distinct()
-            .count()
-        )
-        
-        # Get questions marked (any question result exists) - relative to submissions
-        questions_marked = (
-            db.query(QuestionResult)
-            .filter(QuestionResult.assessment_id == assessment.id)
-            .filter(QuestionResult.mark.isnot(None))
-            .count()
-        )
-        
-        # Calculate total possible question marks based on submissions (not total students)
-        # total_possible_question_marks = total_questions * submission_count
-        
-        # Get students completely marked (students who have all questions marked)
-        students_completely_marked = 0
-        if total_questions > 0 and submission_count > 0:
-            # Count students who have marks for ALL questions
-            students_with_all_marks = (
-                db.query(QuestionResult.student_id)
-                .filter(QuestionResult.assessment_id == assessment.id)
-                .filter(QuestionResult.mark.isnot(None))
-                .group_by(QuestionResult.student_id)
-                .having(func.count(QuestionResult.question_id) == total_questions)
-                .count()
-            )
-            students_completely_marked = students_with_all_marks
-        
-        # Calculate average score for this assessment
-        avg_score_result = (
-            db.query(func.avg(QuestionResult.mark))
-            .filter(QuestionResult.assessment_id == assessment.id)
-            .filter(QuestionResult.mark.isnot(None))
-            .scalar()
-        )
-        
-        avg_score = float(avg_score_result) if avg_score_result else 0.0
-        
-        # Calculate total possible marks for this assessment
-        total_possible = (
-            db.query(func.sum(Question.max_marks))
-            .filter(Question.assessment_id == assessment.id)
-            .scalar()
-        ) or 0
-        
-        # Convert to percentage if we have total possible marks
-        avg_percentage = (avg_score / total_possible * 100) if total_possible > 0 else 0
-        
-        # Get query count for this assessment (pending queries only)
-        query_count = (
-            db.query(MarkQuery)
-            .filter(MarkQuery.assessment_id == assessment.id)
-            .filter(MarkQuery.status == 'pending')
-            .count()
-        )
-        
-        # Collect individual student scores for overall average calculation
-        if avg_score > 0:
-            total_scores.append(avg_percentage)
-        
-        assessment_stats.append({
-            "id": str(assessment.id),
-            "title": assessment.title,
-            "published": assessment.published,
-            "totalQuestions": total_questions,
-            "totalStudents": submission_count,  # Use submission count instead of total students
-            "questionsMarked": questions_marked,
-            "questionsCompletelyMarked": students_completely_marked,  # Number of students completely marked
-            "averageScore": avg_percentage,
-            "submissionCount": submission_count,
-            "queryCount": query_count,
-        })
-    
-    # Calculate overall average performance across all assessments
-    average_performance = sum(total_scores) / len(total_scores) if total_scores else 0.0
-    
-    return {
-        "totalStudents": total_students,
-        "averagePerformance": average_performance,
-        "assessments": assessment_stats,
-    }
+    # Get stats from service
+    return course_service.get_course_statistics(db, course_id)
 
 
 @router.get("/{course_id}/users", response_model=List[CourseUserOut])
@@ -323,29 +192,21 @@ def add_course_facilitator(
     current_user: User = Depends(get_current_user),
 ):
     """Add a facilitator to a course. Only conveners can do this."""
-    if not can_manage_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only course conveners can add facilitators"
-        )
-
-    # Check if course exists
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
+    # Validate course exists and user has convener access
+    course = EntityValidator.get_course_or_404(db, course_id)
+    AccessValidator.validate_convener_access(db, current_user, course_id)
+    
     # Check if user exists
-    target_user = db.query(User).filter(User.id == facilitator_data.user_id).first()
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
+    target_user = EntityValidator.get_user_or_404(db, facilitator_data.user_id)
 
-    # Map role name to course role ID
-    course_role_id = 2  # Default to facilitator
+        # Map role name to course role ID
+    course_role_id = CourseRoles.FACILITATOR  # Default to facilitator
     if facilitator_data.role_name == "convener":
-        course_role_id = 1
+        course_role_id = CourseRoles.CONVENER
     elif facilitator_data.role_name == "facilitator":
-        course_role_id = 2
+        course_role_id = CourseRoles.FACILITATOR
     elif facilitator_data.role_name == "student":
-        course_role_id = 3
+        course_role_id = CourseRoles.STUDENT
 
     # Check if user is already enrolled in the course
     existing_role = (
@@ -383,10 +244,8 @@ def remove_course_facilitator(
     current_user: User = Depends(get_current_user),
 ):
     """Remove a facilitator from a course. Only conveners can do this."""
-    if not can_manage_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only course conveners can remove facilitators"
-        )
+    # Validate course exists and user has convener access
+    AccessValidator.validate_convener_access(db, current_user, course_id)
 
     # Find the user's role in the course
     user_course_role = (
@@ -403,8 +262,8 @@ def remove_course_facilitator(
             status_code=404, detail="User not found in this course"
         )
 
-    # Don't allow removing conveners (course_role_id = 1)
-    if user_course_role.course_role_id == 1:
+        # Don't allow removing conveners (course_role_id = 1)
+    if user_course_role.course_role_id == CourseRoles.CONVENER:
         raise HTTPException(
             status_code=403, detail="Cannot remove course convener"
         )
@@ -423,10 +282,8 @@ def transfer_course_ownership(
     current_user: User = Depends(get_current_user),
 ):
     """Transfer course ownership to another user. Only current convener can do this."""
-    if not can_manage_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only current convener can transfer ownership"
-        )
+    # Validate course exists and user has convener access
+    AccessValidator.validate_convener_access(db, current_user, course_id)
 
     # Check if target user exists and is enrolled in the course
     target_role = (
@@ -449,16 +306,16 @@ def transfer_course_ownership(
         .filter(
             UserCourseRole.user_id == current_user.id,
             UserCourseRole.course_id == course_id,
-            UserCourseRole.course_role_id == 1,  # Current convener
+            UserCourseRole.course_role_id == CourseRoles.CONVENER,
         )
         .first()
     )
 
     if current_user_role:
-        current_user_role.course_role_id = 2  # Change to facilitator
+        current_user_role.course_role_id = CourseRoles.FACILITATOR
 
     # Make target user the convener
-    target_role.course_role_id = 1  # Set as convener
+    target_role.course_role_id = CourseRoles.CONVENER
     
     db.commit()
     
@@ -474,36 +331,30 @@ def bulk_upload_facilitators(
     current_user: User = Depends(get_current_user),
 ):
     """Bulk upload facilitators from CSV. Only course conveners can do this."""
-    if not can_manage_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only course conveners can bulk upload facilitators"
-        )
-
+    # Validate course exists and user has convener access
+    course = EntityValidator.get_course_or_404(db, course_id)
+    AccessValidator.validate_convener_access(db, current_user, course_id)
+    
     # Validate role
     if role_name not in ["facilitator", "convener", "student"]:
         raise HTTPException(status_code=400, detail="Role must be 'facilitator', 'convener', or 'student'")
 
-    # Check if course exists
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    if file.content_type != "text/csv":
-        raise HTTPException(status_code=400, detail="File must be a CSV")
+    # Validate CSV file
+    FileValidator.validate_csv_file(file.content_type)
 
     # Map role name to course role ID and primary role ID
-    course_role_id = 2  # Default to facilitator
-    primary_role_id = 2  # Default to staff
+    course_role_id = CourseRoles.FACILITATOR  # Default to facilitator
+    primary_role_id = PrimaryRoles.STAFF  # Default to staff
     
     if role_name == "convener":
-        course_role_id = 1
-        primary_role_id = 2  # Staff
+        course_role_id = CourseRoles.CONVENER
+        primary_role_id = PrimaryRoles.STAFF
     elif role_name == "facilitator":
-        course_role_id = 2
-        primary_role_id = 2  # Staff
+        course_role_id = CourseRoles.FACILITATOR
+        primary_role_id = PrimaryRoles.STAFF
     elif role_name == "student":
-        course_role_id = 3
-        primary_role_id = 3  # Student
+        course_role_id = CourseRoles.STUDENT
+        primary_role_id = PrimaryRoles.STUDENT
 
     contents = file.file.read().decode("utf-8")
     reader = csv.DictReader(io.StringIO(contents))
@@ -620,18 +471,12 @@ def bulk_remove_facilitators(
     current_user: User = Depends(get_current_user),
 ):
     """Bulk remove facilitators from CSV. Only course conveners can do this."""
-    if not can_manage_course(current_user, course_id):
-        raise HTTPException(
-            status_code=403, detail="Only course conveners can bulk remove facilitators"
-        )
-
-    # Check if course exists
-    course = db.query(Course).filter(Course.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Course not found")
-
-    if file.content_type != "text/csv":
-        raise HTTPException(status_code=400, detail="File must be a CSV")
+    # Validate course exists and user has convener access
+    course = EntityValidator.get_course_or_404(db, course_id)
+    AccessValidator.validate_convener_access(db, current_user, course_id)
+    
+    # Validate CSV file
+    FileValidator.validate_csv_file(file.content_type)
 
     contents = file.file.read().decode("utf-8")
     reader = csv.DictReader(io.StringIO(contents))
@@ -667,8 +512,8 @@ def bulk_remove_facilitators(
                 not_found.append(f"User {email} is not enrolled in this course")
                 continue
 
-            # Don't allow removing conveners (course_role_id = 1)
-            if user_course_role.course_role_id == 1:
+            # Don't allow removing conveners
+            if user_course_role.course_role_id == CourseRoles.CONVENER:
                 errors.append(f"Cannot remove convener {email}. Transfer ownership first.")
                 continue
 
@@ -719,14 +564,14 @@ def get_my_course_role(
         )
     
     course_role_id = user_course_role.course_role_id
-    is_convener = course_role_id == 1  # Convener role ID
+    is_convener = course_role_id == CourseRoles.CONVENER
     
     # Map course role IDs to frontend-friendly names
-    if course_role_id == 1:
+    if course_role_id == CourseRoles.CONVENER:
         frontend_role = "convener"
-    elif course_role_id == 2:
+    elif course_role_id == CourseRoles.FACILITATOR:
         frontend_role = "facilitator"
-    elif course_role_id == 3:
+    elif course_role_id == CourseRoles.STUDENT:
         frontend_role = "student"
     else:
         frontend_role = "student"  # Default fallback

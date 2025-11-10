@@ -1,4 +1,0 @@
-pytest
-sqlalchemy
-fastapi
-slowapi
