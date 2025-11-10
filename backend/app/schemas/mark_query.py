@@ -24,7 +24,7 @@ class QuestionItem(BaseModel):
     question_id: Optional[UUID] = Field(None, description="Question ID to query (null for assessment-wide issues)")
     current_mark: Optional[float] = Field(None, description="Current mark for the question")
     requested_change: str = Field(..., min_length=10, max_length=1000)
-    query_type: QueryType = Field(default=QueryType.regrade, description="Type of query")
+    query_type: Optional[QueryType] = Field(default=QueryType.regrade, description="Type of query")
 
 
 # New multi-question batch submission schema

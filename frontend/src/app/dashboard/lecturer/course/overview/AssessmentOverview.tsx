@@ -74,22 +74,22 @@ export default function AssessmentOverview({
                 const stats = await response.json();
                 
                 // Add dummy question performance data
-                const dummyQuestions = [
-                    { question_number: 1, question_title: 'Introduction to Algorithms', max_marks: 10, graded_count: 42, ungraded_count: 3, average_mark: 8.5, average_percentage: 85, highest_mark: 10, lowest_mark: 5 },
-                    { question_number: 2, question_title: 'Data Structures Analysis', max_marks: 15, graded_count: 38, ungraded_count: 7, average_mark: 11.2, average_percentage: 74.7, highest_mark: 15, lowest_mark: 6 },
-                    { question_number: 3, question_title: 'Sorting Algorithms', max_marks: 12, graded_count: 40, ungraded_count: 5, average_mark: 9.8, average_percentage: 81.7, highest_mark: 12, lowest_mark: 7 },
-                    { question_number: 4, question_title: 'Graph Theory Basics', max_marks: 8, graded_count: 45, ungraded_count: 0, average_mark: 6.4, average_percentage: 80, highest_mark: 8, lowest_mark: 4 },
-                    { question_number: 5, question_title: 'Dynamic Programming', max_marks: 20, graded_count: 30, ungraded_count: 15, average_mark: 14.5, average_percentage: 72.5, highest_mark: 20, lowest_mark: 8 },
-                    { question_number: 6, question_title: 'Tree Traversal Methods', max_marks: 10, graded_count: 41, ungraded_count: 4, average_mark: 7.9, average_percentage: 79, highest_mark: 10, lowest_mark: 5 },
-                    { question_number: 7, question_title: 'Hash Tables Implementation', max_marks: 14, graded_count: 36, ungraded_count: 9, average_mark: 10.8, average_percentage: 77.1, highest_mark: 14, lowest_mark: 6 },
-                    { question_number: 8, question_title: 'Complexity Analysis', max_marks: 11, graded_count: 43, ungraded_count: 2, average_mark: 9.1, average_percentage: 82.7, highest_mark: 11, lowest_mark: 6 },
-                    { question_number: 9, question_title: 'Recursive Solutions', max_marks: 16, graded_count: 39, ungraded_count: 6, average_mark: 12.3, average_percentage: 76.9, highest_mark: 16, lowest_mark: 7 },
-                    { question_number: 10, question_title: 'Algorithm Optimization', max_marks: 18, graded_count: 35, ungraded_count: 10, average_mark: 13.7, average_percentage: 76.1, highest_mark: 18, lowest_mark: 8 },
-                ];
+                // const dummyQuestions = [
+                //     { question_number: 1, question_title: 'Introduction to Algorithms', max_marks: 10, graded_count: 42, ungraded_count: 3, average_mark: 8.5, average_percentage: 85, highest_mark: 10, lowest_mark: 5 },
+                //     { question_number: 2, question_title: 'Data Structures Analysis', max_marks: 15, graded_count: 38, ungraded_count: 7, average_mark: 11.2, average_percentage: 74.7, highest_mark: 15, lowest_mark: 6 },
+                //     { question_number: 3, question_title: 'Sorting Algorithms', max_marks: 12, graded_count: 40, ungraded_count: 5, average_mark: 9.8, average_percentage: 81.7, highest_mark: 12, lowest_mark: 7 },
+                //     { question_number: 4, question_title: 'Graph Theory Basics', max_marks: 8, graded_count: 45, ungraded_count: 0, average_mark: 6.4, average_percentage: 80, highest_mark: 8, lowest_mark: 4 },
+                //     { question_number: 5, question_title: 'Dynamic Programming', max_marks: 20, graded_count: 30, ungraded_count: 15, average_mark: 14.5, average_percentage: 72.5, highest_mark: 20, lowest_mark: 8 },
+                //     { question_number: 6, question_title: 'Tree Traversal Methods', max_marks: 10, graded_count: 41, ungraded_count: 4, average_mark: 7.9, average_percentage: 79, highest_mark: 10, lowest_mark: 5 },
+                //     { question_number: 7, question_title: 'Hash Tables Implementation', max_marks: 14, graded_count: 36, ungraded_count: 9, average_mark: 10.8, average_percentage: 77.1, highest_mark: 14, lowest_mark: 6 },
+                //     { question_number: 8, question_title: 'Complexity Analysis', max_marks: 11, graded_count: 43, ungraded_count: 2, average_mark: 9.1, average_percentage: 82.7, highest_mark: 11, lowest_mark: 6 },
+                //     { question_number: 9, question_title: 'Recursive Solutions', max_marks: 16, graded_count: 39, ungraded_count: 6, average_mark: 12.3, average_percentage: 76.9, highest_mark: 16, lowest_mark: 7 },
+                //     { question_number: 10, question_title: 'Algorithm Optimization', max_marks: 18, graded_count: 35, ungraded_count: 10, average_mark: 13.7, average_percentage: 76.1, highest_mark: 18, lowest_mark: 8 },
+                // ];
                 
                 setAssessmentStats({
                     ...stats,
-                    question_performance: [...(stats.question_performance || []), ...dummyQuestions]
+                    question_performance: [...(stats.question_performance || [])]
                 });
             } else {
                 console.error('Failed to fetch assessment stats');
@@ -277,92 +277,89 @@ export default function AssessmentOverview({
                 </div>
             ) : (
                 <div className="flex flex-col space-y-6 flex-1 min-h-0 mt-6">
-                    {/* Action Cards Grid */}
-                    <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4 flex-shrink-0`}>
-                        {/* Marking Card */}
-                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-400 p-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-xs font-medium text-brand-primary-700 uppercase">Marking</h3>
-                                    <p className="text-xs text-brand-primary-600">
-                                        {assessmentStats?.grading_completion.graded_submissions || 0}/{assessmentStats?.grading_completion.total_submissions || 0}
-                                    </p>
+                    {/* Action Cards - Horizontal Grid */}
+                    <div className={`${isMobile ? 'w-full' : 'max-w-full'} flex-shrink-0`}>
+                        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4`}>
+                            {/* Marking Card */}
+                            <div className="bg-gradient-to-br from-brand-primary-50 to-white p-4 rounded-lg border-2 border-brand-accent-400">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-medium text-brand-primary-700">Marking Progress</h3>
+                                    <button
+                                        onClick={() => setActiveMode('mark')}
+                                        className="px-3 py-1.5 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 transition-colors"
+                                    >
+                                        Mark
+                                    </button>
                                 </div>
-                                <p className="text-lg font-bold text-brand-primary-700">
+                                <p className="text-2xl font-bold text-brand-primary-700">
                                     {assessmentStats?.grading_completion.completion_percentage || 0}%
                                 </p>
-                                <button
-                                    onClick={() => setActiveMode('mark')}
-                                    className="px-3 py-1.5 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 transition-colors whitespace-nowrap"
-                                >
-                                    Mark
-                                </button>
+                                <p className="text-xs text-brand-primary-600 mt-1">
+                                    {assessmentStats?.grading_completion.graded_submissions || 0} of {assessmentStats?.grading_completion.total_submissions || 0} submissions graded
+                                </p>
                             </div>
-                        </div>
 
-                        {/* Submissions Card */}
-                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-400 p-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-xs font-medium text-brand-primary-700 uppercase">Submissions</h3>
-                                    <p className="text-xs text-brand-primary-600">Sheets</p>
+                            {/* Submissions Card */}
+                            <div className="bg-gradient-to-br from-brand-accent-50 to-white p-4 rounded-lg border-2 border-brand-accent-400">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-medium text-brand-primary-700">Answer Sheets</h3>
+                                    <label className="px-3 py-1.5 bg-purple-500 text-white rounded text-sm font-semibold hover:bg-purple-600 cursor-pointer transition-colors">
+                                        Upload
+                                        <input
+                                            type="file"
+                                            accept=".pdf"
+                                            multiple
+                                            onChange={handleAnswerSheetPDFUpload}
+                                            className="hidden"
+                                        />
+                                    </label>
                                 </div>
-                                <p className="text-lg font-bold text-brand-accent-700">
+                                <p className="text-2xl font-bold text-brand-accent-700">
                                     {assessmentStats?.grading_completion.total_submissions || 0}
                                 </p>
-                                <label className="px-3 py-1.5 bg-purple-500 text-white rounded text-sm font-semibold hover:bg-purple-600 cursor-pointer transition-colors whitespace-nowrap">
-                                    Upload
-                                    <input
-                                        type="file"
-                                        accept=".pdf"
-                                        multiple
-                                        onChange={handleAnswerSheetPDFUpload}
-                                        className="hidden"
-                                    />
-                                </label>
+                                <p className="text-xs text-brand-primary-600 mt-1">
+                                    Total submissions uploaded
+                                </p>
                             </div>
-                        </div>
 
-                        {/* Publication Card */}
-                        <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-400 p-3">
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                    <h3 className="text-xs font-medium text-brand-primary-700 uppercase">Publication</h3>
-                                    <p className="text-xs text-brand-primary-600">
-                                        {assessment.published ? 'Live' : 'Draft'}
-                                    </p>
+                            {/* Publication Card */}
+                            <div className="bg-gradient-to-br from-brand-primary-50 to-white p-4 rounded-lg border-2 border-brand-accent-400">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h3 className="text-sm font-medium text-brand-primary-700">Publication Status</h3>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={handleDownloadStudentCSV}
+                                            className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
+                                            title="Download CSV"
+                                        >
+                                            CSV
+                                        </button>
+                                        <button
+                                            onClick={handleExportAnnotatedPdfs}
+                                            className="px-2 py-1 bg-orange-500 text-white rounded text-xs hover:bg-orange-600 transition-colors"
+                                            title="Export PDFs"
+                                        >
+                                            PDFs
+                                        </button>
+                                        <button
+                                            onClick={handleTogglePublishStatus}
+                                            disabled={isUpdatingPublishStatus}
+                                            className={`px-2 py-1 text-xs font-semibold rounded transition-colors ${
+                                                assessment.published 
+                                                    ? 'bg-red-500 hover:bg-red-600 text-white' 
+                                                    : 'bg-green-500 hover:bg-green-600 text-white'
+                                            } disabled:opacity-50`}
+                                        >
+                                            {isUpdatingPublishStatus ? '...' : assessment.published ? 'Hide' : 'Publish'}
+                                        </button>
+                                    </div>
                                 </div>
-                                <p className="text-lg font-bold text-green-600">
+                                <p className="text-2xl font-bold text-green-600">
                                     {assessment.published ? 'Published' : 'Unpublished'}
                                 </p>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={handleDownloadStudentCSV}
-                                        className="px-2 py-1.5 bg-blue-500 text-white rounded text-xs font-semibold hover:bg-blue-600 transition-colors"
-                                        title="Download CSV"
-                                    >
-                                        CSV
-                                    </button>
-                                    <button
-                                        onClick={handleExportAnnotatedPdfs}
-                                        className="px-2 py-1.5 bg-orange-500 text-white rounded text-xs font-semibold hover:bg-orange-600 transition-colors"
-                                        title="Export PDFs"
-                                    >
-                                        PDFs
-                                    </button>
-                                    <button
-                                        onClick={handleTogglePublishStatus}
-                                        disabled={isUpdatingPublishStatus}
-                                        className={`px-2 py-1.5 text-xs font-semibold rounded transition-colors ${
-                                            assessment.published 
-                                                ? 'bg-red-500 hover:bg-red-600 text-white' 
-                                                : 'bg-green-500 hover:bg-green-600 text-white'
-                                        } disabled:opacity-50`}
-                                        title={assessment.published ? "Hide from students" : "Publish to students"}
-                                    >
-                                        {isUpdatingPublishStatus ? '...' : assessment.published ? 'Hide' : 'Publish'}
-                                    </button>
-                                </div>
+                                <p className="text-xs text-brand-primary-600 mt-1">
+                                    {assessment.published ? 'Results are visible to students' : 'Results are hidden from students'}
+                                </p>
                             </div>
                         </div>
                     </div>

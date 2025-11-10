@@ -27,7 +27,6 @@ interface QuestionItem {
 
 interface QuestionFormData {
     requestedChange: string;
-    queryType: 'remark' | 'clarification' | 'technical_issue';
 }
 
 export default function QueryModal({ 
@@ -91,8 +90,7 @@ export default function QueryModal({
                 setQuestionForms(forms => ({
                     ...forms,
                     [questionId]: {
-                        requestedChange: '',
-                        queryType: 'remark'
+                        requestedChange: ''
                     }
                 }));
                 return [...prev, questionId];
@@ -112,8 +110,7 @@ export default function QueryModal({
             const newForms: Record<string, QuestionFormData> = {};
             allIds.forEach(id => {
                 newForms[id] = {
-                    requestedChange: '',
-                    queryType: 'remark'
+                    requestedChange: ''
                 };
             });
             setQuestionForms(newForms);
@@ -159,8 +156,7 @@ export default function QueryModal({
                 return {
                     question_id: questionId,
                     current_mark: question?.current_mark || null,
-                    requested_change: form.requestedChange.trim(),
-                    query_type: form.queryType
+                    requested_change: form.requestedChange.trim()
                 };
             });
 

@@ -32,17 +32,23 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     // Detect clicks outside the sticky note
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent | TouchEvent | PointerEvent) => {
+            // Prevent event if it's scrolling
+            if (event.type === 'touchmove') return;
+            
             if (noteRef.current && !noteRef.current.contains(event.target as Node)) {
                 setExpanded(false);
             }
         };
 
         if (expanded) {
-            document.addEventListener("pointerdown", handleClickOutside);
+            // Use mousedown instead of pointerdown to avoid interfering with scrolling
+            document.addEventListener("mousedown", handleClickOutside);
+            document.addEventListener("touchstart", handleClickOutside, { passive: true });
         }
 
         return () => {
-            document.removeEventListener("pointerdown", handleClickOutside);
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
         };
     }, [expanded]);
 
@@ -51,8 +57,20 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         if (!expanded) {
             if (noteRef.current) {
                 const rect = noteRef.current.getBoundingClientRect();
-                const viewportWidth = window.innerWidth;
-                const spaceOnRight = viewportWidth - rect.right;
+                
+                // Find the PDF container (look for parent with 'pdf-container' class or use viewport)
+                let containerRight = window.innerWidth;
+                let parent = noteRef.current.parentElement;
+                while (parent) {
+                    if (parent.classList.contains('pdf-container') || 
+                        parent.classList.contains('react-pdf__Page')) {
+                        containerRight = parent.getBoundingClientRect().right;
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                
+                const spaceOnRight = containerRight - rect.right;
                 
                 setExpandToLeft(spaceOnRight < expandedWidth);
             }

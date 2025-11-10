@@ -9,6 +9,7 @@ interface TextNoteProps {
     isSelected?: boolean;
     width?: number;
     height?: number;
+    textColor?: string;
 }
 
 const TextNote: React.FC<TextNoteProps> = ({
@@ -19,6 +20,7 @@ const TextNote: React.FC<TextNoteProps> = ({
     isSelected,
     width,
     height,
+    textColor = "#ef4444",
 }) => {
     const [editing, setEditing] = useState(false);
     const noteRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,7 @@ const TextNote: React.FC<TextNoteProps> = ({
                 setEditing(true);
                 onClick?.();
             }}
-            className={`text-red whitespace-pre-wrap break-words ${isSelected ? "outline outline-1 outline-blue-400" : ""
+            className={`whitespace-pre-wrap break-words ${isSelected ? "outline outline-1 outline-blue-400" : ""
                 }`}
             style={{
                 cursor: "text",
@@ -60,6 +62,7 @@ const TextNote: React.FC<TextNoteProps> = ({
                 height: height || "auto",
                 minWidth: 40,
                 minHeight: 20,
+                color: textColor,
             }}
         >
             {editing ? (
@@ -74,6 +77,7 @@ const TextNote: React.FC<TextNoteProps> = ({
                         boxShadow: "none",
                         resize: "both",
                         overflow: "auto",
+                        color: textColor,
                     }}
                 />
             ) : (

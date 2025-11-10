@@ -167,8 +167,8 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
             const percentagePos = positionToPercentage(pos, pageSize);
             
             // Clamp initial position to prevent going off-screen
-            const estimatedWidthPercent = 10;
-            const estimatedHeightPercent = 10;
+            const estimatedWidthPercent = 5;
+            const estimatedHeightPercent = 5;
             const clampedX = Math.max(0, Math.min(percentagePos.x, 100 - estimatedWidthPercent));
             const clampedY = Math.max(0, Math.min(percentagePos.y, 100 - estimatedHeightPercent));
             
@@ -178,7 +178,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 x: clampedX,
                 y: clampedY,
                 text: '',
-                fontSize: 16,
+                fontSize: 20,
                 fill: '#000000',
             };
             setAnnotations({
@@ -189,9 +189,14 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
             // Convert to percentage for storage
             const percentagePos = positionToPercentage(pos, pageSize);
             
-            // Clamp initial position to prevent going off-screen
-            const estimatedWidthPercent = 15;
-            const estimatedHeightPercent = 20;
+            // Calculate collapsed sticky note size in pixels then convert to percentage
+            const scaleFactor = Math.min(pageSize.width / 595 * 0.5, pageSize.height / 842 * 0.5);
+            const collapsedSize = Math.max(24, 40 * scaleFactor); // Same as StickyNote component
+            
+            // Convert pixel dimensions to percentage (use collapsed size for positioning)
+            const estimatedWidthPercent = (collapsedSize / pageSize.width) * 100;
+            const estimatedHeightPercent = (collapsedSize / pageSize.height) * 100;
+            
             const clampedX = Math.max(0, Math.min(percentagePos.x, 100 - estimatedWidthPercent));
             const clampedY = Math.max(0, Math.min(percentagePos.y, 100 - estimatedHeightPercent));
             
@@ -365,9 +370,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 let newY = textNote.y + dyPercent;
 
                                 // Clamp position to prevent going off-screen
-                                // Assuming text note width is ~20% and height is ~10% when not specified
-                                const estimatedWidthPercent = textNote.width || 20;
-                                const estimatedHeightPercent = textNote.height || 10;
+                                // Use smaller buffer for better right-edge positioning
+                                const estimatedWidthPercent = textNote.width || 5;
+                                const estimatedHeightPercent = textNote.height || 5;
                                 
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
@@ -430,9 +435,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 let newY = textNote.y + dyPercent;
 
                                 // Clamp position to prevent going off-screen
-                                // Assuming text note width is ~20% and height is ~10% when not specified
-                                const estimatedWidthPercent = textNote.width || 20;
-                                const estimatedHeightPercent = textNote.height || 10;
+                                // Use smaller buffer for better right-edge positioning
+                                const estimatedWidthPercent = textNote.width || 5;
+                                const estimatedHeightPercent = textNote.height || 5;
                                 
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
@@ -542,10 +547,11 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 let newX = note.x + dxPercent;
                                 let newY = note.y + dyPercent;
 
-                                // Clamp position to prevent going off-screen
-                                // Sticky notes are typically around 15% width and 20% height
-                                const estimatedWidthPercent = 15;
-                                const estimatedHeightPercent = 20;
+                                // Calculate collapsed sticky note size (not expanded) for boundary
+                                const scaleFactor = Math.min(pageSize.width / 595 * 0.5, pageSize.height / 842 * 0.5);
+                                const collapsedSize = Math.max(24, 40 * scaleFactor);
+                                const estimatedWidthPercent = (collapsedSize / pageSize.width) * 100;
+                                const estimatedHeightPercent = (collapsedSize / pageSize.height) * 100;
                                 
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
@@ -610,10 +616,11 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 let newX = note.x + dxPercent;
                                 let newY = note.y + dyPercent;
 
-                                // Clamp position to prevent going off-screen
-                                // Sticky notes are typically around 15% width and 20% height
-                                const estimatedWidthPercent = 15;
-                                const estimatedHeightPercent = 20;
+                                // Calculate collapsed sticky note size (not expanded) for boundary
+                                const scaleFactor = Math.min(pageSize.width / 595 * 0.5, pageSize.height / 842 * 0.5);
+                                const collapsedSize = Math.max(24, 40 * scaleFactor);
+                                const estimatedWidthPercent = (collapsedSize / pageSize.width) * 100;
+                                const estimatedHeightPercent = (collapsedSize / pageSize.height) * 100;
                                 
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));

@@ -54,22 +54,22 @@ export default function CourseOverview({
                 const stats = await response.json();
                 
                 // Add dummy data for display
-                const dummyAssessments: AssessmentStats[] = [
-                    { id: 'dummy-1', title: 'Midterm Exam', published: true, totalQuestions: 8, totalStudents: 45, questionsMarked: 320, questionsCompletelyMarked: 38, averageScore: 72.5, submissionCount: 45, queryCount: 3 },
-                    { id: 'dummy-2', title: 'Assignment 1: React Basics', published: true, totalQuestions: 5, totalStudents: 42, questionsMarked: 195, questionsCompletelyMarked: 40, averageScore: 81.2, submissionCount: 42, queryCount: 1 },
-                    { id: 'dummy-3', title: 'Quiz 1', published: true, totalQuestions: 10, totalStudents: 43, questionsMarked: 430, questionsCompletelyMarked: 43, averageScore: 88.3, submissionCount: 43, queryCount: 0 },
-                    { id: 'dummy-4', title: 'Lab Report 1', published: false, totalQuestions: 4, totalStudents: 38, questionsMarked: 85, questionsCompletelyMarked: 15, averageScore: 0, submissionCount: 38, queryCount: 2 },
-                    { id: 'dummy-5', title: 'Project Proposal', published: true, totalQuestions: 6, totalStudents: 44, questionsMarked: 264, questionsCompletelyMarked: 44, averageScore: 76.8, submissionCount: 44, queryCount: 5 },
-                    { id: 'dummy-6', title: 'Quiz 2', published: true, totalQuestions: 12, totalStudents: 41, questionsMarked: 410, questionsCompletelyMarked: 35, averageScore: 79.4, submissionCount: 41, queryCount: 1 },
-                    { id: 'dummy-7', title: 'Assignment 2: State Management', published: false, totalQuestions: 7, totalStudents: 40, questionsMarked: 140, questionsCompletelyMarked: 20, averageScore: 0, submissionCount: 40, queryCount: 4 },
-                    { id: 'dummy-8', title: 'Final Exam', published: false, totalQuestions: 15, totalStudents: 12, questionsMarked: 45, questionsCompletelyMarked: 3, averageScore: 0, submissionCount: 12, queryCount: 0 },
-                    { id: 'dummy-9', title: 'Lab Report 2', published: true, totalQuestions: 5, totalStudents: 39, questionsMarked: 195, questionsCompletelyMarked: 39, averageScore: 85.6, submissionCount: 39, queryCount: 2 },
-                    { id: 'dummy-10', title: 'Assignment 3: API Integration', published: true, totalQuestions: 8, totalStudents: 37, questionsMarked: 250, questionsCompletelyMarked: 32, averageScore: 74.1, submissionCount: 37, queryCount: 6 },
-                ];
+                // const dummyAssessments: AssessmentStats[] = [
+                //     { id: 'dummy-1', title: 'Midterm Exam', published: true, totalQuestions: 8, totalStudents: 45, questionsMarked: 320, questionsCompletelyMarked: 38, averageScore: 72.5, submissionCount: 45, queryCount: 3 },
+                //     { id: 'dummy-2', title: 'Assignment 1: React Basics', published: true, totalQuestions: 5, totalStudents: 42, questionsMarked: 195, questionsCompletelyMarked: 40, averageScore: 81.2, submissionCount: 42, queryCount: 1 },
+                //     { id: 'dummy-3', title: 'Quiz 1', published: true, totalQuestions: 10, totalStudents: 43, questionsMarked: 430, questionsCompletelyMarked: 43, averageScore: 88.3, submissionCount: 43, queryCount: 0 },
+                //     { id: 'dummy-4', title: 'Lab Report 1', published: false, totalQuestions: 4, totalStudents: 38, questionsMarked: 85, questionsCompletelyMarked: 15, averageScore: 0, submissionCount: 38, queryCount: 2 },
+                //     { id: 'dummy-5', title: 'Project Proposal', published: true, totalQuestions: 6, totalStudents: 44, questionsMarked: 264, questionsCompletelyMarked: 44, averageScore: 76.8, submissionCount: 44, queryCount: 5 },
+                //     { id: 'dummy-6', title: 'Quiz 2', published: true, totalQuestions: 12, totalStudents: 41, questionsMarked: 410, questionsCompletelyMarked: 35, averageScore: 79.4, submissionCount: 41, queryCount: 1 },
+                //     { id: 'dummy-7', title: 'Assignment 2: State Management', published: false, totalQuestions: 7, totalStudents: 40, questionsMarked: 140, questionsCompletelyMarked: 20, averageScore: 0, submissionCount: 40, queryCount: 4 },
+                //     { id: 'dummy-8', title: 'Final Exam', published: false, totalQuestions: 15, totalStudents: 12, questionsMarked: 45, questionsCompletelyMarked: 3, averageScore: 0, submissionCount: 12, queryCount: 0 },
+                //     { id: 'dummy-9', title: 'Lab Report 2', published: true, totalQuestions: 5, totalStudents: 39, questionsMarked: 195, questionsCompletelyMarked: 39, averageScore: 85.6, submissionCount: 39, queryCount: 2 },
+                //     { id: 'dummy-10', title: 'Assignment 3: API Integration', published: true, totalQuestions: 8, totalStudents: 37, questionsMarked: 250, questionsCompletelyMarked: 32, averageScore: 74.1, submissionCount: 37, queryCount: 6 },
+                // ];
                 
                 setCourseStats({
                     ...stats,
-                    assessments: [...(stats.assessments || []), ...dummyAssessments]
+                    assessments: [...(stats.assessments || [])]
                 });
             } else {
                 console.error('Failed to fetch course stats');

@@ -293,7 +293,7 @@ export default function QueryReviewPdfViewer({
                                         return (
                                             <div
                                                 key={question.id}
-                                                className="absolute border-2 border-blue-500 bg-blue-100 bg-opacity-30 rounded pointer-events-none"
+                                                className="absolute border-2 border-blue-500 rounded pointer-events-none"
                                                 style={{
                                                     left: `${pixelCoords.x}px`,
                                                     top: `${pixelCoords.y}px`,
@@ -303,7 +303,7 @@ export default function QueryReviewPdfViewer({
                                                 }}
                                             >
                                                 <div className="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded font-semibold">
-                                                    Q{question.question_number}
+                                                    {question.question_number}
                                                 </div>
                                             </div>
                                         );
@@ -370,6 +370,7 @@ export default function QueryReviewPdfViewer({
                                         onChange={() => {}} 
                                         onClick={() => {}}
                                         isSelected={false}
+                                        textColor="#ef4444"
                                     />
                                 </div>
                             );

@@ -350,12 +350,12 @@ export default function MarkingRightPanel({
                                                 Details
                                             </AccordionTrigger>
                                             <AccordionContent className="p-3 text-sm space-y-2 bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 rounded-lg border-2 border-brand-accent-200 mt-2">
-                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Question #:</strong> {question.question_number}</p>
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">{question.question_number}</strong></p>
                                                 <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Max Marks:</strong> {question.max_marks ?? '—'}</p>
                                                 <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Increment:</strong> {question.increment ?? '—'}</p>
                                                 <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Memo:</strong> {question.memo ?? '—'}</p>
-                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Marking Note:</strong> {question.marking_note ?? '—'}</p>
-                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Page:</strong> {question.page_number}</p>
+                                                {/* <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Marking Note:</strong> {question.marking_note ?? '—'}</p>
+                                                <p className="text-brand-primary-800"><strong className="text-brand-primary-900">Page:</strong> {question.page_number}</p> */}
                                             </AccordionContent>
                                         </AccordionItem>
                                     </Accordion>

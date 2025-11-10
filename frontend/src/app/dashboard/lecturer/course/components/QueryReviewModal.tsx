@@ -230,7 +230,7 @@ export default function QueryReviewModal({
                                 <h3 className="font-bold text-brand-primary-800">Student Answer Sheet</h3>
                                 {questions.length > 0 && (
                                     <p className="text-sm text-brand-primary-600 mt-1 font-medium">
-                                        Questions highlighted: {questions.map(q => `Q${q.question_number}`).join(', ')}
+                                        Questions highlighted: {questions.map(q => `${q.question_number}`).join(', ')}
                                     </p>
                                 )}
                             </div>
