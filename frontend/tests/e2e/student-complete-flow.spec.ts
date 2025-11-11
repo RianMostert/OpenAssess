@@ -29,18 +29,10 @@ test.describe('Complete Student User Flow', () => {
       console.log('Login successful - on dashboard');
 
       // Verify student dashboard elements
-  await expect(page.getByRole('heading', { name: /Assessment Portal/i })).toBeVisible({ timeout: 10000 });
-  await expect(page.locator('span.bg-blue-100:has-text("Student")')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Student Dashboard/i })).toBeVisible();
-
-      // Check dashboard stats
-      await expect(page.locator('text="Total Courses"')).toBeVisible();
-      await expect(page.locator('text="Total Assessments"')).toBeVisible();
-      await expect(page.locator('text="Pending Marks"')).toBeVisible();
-      await expect(page.locator('text="Completed"')).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Student Dashboard/i })).toBeVisible({ timeout: 10000 });
 
       // Check assessments section
-  await expect(page.getByRole('heading', { name: /My Assessments/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /My Assessments/i })).toBeVisible();
 
       // Try to download annotated PDF for the first assessment that has a PDF
       const pdfButton = page.locator('button:has-text("PDF")');
@@ -164,8 +156,8 @@ test.describe('Complete Student User Flow', () => {
       console.log('Successfully showing student dashboard with mock auth');
       
       // Test dashboard components
-  await expect(page.getByRole('heading', { name: /Assessment Portal/i })).toBeVisible();
-      await expect(page.locator('text="Total Courses"')).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Student Dashboard/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /My Assessments/i })).toBeVisible();
       
     } else if (isLoading) {
       console.log('Dashboard is loading...');

@@ -67,9 +67,9 @@ def test_get_query_details_success(client, admin_token):
     
     query_id = str(uuid4())
     
-    with patch("app.routers.mark_queries.crud_mark_query.get_mark_query") as mock_get_query, \
+    with patch("app.utils.validators.EntityValidator.get_mark_query_or_404") as mock_get_query, \
          patch("app.routers.mark_queries._enrich_query_response") as mock_enrich, \
-         patch("app.routers.mark_queries.validate_course_access") as mock_validate:
+         patch("app.utils.validators.AccessValidator.validate_course_access") as mock_validate:
         
         # Mock CRUD function
         mock_query_obj = MagicMock()
@@ -138,10 +138,10 @@ def test_respond_to_query_approve(client, admin_token):
     
     query_id = str(uuid4())
     
-    with patch("app.routers.mark_queries.crud_mark_query.get_mark_query") as mock_get_query, \
+    with patch("app.utils.validators.EntityValidator.get_mark_query_or_404") as mock_get_query, \
          patch("app.routers.mark_queries.crud_mark_query.update_mark_query") as mock_update_query, \
          patch("app.routers.mark_queries._enrich_query_response") as mock_enrich, \
-         patch("app.routers.mark_queries.validate_course_access") as mock_validate:
+         patch("app.utils.validators.AccessValidator.validate_course_access") as mock_validate:
         
         # Mock CRUD functions
         mock_query_obj = MagicMock()
@@ -195,10 +195,10 @@ def test_respond_to_query_reject(client, admin_token):
     
     query_id = str(uuid4())
     
-    with patch("app.routers.mark_queries.crud_mark_query.get_mark_query") as mock_get_query, \
+    with patch("app.utils.validators.EntityValidator.get_mark_query_or_404") as mock_get_query, \
          patch("app.routers.mark_queries.crud_mark_query.update_mark_query") as mock_update_query, \
          patch("app.routers.mark_queries._enrich_query_response") as mock_enrich, \
-         patch("app.routers.mark_queries.validate_course_access") as mock_validate:
+         patch("app.utils.validators.AccessValidator.validate_course_access") as mock_validate:
         
         # Mock CRUD functions
         mock_query_obj = MagicMock()
@@ -252,8 +252,8 @@ def test_respond_to_query_already_resolved(client, admin_token):
     
     query_id = str(uuid4())
     
-    with patch("app.routers.mark_queries.crud_mark_query.get_mark_query") as mock_get_query, \
-         patch("app.routers.mark_queries.validate_course_access") as mock_validate:
+    with patch("app.utils.validators.EntityValidator.get_mark_query_or_404") as mock_get_query, \
+         patch("app.utils.validators.AccessValidator.validate_course_access") as mock_validate:
         
         # Mock CRUD function
         mock_query_obj = MagicMock()
@@ -284,10 +284,10 @@ def test_update_query_status(client, admin_token):
     
     query_id = str(uuid4())
     
-    with patch("app.routers.mark_queries.crud_mark_query.get_mark_query") as mock_get_query, \
+    with patch("app.utils.validators.EntityValidator.get_mark_query_or_404") as mock_get_query, \
          patch("app.routers.mark_queries.crud_mark_query.update_mark_query") as mock_update_query, \
          patch("app.routers.mark_queries._enrich_query_response") as mock_enrich, \
-         patch("app.routers.mark_queries.validate_course_access") as mock_validate:
+         patch("app.utils.validators.AccessValidator.validate_course_access") as mock_validate:
         
         # Mock CRUD functions
         mock_query_obj = MagicMock()

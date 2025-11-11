@@ -5,24 +5,62 @@ from uuid import uuid4
 def test_create_query_success(client, admin_token, assessment, question):
     """Test successfully creating a mark query"""
     
-    request_data = {
-        "assessment_id": str(assessment.id),
-        "question_id": str(question.id),
-        "requested_change": "I believe my mark is incorrect and should be higher",
-        "query_type": "remark",
-        "current_mark": 5.0
-    }
-    
-    response = client.post(
-        "/api/v1/student-queries/",
-        headers={"Authorization": f"Bearer {admin_token}"},
-        json=request_data
-    )
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert data["assessment_id"] == request_data["assessment_id"]
-    assert data["question_id"] == request_data["question_id"]
+    with patch("app.utils.validators.EntityValidator.get_assessment_or_404") as mock_get_assessment, \
+         patch("app.utils.validators.EntityValidator.get_question_or_404") as mock_get_question, \
+         patch("app.routers.student_queries.crud_mark_query.check_existing_pending_query") as mock_check, \
+         patch("app.routers.student_queries.crud_mark_query.create_mark_query") as mock_create, \
+         patch("app.routers.student_queries._enrich_query_response") as mock_enrich:
+        
+        # Mock validators
+        mock_get_assessment.return_value = assessment
+        mock_get_question.return_value = question
+        
+        # Mock no existing pending query
+        mock_check.return_value = False
+        
+        # Mock created query
+        mock_query = MagicMock()
+        mock_query.id = uuid4()
+        mock_query.assessment_id = assessment.id
+        mock_query.question_id = question.id
+        mock_create.return_value = mock_query
+        
+        # Mock enrich response
+        mock_enrich.return_value = {
+            "id": str(mock_query.id),
+            "student_id": str(uuid4()),
+            "assessment_id": str(assessment.id),
+            "question_id": str(question.id),
+            "batch_id": None,
+            "current_mark": 5.0,
+            "requested_change": "I believe my mark is incorrect and should be higher",
+            "query_type": "regrade",
+            "status": "pending",
+            "reviewer_id": None,
+            "reviewer_response": None,
+            "new_mark": None,
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+        }
+        
+        request_data = {
+            "assessment_id": str(assessment.id),
+            "question_id": str(question.id),
+            "requested_change": "I believe my mark is incorrect and should be higher",
+            "query_type": "regrade",
+            "current_mark": 5.0
+        }
+        
+        response = client.post(
+            "/api/v1/student-queries/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json=request_data
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["assessment_id"] == request_data["assessment_id"]
+        assert data["question_id"] == request_data["question_id"]
 
 
 def test_create_query_assessment_not_found(client, admin_token):

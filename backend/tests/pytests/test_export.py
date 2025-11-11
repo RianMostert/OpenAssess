@@ -7,11 +7,11 @@ def test_export_annotated_pdfs_success(client):
     """Test successful export of annotated PDFs"""
     
     # Mock the necessary data and functions
-    with patch("app.routers.export.settings") as mock_settings, \
+    with patch("app.core.config.settings") as mock_settings, \
          patch("app.routers.export.zipfile.ZipFile"), \
          patch("app.routers.export.tempfile.mkdtemp") as mock_mkdtemp, \
          patch("app.routers.export.Path") as mock_path, \
-         patch("app.routers.export.burn_annotations_to_pdf"), \
+         patch("app.services.pdf_annotation_service.pdf_annotation_service.burn_annotations_to_pdf"), \
          patch("app.routers.export.FileResponse"):
 
         # Setup mocks
@@ -73,7 +73,7 @@ def test_export_annotated_pdfs_success(client):
 def test_export_annotated_pdfs_answer_folder_not_found(client):
     """Test export when answer folder doesn't exist"""
     
-    with patch("app.routers.export.settings") as mock_settings, \
+    with patch("app.core.config.settings") as mock_settings, \
          patch("app.routers.export.Path") as mock_path:
 
         # Mock settings paths
@@ -100,7 +100,7 @@ def test_export_annotated_pdfs_answer_folder_not_found(client):
 def test_export_annotated_pdfs_no_annotations(client):
     """Test export when there are no annotations"""
     
-    with patch("app.routers.export.settings") as mock_settings, \
+    with patch("app.core.config.settings") as mock_settings, \
          patch("app.routers.export.zipfile.ZipFile"), \
          patch("app.routers.export.tempfile.mkdtemp") as mock_mkdtemp, \
          patch("app.routers.export.Path") as mock_path, \
@@ -150,7 +150,7 @@ def test_export_annotated_pdfs_no_annotations(client):
 def test_export_annotated_pdfs_invalid_json(client):
     """Test export when annotation file contains invalid JSON"""
     
-    with patch("app.routers.export.settings") as mock_settings, \
+    with patch("app.core.config.settings") as mock_settings, \
          patch("app.routers.export.zipfile.ZipFile"), \
          patch("app.routers.export.tempfile.mkdtemp") as mock_mkdtemp, \
          patch("app.routers.export.Path") as mock_path, \
