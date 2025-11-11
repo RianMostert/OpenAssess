@@ -84,6 +84,7 @@ export default function MarkingPdfViewer({
     const highlightRef = useRef<HTMLDivElement>(null);
     const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isMountedRef = useRef(true);
 
     // Helper function to clean up PDF URL
     const cleanupPdfUrl = (url: string | null) => {
@@ -99,6 +100,8 @@ export default function MarkingPdfViewer({
 
     // Dynamically set width based on container using ResizeObserver with debouncing
     useEffect(() => {
+        isMountedRef.current = true;
+        
         const updateWidth = () => {
             if (pageContainerRef.current) {
                 const newWidth = pageContainerRef.current.offsetWidth;
@@ -139,8 +142,27 @@ export default function MarkingPdfViewer({
         // Also listen for window resize as fallback
         window.addEventListener('resize', updateWidth);
         
+        // Add global error handler for PDF.js worker errors
+        const handleGlobalError = (event: ErrorEvent) => {
+            const errorMessage = event.message || '';
+            if (errorMessage.includes('messageHandler') || 
+                errorMessage.includes('sendWithPromise') ||
+                errorMessage.toLowerCase().includes('pdf')) {
+                console.warn('PDF.js worker error caught:', errorMessage);
+                event.preventDefault();
+                if (isMountedRef.current) {
+                    // Optionally trigger a reload or show user a message
+                    console.log('PDF worker disconnected, may need to refresh');
+                }
+            }
+        };
+        
+        window.addEventListener('error', handleGlobalError);
+        
         return () => {
+            isMountedRef.current = false;
             window.removeEventListener('resize', updateWidth);
+            window.removeEventListener('error', handleGlobalError);
             if (resizeObserver) {
                 resizeObserver.disconnect();
             }

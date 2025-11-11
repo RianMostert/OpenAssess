@@ -193,29 +193,39 @@ export default function AssessmentOverview({
                         <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4`}>
                             {/* Marking Card */}
                             <div className="bg-gradient-to-br from-brand-primary-50 to-white p-4 rounded-lg border-2 border-brand-accent-400">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex flex-col space-y-3">
                                     <h3 className="text-sm font-medium text-brand-primary-700">Marking Progress</h3>
+                                    <div>
+                                        <p className="text-2xl font-bold text-brand-primary-700">
+                                            {assessmentStats?.grading_completion.completion_percentage || 0}%
+                                        </p>
+                                        <p className="text-xs text-brand-primary-600 mt-1">
+                                            {assessmentStats?.grading_completion.graded_submissions || 0} of {assessmentStats?.grading_completion.total_submissions || 0} submissions graded
+                                        </p>
+                                    </div>
                                     <button
                                         onClick={() => setActiveMode('mark')}
-                                        className="px-3 py-1.5 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 transition-colors"
+                                        className="w-full px-3 py-2 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 transition-colors mt-auto"
                                     >
-                                        Mark
+                                        Start Marking
                                     </button>
                                 </div>
-                                <p className="text-2xl font-bold text-brand-primary-700">
-                                    {assessmentStats?.grading_completion.completion_percentage || 0}%
-                                </p>
-                                <p className="text-xs text-brand-primary-600 mt-1">
-                                    {assessmentStats?.grading_completion.graded_submissions || 0} of {assessmentStats?.grading_completion.total_submissions || 0} submissions graded
-                                </p>
                             </div>
 
                             {/* Submissions Card */}
                             <div className="bg-gradient-to-br from-brand-accent-50 to-white p-4 rounded-lg border-2 border-brand-accent-400">
-                                <div className="flex items-center justify-between mb-2">
+                                <div className="flex flex-col space-y-3">
                                     <h3 className="text-sm font-medium text-brand-primary-700">Answer Sheets</h3>
-                                    <label className="px-3 py-1.5 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 cursor-pointer transition-colors">
-                                        Upload
+                                    <div>
+                                        <p className="text-2xl font-bold text-brand-primary-700">
+                                            {assessmentStats?.grading_completion.total_submissions || 0}
+                                        </p>
+                                        <p className="text-xs text-brand-primary-600 mt-1">
+                                            Total submissions uploaded
+                                        </p>
+                                    </div>
+                                    <label className="w-full px-3 py-2 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 cursor-pointer transition-colors text-center mt-auto block">
+                                        Upload Answer Sheets
                                         <input
                                             type="file"
                                             accept=".pdf"
@@ -225,52 +235,52 @@ export default function AssessmentOverview({
                                         />
                                     </label>
                                 </div>
-                                <p className="text-2xl font-bold text-brand-primary-700">
-                                    {assessmentStats?.grading_completion.total_submissions || 0}
-                                </p>
-                                <p className="text-xs text-brand-primary-600 mt-1">
-                                    Total submissions uploaded
-                                </p>
                             </div>
 
                             {/* Publication Card */}
                             <div className="bg-gradient-to-br from-brand-primary-50 to-white p-4 rounded-lg border-2 border-brand-accent-400">
-                                <div className="flex items-center justify-between mb-2">
-                                    <h3 className="text-sm font-medium text-brand-primary-700">Publication Status</h3>
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={handleDownloadStudentCSV}
-                                            className="px-2 py-1 bg-brand-primary-600 text-white rounded text-xs hover:bg-brand-primary-700 transition-colors"
-                                            title="Download CSV"
-                                        >
-                                            CSV
-                                        </button>
-                                        <button
-                                            onClick={handleExportAnnotatedPdfs}
-                                            className="px-2 py-1 bg-brand-primary-600 text-white rounded text-xs hover:bg-brand-primary-700 transition-colors"
-                                            title="Export PDFs"
-                                        >
-                                            PDFs
-                                        </button>
+                                <div className="flex flex-col space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium text-brand-primary-700">Publication Status</h3>
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-bold text-brand-primary-700">
+                                            {assessment.published ? 'Published' : 'Unpublished'}
+                                        </p>
+                                        <p className="text-xs text-brand-primary-600 mt-1">
+                                            {assessment.published ? 'Results are visible to students' : 'Results are hidden from students'}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col gap-2 mt-auto">
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={handleDownloadStudentCSV}
+                                                className="flex-1 px-3 py-2 bg-brand-primary-600 text-white rounded text-xs hover:bg-brand-primary-700 transition-colors font-medium"
+                                                title="Download CSV"
+                                            >
+                                                Download CSV
+                                            </button>
+                                            <button
+                                                onClick={handleExportAnnotatedPdfs}
+                                                className="flex-1 px-3 py-2 bg-brand-primary-600 text-white rounded text-xs hover:bg-brand-primary-700 transition-colors font-medium"
+                                                title="Export PDFs"
+                                            >
+                                                Export PDFs
+                                            </button>
+                                        </div>
                                         <button
                                             onClick={handleTogglePublishStatus}
                                             disabled={isUpdatingPublishStatus}
-                                            className={`px-2 py-1 text-xs font-semibold rounded transition-colors ${
+                                            className={`w-full px-3 py-2 text-sm font-semibold rounded transition-colors ${
                                                 assessment.published 
                                                     ? 'bg-brand-primary-600 hover:bg-brand-primary-700 text-white' 
                                                     : 'bg-brand-accent-600 hover:bg-brand-accent-700 text-white'
                                             } disabled:opacity-50`}
                                         >
-                                            {isUpdatingPublishStatus ? '...' : assessment.published ? 'Hide' : 'Publish'}
+                                            {isUpdatingPublishStatus ? '...' : assessment.published ? 'Unpublish Results' : 'Publish Results'}
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-2xl font-bold text-brand-primary-700">
-                                    {assessment.published ? 'Published' : 'Unpublished'}
-                                </p>
-                                <p className="text-xs text-brand-primary-600 mt-1">
-                                    {assessment.published ? 'Results are visible to students' : 'Results are hidden from students'}
-                                </p>
                             </div>
                         </div>
                     </div>

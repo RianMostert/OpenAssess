@@ -109,6 +109,7 @@ export default function QueryReviewPdfViewer({
     const [pdfVersion, setPdfVersion] = useState(0); // Force re-render
 
     const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isMountedRef = useRef(true);
 
     // Helper function to clean up PDF URL
     const cleanupPdfUrl = (url: string | null) => {
@@ -119,6 +120,8 @@ export default function QueryReviewPdfViewer({
 
     // Dynamically set width based on container using ResizeObserver with debouncing
     useEffect(() => {
+        isMountedRef.current = true;
+        
         const updateWidth = () => {
             if (pageContainerRef.current) {
                 const newWidth = pageContainerRef.current.offsetWidth;
@@ -154,8 +157,26 @@ export default function QueryReviewPdfViewer({
 
         window.addEventListener('resize', updateWidth);
         
+        // Add global error handler for PDF.js worker errors
+        const handleGlobalError = (event: ErrorEvent) => {
+            const errorMessage = event.message || '';
+            if (errorMessage.includes('messageHandler') || 
+                errorMessage.includes('sendWithPromise') ||
+                errorMessage.toLowerCase().includes('pdf')) {
+                console.warn('PDF.js worker error caught in QueryReviewPdfViewer:', errorMessage);
+                event.preventDefault();
+                if (isMountedRef.current) {
+                    console.log('PDF worker disconnected in query review');
+                }
+            }
+        };
+        
+        window.addEventListener('error', handleGlobalError);
+        
         return () => {
+            isMountedRef.current = false;
             window.removeEventListener('resize', updateWidth);
+            window.removeEventListener('error', handleGlobalError);
             if (resizeObserver) {
                 resizeObserver.disconnect();
             }
@@ -183,13 +204,13 @@ export default function QueryReviewPdfViewer({
                     return;
                 }
 
-                if (!cancelled) setAnswer(studentAnswer);
+                if (!cancelled && isMountedRef.current) setAnswer(studentAnswer);
 
                 // Load the student's PDF
                 const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${studentAnswer.id}/answer-sheet`);
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
-                if (!cancelled) setPdfUrl(url);
+                if (!cancelled && isMountedRef.current) setPdfUrl(url);
 
                 // Load all annotations for the assessment
                 const resultsRes = await fetchWithAuth(
@@ -199,7 +220,7 @@ export default function QueryReviewPdfViewer({
                 if (resultsRes.ok) {
                     const studentData = await resultsRes.json();
                     
-                    if (!cancelled) {
+                    if (!cancelled && isMountedRef.current) {
                         // Load all annotations for all questions
                         const allAnnotations: Record<string, AnnotationLayerProps> = {};
                         
@@ -220,7 +241,7 @@ export default function QueryReviewPdfViewer({
                 }
             } catch (err) {
                 console.error('Error loading PDF or annotations', err);
-                if (!cancelled) setPdfUrl(null);
+                if (!cancelled && isMountedRef.current) setPdfUrl(null);
             }
         };
 
@@ -228,7 +249,9 @@ export default function QueryReviewPdfViewer({
         
         return () => {
             cancelled = true;
-            cleanupPdfUrl(pdfUrl);
+            if (!isMountedRef.current) {
+                cleanupPdfUrl(pdfUrl);
+            }
         };
     }, [studentId, assessment.id]);
 

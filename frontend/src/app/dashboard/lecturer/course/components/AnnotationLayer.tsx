@@ -113,19 +113,26 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         };
     }, [page]);
 
+    // Delete annotation function (keyboard + button)
+    const deleteSelectedAnnotation = () => {
+        if (!selectedId) return;
+        
+        const newAnnotations = {
+            ...annotations,
+            stickyNotes: annotations.stickyNotes.filter(note => note.id !== selectedId),
+            texts: annotations.texts.filter(text => text.id !== selectedId),
+            lines: annotations.lines,
+        };
+        addToHistory(newAnnotations);
+        setSelectedId(null);
+    };
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const isWindowsDelete = e.key === 'Delete';
             const isMacDelete = e.metaKey && e.key === 'Backspace';
             if ((isWindowsDelete || isMacDelete) && selectedId) {
-                const newAnnotations = {
-                    ...annotations,
-                    stickyNotes: annotations.stickyNotes.filter(note => note.id !== selectedId),
-                    texts: annotations.texts.filter(text => text.id !== selectedId),
-                    lines: annotations.lines,
-                };
-                addToHistory(newAnnotations);
-                setSelectedId(null);
+                deleteSelectedAnnotation();
             }
         };
 
@@ -470,6 +477,11 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             WebkitUserSelect: 'none',
                         }}
                         onMouseDown={(e) => {
+                            // Don't start dragging if clicking on the textarea
+                            if ((e.target as HTMLElement).tagName === 'TEXTAREA') {
+                                return;
+                            }
+                            
                             e.stopPropagation();
                             e.preventDefault(); // Prevent text selection
                             setSelectedId(textNote.id);
@@ -479,6 +491,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             // Prevent text selection during drag
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
+                            
+                            // Prevent scrolling on the PDF container during drag
+                            const pdfContainer = document.querySelector('.pdf-container');
+                            if (pdfContainer) {
+                                (pdfContainer as HTMLElement).style.overflow = 'hidden';
+                            }
 
                             // Track the final position to add to history
                             let finalAnnotations = annotations;
@@ -526,6 +544,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
                                 
+                                // Re-enable scrolling on the PDF container
+                                const pdfContainer = document.querySelector('.pdf-container');
+                                if (pdfContainer) {
+                                    (pdfContainer as HTMLElement).style.overflow = '';
+                                }
+                                
                                 // Add final position to history when drag ends
                                 addToHistory(finalAnnotations);
                                 
@@ -541,8 +565,13 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             document.addEventListener('touchend', handleEnd);
                         }}
                         onTouchStart={(e) => {
+                            // Don't start dragging if touching the textarea
+                            if ((e.target as HTMLElement).tagName === 'TEXTAREA') {
+                                return;
+                            }
+                            
                             e.stopPropagation();
-                            e.preventDefault(); // Prevent text selection
+                            e.preventDefault(); // Prevent text selection and scrolling
                             setSelectedId(textNote.id);
                             const touch = e.touches[0];
                             const startX = touch.clientX;
@@ -551,6 +580,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             // Prevent text selection during drag
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
+                            
+                            // Prevent scrolling on the PDF container during drag
+                            const pdfContainer = document.querySelector('.pdf-container');
+                            if (pdfContainer) {
+                                (pdfContainer as HTMLElement).style.overflow = 'hidden';
+                            }
 
                             // Track the final position to add to history
                             let finalAnnotations = annotations;
@@ -599,6 +634,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
                                 
+                                // Re-enable scrolling on the PDF container
+                                const pdfContainer = document.querySelector('.pdf-container');
+                                if (pdfContainer) {
+                                    (pdfContainer as HTMLElement).style.overflow = '';
+                                }
+                                
                                 // Add final position to history when drag ends
                                 addToHistory(finalAnnotations);
                                 
@@ -610,6 +651,33 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             document.addEventListener('touchend', handleEnd);
                         }}
                     >
+                        {/* Delete button for touch devices */}
+                        {selectedId === textNote.id && (
+                            <button
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    deleteSelectedAnnotation();
+                                }}
+                                onTouchStart={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    deleteSelectedAnnotation();
+                                }}
+                                className="absolute -top-8 -right-8 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-red-600 z-50"
+                                style={{
+                                    minWidth: '32px',
+                                    minHeight: '32px',
+                                }}
+                                aria-label="Delete annotation"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        )}
                         <TextNote
                             content={textNote.text}
                             width={pixelDimensions.width}
@@ -668,6 +736,11 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             WebkitUserSelect: 'none',
                         }}
                         onMouseDown={(e) => {
+                            // Don't start dragging if clicking on the textarea
+                            if ((e.target as HTMLElement).tagName === 'TEXTAREA') {
+                                return;
+                            }
+                            
                             e.stopPropagation();
                             e.preventDefault(); // Prevent text selection
                             setSelectedId(note.id);
@@ -677,6 +750,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             // Prevent text selection during drag
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
+                            
+                            // Prevent scrolling on the PDF container during drag
+                            const pdfContainer = document.querySelector('.pdf-container');
+                            if (pdfContainer) {
+                                (pdfContainer as HTMLElement).style.overflow = 'hidden';
+                            }
 
                             // Track the final position to add to history
                             let finalAnnotations = annotations;
@@ -728,6 +807,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
                                 
+                                // Re-enable scrolling on the PDF container
+                                const pdfContainer = document.querySelector('.pdf-container');
+                                if (pdfContainer) {
+                                    (pdfContainer as HTMLElement).style.overflow = '';
+                                }
+                                
                                 // Add final position to history when drag ends
                                 addToHistory(finalAnnotations);
                                 
@@ -743,8 +828,13 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             document.addEventListener('touchend', handleEnd);
                         }}
                         onTouchStart={(e) => {
+                            // Don't start dragging if touching the textarea
+                            if ((e.target as HTMLElement).tagName === 'TEXTAREA') {
+                                return;
+                            }
+                            
                             e.stopPropagation();
-                            e.preventDefault(); // Prevent text selection
+                            e.preventDefault(); // Prevent text selection and scrolling
                             setSelectedId(note.id);
                             const touch = e.touches[0];
                             const startX = touch.clientX;
@@ -753,6 +843,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             // Prevent text selection during drag
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
+                            
+                            // Prevent scrolling on the PDF container during drag
+                            const pdfContainer = document.querySelector('.pdf-container');
+                            if (pdfContainer) {
+                                (pdfContainer as HTMLElement).style.overflow = 'hidden';
+                            }
 
                             // Track the final position to add to history
                             let finalAnnotations = annotations;
@@ -805,6 +901,12 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
                                 
+                                // Re-enable scrolling on the PDF container
+                                const pdfContainer = document.querySelector('.pdf-container');
+                                if (pdfContainer) {
+                                    (pdfContainer as HTMLElement).style.overflow = '';
+                                }
+                                
                                 // Add final position to history when drag ends
                                 addToHistory(finalAnnotations);
                                 
@@ -816,6 +918,33 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             document.addEventListener('touchend', handleEnd);
                         }}
                     >
+                        {/* Delete button for touch devices */}
+                        {selectedId === note.id && (
+                            <button
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    deleteSelectedAnnotation();
+                                }}
+                                onTouchStart={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    deleteSelectedAnnotation();
+                                }}
+                                className="absolute -top-8 -right-8 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg hover:bg-red-600 z-50"
+                                style={{
+                                    minWidth: '32px',
+                                    minHeight: '32px',
+                                }}
+                                aria-label="Delete annotation"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        )}
                         <StickyNote
                             content={note.text}
                             scaleFactor={scaleFactor}

@@ -346,7 +346,7 @@ export default function CourseOverview({
                                                         <div>
                                                             <p className="text-sm font-semibold text-gray-900">{assessment.title}</p>
                                                             <p className="text-sm text-brand-accent-700 font-medium">
-                                                                {assessment.totalQuestions} questions • {assessment.totalStudents} submissions
+                                                                {assessment.totalQuestions} questions
                                                             </p>
                                                         </div>
                                                     </td>

@@ -149,6 +149,16 @@
     font-size: 16px; /* Base font size */
   }
   
+  /* Prevent the whole page from scrolling/bouncing on touch devices */
+  html, body {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overscroll-behavior: none; /* Prevent pull-to-refresh and overscroll bounce */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  }
+  
   /* Smooth scrolling for better UX */
   html {
     scroll-behavior: smooth;
@@ -212,8 +222,10 @@
          (max-device-width: 1024px) and (orientation: portrait) {
     /* iPad optimizations */
     .pdf-container {
-      /* Prevent pinch-to-zoom during drawing */
-      touch-action: pan-x pan-y;
+      /* Prevent pinch-to-zoom during drawing but allow scrolling */
+      touch-action: pan-y;
+      overscroll-behavior: contain; /* Prevent scroll chaining to body */
+      -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
     
     /* Better button spacing for touch */
