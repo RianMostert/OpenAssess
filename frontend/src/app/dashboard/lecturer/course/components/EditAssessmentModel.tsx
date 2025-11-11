@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { DialogDescription } from '@radix-ui/react-dialog';
+import { assessmentService } from '@/services';
+import { API_CONFIG } from '@/lib/constants';
 
 interface EditAssessmentForm {
     title: string;
@@ -60,13 +61,14 @@ export default function EditAssessmentModal({
                 formData.append("course_id", courseId);
                 formData.append("assessment_id", assessmentId);
 
-                const uploadRes = await fetchWithAuth(
-                    `${process.env.NEXT_PUBLIC_API_URL}/assessments/upload/question-paper`,
-                    {
-                        method: "POST",
-                        body: formData,
-                    }
-                );
+                const token = localStorage.getItem('authToken');
+                const uploadRes = await fetch(`${API_CONFIG.BASE_URL}/assessments/upload/question-paper`, {
+                    method: 'POST',
+                    headers: {
+                        ...(token && { Authorization: `Bearer ${token}` }),
+                    },
+                    body: formData,
+                });
 
                 if (!uploadRes.ok) throw new Error("File upload failed");
 
@@ -74,22 +76,11 @@ export default function EditAssessmentModal({
                 uploadedPath = file_path;
             }
 
-            // Step 2: Update assessment metadata
-            const response = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessmentId}`,
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        title: data.title,
-                        ...(uploadedPath && { question_paper_file_path: uploadedPath }),
-                    }),
-                }
-            );
-
-            if (!response.ok) throw new Error("Failed to update assessment");
+            // Step 2: Update assessment metadata using service
+            await assessmentService.updateAssessment(assessmentId, {
+                title: data.title,
+                ...(uploadedPath && { question_paper_file_path: uploadedPath }),
+            });
 
             reset();
             setFile(null);
@@ -102,6 +93,7 @@ export default function EditAssessmentModal({
             }
         } catch (error) {
             console.error("Error updating assessment:", error);
+            alert('Failed to update assessment: ' + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             setUploading(false);
         }

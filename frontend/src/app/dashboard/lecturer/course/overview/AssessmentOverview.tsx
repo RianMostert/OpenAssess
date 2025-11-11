@@ -1,8 +1,9 @@
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { Assessment, Course } from "@/types/course";
 import { useState, useEffect } from "react";
 import QueryManagement from "@/app/dashboard/lecturer/course/components/QueryManagement";
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { assessmentService, fileService, exportService } from '@/services';
+import { API_CONFIG } from '@/lib/constants';
 
 interface AssessmentStats {
     grading_completion: {
@@ -66,50 +67,13 @@ export default function AssessmentOverview({
     const fetchAssessmentStats = async () => {
         try {
             setLoading(true);
-            const response = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/stats`
-            );
+            // Use assessmentService to fetch stats
+            const stats = await assessmentService.getAssessmentStats(course.id, assessment.id);
             
-            if (response.ok) {
-                const stats = await response.json();
-                
-                // Add dummy question performance data
-                // const dummyQuestions = [
-                //     { question_number: 1, question_title: 'Introduction to Algorithms', max_marks: 10, graded_count: 42, ungraded_count: 3, average_mark: 8.5, average_percentage: 85, highest_mark: 10, lowest_mark: 5 },
-                //     { question_number: 2, question_title: 'Data Structures Analysis', max_marks: 15, graded_count: 38, ungraded_count: 7, average_mark: 11.2, average_percentage: 74.7, highest_mark: 15, lowest_mark: 6 },
-                //     { question_number: 3, question_title: 'Sorting Algorithms', max_marks: 12, graded_count: 40, ungraded_count: 5, average_mark: 9.8, average_percentage: 81.7, highest_mark: 12, lowest_mark: 7 },
-                //     { question_number: 4, question_title: 'Graph Theory Basics', max_marks: 8, graded_count: 45, ungraded_count: 0, average_mark: 6.4, average_percentage: 80, highest_mark: 8, lowest_mark: 4 },
-                //     { question_number: 5, question_title: 'Dynamic Programming', max_marks: 20, graded_count: 30, ungraded_count: 15, average_mark: 14.5, average_percentage: 72.5, highest_mark: 20, lowest_mark: 8 },
-                //     { question_number: 6, question_title: 'Tree Traversal Methods', max_marks: 10, graded_count: 41, ungraded_count: 4, average_mark: 7.9, average_percentage: 79, highest_mark: 10, lowest_mark: 5 },
-                //     { question_number: 7, question_title: 'Hash Tables Implementation', max_marks: 14, graded_count: 36, ungraded_count: 9, average_mark: 10.8, average_percentage: 77.1, highest_mark: 14, lowest_mark: 6 },
-                //     { question_number: 8, question_title: 'Complexity Analysis', max_marks: 11, graded_count: 43, ungraded_count: 2, average_mark: 9.1, average_percentage: 82.7, highest_mark: 11, lowest_mark: 6 },
-                //     { question_number: 9, question_title: 'Recursive Solutions', max_marks: 16, graded_count: 39, ungraded_count: 6, average_mark: 12.3, average_percentage: 76.9, highest_mark: 16, lowest_mark: 7 },
-                //     { question_number: 10, question_title: 'Algorithm Optimization', max_marks: 18, graded_count: 35, ungraded_count: 10, average_mark: 13.7, average_percentage: 76.1, highest_mark: 18, lowest_mark: 8 },
-                // ];
-                
-                setAssessmentStats({
-                    ...stats,
-                    question_performance: [...(stats.question_performance || [])]
-                });
-            } else {
-                console.error('Failed to fetch assessment stats');
-                setAssessmentStats({
-                    grading_completion: {
-                        total_submissions: 0,
-                        graded_submissions: 0,
-                        ungraded_submissions: 0,
-                        completion_percentage: 0
-                    },
-                    grade_distribution: {
-                        average_score: 0,
-                        median_score: 0,
-                        highest_score: 0,
-                        lowest_score: 0,
-                        score_ranges: []
-                    },
-                    question_performance: []
-                });
-            }
+            setAssessmentStats({
+                ...stats,
+                question_performance: [...(stats.question_performance || [])]
+            });
         } catch (error) {
             console.error('Error fetching assessment stats:', error);
             setAssessmentStats({
@@ -136,6 +100,7 @@ export default function AssessmentOverview({
     const getProgressBarColor = (percentage: number) => {
         if (percentage >= 80) return 'bg-green-500';
         if (percentage >= 60) return 'bg-yellow-500';
+        if (percentage >= 40) return 'bg-orange-500';
         return 'bg-red-500';
     };
     const handleTogglePublishStatus = async () => {
@@ -143,25 +108,11 @@ export default function AssessmentOverview({
         
         setIsUpdatingPublishStatus(true);
         try {
-            const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/publish`,
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        published: !assessment.published,
-                    }),
-                }
+            const updatedAssessment = await assessmentService.togglePublishStatus(
+                assessment.id,
+                !assessment.published
             );
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || "Failed to update publish status");
-            }
-
-            const updatedAssessment = await res.json();
             onAssessmentUpdate?.(updatedAssessment);
             
             const action = updatedAssessment.published ? "published" : "unpublished";
@@ -178,44 +129,25 @@ export default function AssessmentOverview({
         const files = e.target.files;
         if (!files || files.length === 0 || !assessment) return;
 
-        const formData = new FormData();
-        formData.append("assessment_id", assessment.id);
-
-        Array.from(files).forEach(file => {
-            formData.append("files", file);
-        });
-
         try {
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/bulk-upload`, {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || "Upload failed");
+            const filesArray = Array.from(files);
+            const result = await fileService.bulkUploadAnswerSheets(assessment.id, filesArray);
+            
+            if (result.length === 0) {
+                alert(`Warning: No answer sheets were uploaded.\n\nPossible reasons:\n- Files must be named with student number (e.g., "24138096_answers.pdf")\n- Student numbers must exist in the database\n- Files must be PDF format\n\nFiles attempted: ${filesArray.length}`);
+            } else {
+                alert(`Successfully uploaded ${result.length} answer sheets out of ${filesArray.length} files`);
+                fetchAssessmentStats(); // Refresh stats after upload
             }
-
-            const result = await res.json();
-            alert(`Successfully uploaded ${result.length} answer sheets`);
         } catch (err) {
             console.error(err);
-            alert("Bulk upload failed");
+            alert("Bulk upload failed: " + (err instanceof Error ? err.message : "Unknown error"));
         }
     };
 
     const handleDownloadStudentCSV = async () => {
         try {
-            const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/results/download`
-            );
-
-            if (!res.ok) {
-                console.error('Failed to download CSV');
-                return;
-            }
-
-            const blob = await res.blob();
+            const blob = await assessmentService.downloadResultsCSV(assessment.id);
             const url = window.URL.createObjectURL(blob);
 
             const a = document.createElement('a');
@@ -223,37 +155,16 @@ export default function AssessmentOverview({
             a.download = `assessment_${assessment.id}_results.csv`;
             a.click();
             a.remove();
+            window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error('Error downloading CSV', err);
+            alert('Failed to download CSV: ' + (err instanceof Error ? err.message : 'Unknown error'));
         }
     };
 
     const handleExportAnnotatedPdfs = async () => {
         try {
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/export/annotated-pdfs`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    course_id: course.id,
-                    assessment_id: assessment.id,
-                }),
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || "Export failed");
-            }
-
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `annotated_pdfs_course_${course.id}_assessment_${assessment.id}.zip`;
-            a.click();
-            a.remove();
+            await exportService.exportAnnotatedPdfs(course.id, assessment.id);
         } catch (err) {
             console.error("Failed to export PDFs", err);
             alert("Export failed: " + (err instanceof Error ? err.message : "Unknown error"));
@@ -303,7 +214,7 @@ export default function AssessmentOverview({
                             <div className="bg-gradient-to-br from-brand-accent-50 to-white p-4 rounded-lg border-2 border-brand-accent-400">
                                 <div className="flex items-center justify-between mb-2">
                                     <h3 className="text-sm font-medium text-brand-primary-700">Answer Sheets</h3>
-                                    <label className="px-3 py-1.5 bg-purple-500 text-white rounded text-sm font-semibold hover:bg-purple-600 cursor-pointer transition-colors">
+                                    <label className="px-3 py-1.5 bg-brand-primary-600 text-white rounded text-sm font-semibold hover:bg-brand-primary-700 cursor-pointer transition-colors">
                                         Upload
                                         <input
                                             type="file"
@@ -314,7 +225,7 @@ export default function AssessmentOverview({
                                         />
                                     </label>
                                 </div>
-                                <p className="text-2xl font-bold text-brand-accent-700">
+                                <p className="text-2xl font-bold text-brand-primary-700">
                                     {assessmentStats?.grading_completion.total_submissions || 0}
                                 </p>
                                 <p className="text-xs text-brand-primary-600 mt-1">
@@ -329,14 +240,14 @@ export default function AssessmentOverview({
                                     <div className="flex gap-1">
                                         <button
                                             onClick={handleDownloadStudentCSV}
-                                            className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
+                                            className="px-2 py-1 bg-brand-primary-600 text-white rounded text-xs hover:bg-brand-primary-700 transition-colors"
                                             title="Download CSV"
                                         >
                                             CSV
                                         </button>
                                         <button
                                             onClick={handleExportAnnotatedPdfs}
-                                            className="px-2 py-1 bg-orange-500 text-white rounded text-xs hover:bg-orange-600 transition-colors"
+                                            className="px-2 py-1 bg-brand-primary-600 text-white rounded text-xs hover:bg-brand-primary-700 transition-colors"
                                             title="Export PDFs"
                                         >
                                             PDFs
@@ -346,15 +257,15 @@ export default function AssessmentOverview({
                                             disabled={isUpdatingPublishStatus}
                                             className={`px-2 py-1 text-xs font-semibold rounded transition-colors ${
                                                 assessment.published 
-                                                    ? 'bg-red-500 hover:bg-red-600 text-white' 
-                                                    : 'bg-green-500 hover:bg-green-600 text-white'
+                                                    ? 'bg-brand-primary-600 hover:bg-brand-primary-700 text-white' 
+                                                    : 'bg-brand-accent-600 hover:bg-brand-accent-700 text-white'
                                             } disabled:opacity-50`}
                                         >
                                             {isUpdatingPublishStatus ? '...' : assessment.published ? 'Hide' : 'Publish'}
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-2xl font-bold text-green-600">
+                                <p className="text-2xl font-bold text-brand-primary-700">
                                     {assessment.published ? 'Published' : 'Unpublished'}
                                 </p>
                                 <p className="text-xs text-brand-primary-600 mt-1">

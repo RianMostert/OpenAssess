@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { Button } from '@/components/ui/button';
-import { Assessment, Question, MarkingMode, QuestionWithResult, StudentAllResults, UploadedAnswer } from '@/types/course';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { Assessment, MarkingMode, StudentAllResults } from '@/types/course';
+import { markingService, type MappingQuestion, type UploadedAnswer, type QuestionWithResult, type AnnotationData } from '@/services';
 import PdfAnnotatorBar from '@dashboard/lecturer/course/components/PdfAnnotatorBar';
-import AnnotationLayer, { AnnotationLayerProps } from '@dashboard/lecturer/course/components/AnnotationLayer';
+import AnnotationLayer, { AnnotationLayerProps, LineElement, TextElement, StickyNoteElement } from '@dashboard/lecturer/course/components/AnnotationLayer';
 import QuestionOverlay from './QuestionOverlay';
 import React from 'react';
 import { 
@@ -20,7 +20,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 
 interface MarkingPdfViewerProps {
     assessment: Assessment;
-    question: Question | null;
+    question: MappingQuestion | null;
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
     markingMode: MarkingMode;
     currentStudentIndex?: number;
@@ -30,7 +30,7 @@ interface MarkingPdfViewerProps {
     onRefreshStudentData?: () => void;
 }
 
-type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
+type Tool = 'pencil' | 'eraser' | 'fine-eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
 export default function MarkingPdfViewer({ 
     assessment, 
@@ -69,6 +69,10 @@ export default function MarkingPdfViewer({
     const [renderedPage, setRenderedPage] = useState<number | null>(null);
     const [isResizing, setIsResizing] = useState(false);
     const [pdfVersion, setPdfVersion] = useState(0); // Force re-render
+    
+    // Undo/Redo state
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
 
     // New state for student-by-student mode - use shared state when available
     const studentAllResults = markingMode === 'student-by-student' ? propStudentAllResults : null;
@@ -149,8 +153,7 @@ export default function MarkingPdfViewer({
     useEffect(() => {
         const fetchAnswers = async () => {
             try {
-                const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessment.id}/answer-sheets`);
-                const data = await res.json();
+                const data = await markingService.getAnswerSheets(assessment.id);
                 setAnswers(data);
             } catch (err) {
                 console.error('Failed to fetch student answers', err);
@@ -159,6 +162,78 @@ export default function MarkingPdfViewer({
 
         fetchAnswers();
     }, [assessment.id]);
+
+    // Helper function to convert API annotation format to component format
+    const convertApiAnnotationsToComponent = (apiAnnotations: AnnotationData): {
+        page?: number;
+        lines: LineElement[];
+        texts: TextElement[];
+        stickyNotes: StickyNoteElement[];
+    } => {
+        return {
+            page: apiAnnotations.page,
+            lines: apiAnnotations.lines.map((line, index) => ({
+                id: `line-${index}`,
+                tool: (line.tool || 'pencil') as 'pencil' | 'fine-eraser', // Default to pencil for old data
+                points: line.points,
+                stroke: line.color,
+                strokeWidth: line.width,
+                globalCompositeOperation: line.globalCompositeOperation || 'source-over',
+            })),
+            texts: apiAnnotations.texts.map((text, index) => ({
+                id: `text-${index}`,
+                tool: 'text-note' as const,
+                x: text.x,
+                y: text.y,
+                text: text.text,
+                fontSize: 16, // Default font size
+                fill: text.color,
+            })),
+            stickyNotes: apiAnnotations.stickyNotes.map((note, index) => ({
+                id: `sticky-${index}`,
+                tool: 'sticky-note' as const,
+                x: note.x,
+                y: note.y,
+                text: note.text,
+                fontSize: 16, // Default font size
+                fill: note.color,
+                width: 200, // Default width
+                height: 200, // Default height
+            })),
+        };
+    };
+
+    // Helper function to convert component annotation format back to API format
+    const convertComponentAnnotationsToApi = (componentAnnotations: {
+        page?: number;
+        lines: LineElement[];
+        texts: TextElement[];
+        stickyNotes: StickyNoteElement[];
+    }): AnnotationData => {
+        return {
+            page: componentAnnotations.page || 1,
+            // Save ALL lines including tool type and composition for fine-eraser masks
+            lines: componentAnnotations.lines.map(line => ({
+                points: line.points,
+                color: line.stroke,
+                width: line.strokeWidth,
+                tool: line.tool === 'fine-eraser' ? 'fine-eraser' : 'pencil',
+                globalCompositeOperation: line.globalCompositeOperation,
+            })),
+            texts: componentAnnotations.texts.map(text => ({
+                x: text.x,
+                y: text.y,
+                text: text.text,
+                color: text.fill,
+            })),
+            stickyNotes: componentAnnotations.stickyNotes.map(note => ({
+                x: note.x,
+                y: note.y,
+                text: note.text,
+                color: note.fill,
+            })),
+        };
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -177,50 +252,30 @@ export default function MarkingPdfViewer({
 
             try {
                 // Load the student's PDF
-                const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${currentAnswer.id}/answer-sheet`);
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
+                const url = await markingService.getAnswerSheetPdf(currentAnswer.id);
                 if (!cancelled) setPdfUrl(url);
 
                 // Load the student's question result
-                const resultRes = await fetchWithAuth(
-                    `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${currentAnswer.student_id}`
+                const resultData = await markingService.getQuestionResult(
+                    assessment.id,
+                    question.id,
+                    currentAnswer.student_id
                 );
 
-                if (resultRes.ok) {
-                    const resultData = await resultRes.json();
+                // Fetch annotations if result exists
+                const annotationsJson = await markingService.getAnnotation(resultData.id);
+                console.log('Annotations loaded:', annotationsJson);
 
-                    // Fetch annotations
-                    const annotationRes = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/${resultData.id}/annotation?ts=${Date.now()}`
-                    );
-
-                    if (annotationRes.ok) {
-                        const annotationsJson = await annotationRes.json();
-                        console.log('Annotations loaded:', annotationsJson);
-
-                        if (!cancelled) {
-                            // Use student-specific key for annotations
-                            const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
-                            setAnnotationsByPage(prev => ({
-                                ...prev,
-                                [annotationKey]: annotationsJson,
-                            }));
-                            setSelectedMark(resultData.mark ?? null);
-                            console.log('Question-by-question mark loaded:', resultData.mark); // Debug log
-                        }
-                    } else {
-                        if (!cancelled) {
-                            // Use student-specific key for empty annotations
-                            const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
-                            setAnnotationsByPage(prev => ({
-                                ...prev,
-                                [annotationKey]: { page: question.page_number, lines: [], texts: [], stickyNotes: [] },
-                            }));
-                            setSelectedMark(resultData.mark ?? null);
-                            console.log('Question-by-question mark loaded (no annotations):', resultData.mark); // Debug log
-                        }
-                    }
+                if (!cancelled) {
+                    // Use student-specific key for annotations
+                    const annotationKey = getAnnotationKey(currentAnswer.student_id, question.page_number);
+                    const convertedAnnotations = convertApiAnnotationsToComponent(annotationsJson);
+                    setAnnotationsByPage(prev => ({
+                        ...prev,
+                        [annotationKey]: convertedAnnotations,
+                    }));
+                    setSelectedMark(resultData.mark ?? null);
+                    console.log('Question-by-question mark loaded:', resultData.mark); // Debug log
                 }
             } catch (err) {
                 console.error('Error loading PDF or annotations', err);
@@ -246,45 +301,40 @@ export default function MarkingPdfViewer({
 
             try {
                 // Load PDF
-                const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/uploaded-files/${currentAnswer.id}/answer-sheet`);
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
+                const url = await markingService.getAnswerSheetPdf(currentAnswer.id);
                 if (!cancelled) setPdfUrl(url);
 
                 // Load all question results for this student
-                const resultsRes = await fetchWithAuth(
-                    `${process.env.NEXT_PUBLIC_API_URL}/question-results/student/${currentAnswer.student_id}/assessment/${assessment.id}/all-results`
+                const studentData = await markingService.getStudentAllResults(
+                    currentAnswer.student_id,
+                    assessment.id
                 );
 
-                if (resultsRes.ok) {
-                    const studentData: StudentAllResults = await resultsRes.json();
-                    if (!cancelled) {
-                        console.log('Fresh student data loaded:', studentData); // Debug log
-                        if (setStudentAllResults) {
-                            setStudentAllResults(studentData);
-                        }
-                        
-                        // Load all annotations for all questions
-                        const allAnnotations: Record<string, AnnotationLayerProps['annotations']> = {};
-                        
-                        for (const questionData of studentData.questions) {
-                            if (questionData.annotation) {
-                                const annotationKey = getAnnotationKey(currentAnswer.student_id, questionData.page_number);
-                                allAnnotations[annotationKey] = questionData.annotation;
-                            }
-                        }
-                        
-                        setAnnotationsByPage(allAnnotations);
+                if (!cancelled) {
+                    console.log('Fresh student data loaded:', studentData); // Debug log
+                    if (setStudentAllResults) {
+                        setStudentAllResults(studentData);
                     }
-                } else {
-                    console.error('Failed to fetch student results');
-                    if (!cancelled && setStudentAllResults) {
-                        setStudentAllResults(null);
+                    
+                    // Load all annotations for all questions
+                    const allAnnotations: Record<string, AnnotationLayerProps['annotations']> = {};
+                    
+                    for (const questionData of studentData.questions) {
+                        if (questionData.annotation) {
+                            const annotationKey = getAnnotationKey(currentAnswer.student_id, questionData.page_number);
+                            // Convert from API format to component format
+                            allAnnotations[annotationKey] = convertApiAnnotationsToComponent(questionData.annotation);
+                        }
                     }
+                    
+                    setAnnotationsByPage(allAnnotations);
                 }
             } catch (err) {
                 console.error('Error loading student data:', err);
                 if (!cancelled) setPdfUrl(null);
+                if (!cancelled && setStudentAllResults) {
+                    setStudentAllResults(null);
+                }
             }
         };
 
@@ -338,22 +388,17 @@ export default function MarkingPdfViewer({
             page: finalPageNumber
         };
 
-        const blob = new Blob([JSON.stringify(annotationsWithPage)], { type: 'application/json' });
-        const formData = new FormData();
-        formData.append('assessment_id', assessment.id);
-        formData.append('question_id', finalQuestionId);
-        formData.append('student_id', currentAnswer.student_id);
-        
-        // IMPORTANT: Don't send mark when saving annotations only
-        // The mark should only be updated through explicit mark update functions
-        formData.append('mark', '0'); // Send 0 as placeholder - backend should ignore this
-        formData.append('annotation_only', 'true'); // Flag to indicate annotation-only save
-        formData.append('file', blob, 'annotations.json');
+        // Convert from component format to API format
+        const apiAnnotations = convertComponentAnnotationsToApi(annotationsWithPage);
 
         try {
-            await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/upload-annotation`, {
-                method: 'POST',
-                body: formData,
+            await markingService.saveAnnotation({
+                assessment_id: assessment.id,
+                question_id: finalQuestionId,
+                student_id: currentAnswer.student_id,
+                mark: 0, // Placeholder - backend should ignore when annotation_only is true
+                annotation: apiAnnotations,
+                annotation_only: true,
             });
             console.log('Annotations saved (mark unchanged)');
         } catch (err) {
@@ -430,20 +475,18 @@ export default function MarkingPdfViewer({
                         page: question.page_number
                     };
                     
-                    const blob = new Blob([JSON.stringify(annotationsWithPage)], { type: 'application/json' });
-                    const formData = new FormData();
-                    formData.append('assessment_id', assessment.id);
-                    formData.append('question_id', question.id);
-                    formData.append('student_id', currentAnswer.student_id);
-                    formData.append('mark', '0'); // Don't update marks in cleanup
-                    formData.append('annotation_only', 'true'); // Only save annotations
-                    formData.append('file', blob, 'annotations.json');
-
+                    // Convert to API format
+                    const apiAnnotations = convertComponentAnnotationsToApi(annotationsWithPage);
+                    
                     // Note: This will be a fire-and-forget save since we can't await in cleanup
-                    fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/upload-annotation`, {
-                        method: 'POST',
-                        body: formData,
-                    }).catch(err => console.error('Failed to save annotations on cleanup', err));
+                    markingService.saveAnnotation({
+                        assessment_id: assessment.id,
+                        question_id: question.id,
+                        student_id: currentAnswer.student_id,
+                        mark: 0,
+                        annotation: apiAnnotations,
+                        annotation_only: true,
+                    }).catch((err: Error) => console.error('Failed to save annotations on cleanup', err));
                 }
             }
         };
@@ -463,10 +506,11 @@ export default function MarkingPdfViewer({
             // Find next student where this question is unmarked
             for (let i = currentIndex + 1; i < answers.length; i++) {
                 try {
-                    const res = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${answers[i].student_id}`
+                    const result = await markingService.getQuestionResult(
+                        assessment.id,
+                        question.id,
+                        answers[i].student_id
                     );
-                    const result = await res.json();
                     if (result.mark === null || result.mark === undefined) {
                         updateCurrentIndex(i);
                         return;
@@ -479,10 +523,10 @@ export default function MarkingPdfViewer({
             // Find next student with any unmarked question
             for (let i = currentIndex + 1; i < answers.length; i++) {
                 try {
-                    const res = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/student/${answers[i].student_id}/assessment/${assessment.id}/all-results`
+                    const studentData = await markingService.getStudentAllResults(
+                        answers[i].student_id,
+                        assessment.id
                     );
-                    const studentData: StudentAllResults = await res.json();
                     const hasUnmarked = studentData.questions.some(q => q.mark === null || q.mark === undefined);
                     if (hasUnmarked) {
                         updateCurrentIndex(i);
@@ -501,10 +545,11 @@ export default function MarkingPdfViewer({
             // Find previous student where this question is unmarked
             for (let i = currentIndex - 1; i >= 0; i--) {
                 try {
-                    const res = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/question-results?assessment_id=${assessment.id}&question_id=${question.id}&student_id=${answers[i].student_id}`
+                    const result = await markingService.getQuestionResult(
+                        assessment.id,
+                        question.id,
+                        answers[i].student_id
                     );
-                    const result = await res.json();
                     if (result.mark === null || result.mark === undefined) {
                         updateCurrentIndex(i);
                         return;
@@ -517,10 +562,10 @@ export default function MarkingPdfViewer({
             // Find previous student with any unmarked question
             for (let i = currentIndex - 1; i >= 0; i--) {
                 try {
-                    const res = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/question-results/student/${answers[i].student_id}/assessment/${assessment.id}/all-results`
+                    const studentData = await markingService.getStudentAllResults(
+                        answers[i].student_id,
+                        assessment.id
                     );
-                    const studentData: StudentAllResults = await res.json();
                     const hasUnmarked = studentData.questions.some(q => q.mark === null || q.mark === undefined);
                     if (hasUnmarked) {
                         updateCurrentIndex(i);
@@ -542,16 +587,12 @@ export default function MarkingPdfViewer({
     const saveMarkOnly = async (mark: number) => {
         if (!currentAnswer || !question) return;
 
-        const formData = new FormData();
-        formData.append('assessment_id', assessment.id);
-        formData.append('question_id', question.id);
-        formData.append('student_id', currentAnswer.student_id);
-        formData.append('mark', mark.toString());
-
         try {
-            await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/update-mark`, {
-                method: 'POST',
-                body: formData,
+            await markingService.updateMark({
+                assessment_id: assessment.id,
+                question_id: question.id,
+                student_id: currentAnswer.student_id,
+                mark,
             });
             console.log('Mark saved automatically:', mark);
         } catch (err) {
@@ -572,21 +613,13 @@ export default function MarkingPdfViewer({
 
         console.log('Updating mark for question:', questionId, 'mark:', mark); // Debug log
 
-        const formData = new FormData();
-        formData.append('assessment_id', assessment.id);
-        formData.append('question_id', questionId);
-        formData.append('student_id', currentAnswer.student_id);
-        formData.append('mark', mark.toString());
-
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/question-results/update-mark`, {
-                method: 'POST',
-                body: formData,
+            await markingService.updateMark({
+                assessment_id: assessment.id,
+                question_id: questionId,
+                student_id: currentAnswer.student_id,
+                mark,
             });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to update mark: ${response.status}`);
-            }
             
             // Update local state optimistically
             if (studentAllResults && setStudentAllResults) {
@@ -695,8 +728,18 @@ export default function MarkingPdfViewer({
             <PdfAnnotatorBar
                 tool={tool}
                 setTool={setTool}
-                onUndo={() => { }}
-                onRedo={() => { }}
+                onUndo={() => {
+                    setTool('undo');
+                    // Clear the undo tool immediately so it can be triggered again
+                    setTimeout(() => setTool(null), 0);
+                }}
+                onRedo={() => {
+                    setTool('redo');
+                    // Clear the redo tool immediately so it can be triggered again
+                    setTimeout(() => setTool(null), 0);
+                }}
+                canUndo={canUndo}
+                canRedo={canRedo}
             />
 
             {pdfUrl ? (
@@ -714,6 +757,7 @@ export default function MarkingPdfViewer({
                         <Document
                             file={pdfUrl}
                             onLoadSuccess={({ numPages }) => {
+                                console.log('PDF loaded successfully with', numPages, 'pages');
                                 setNumPages(numPages);
                                 setPdfReady(true);
                             }}
@@ -721,9 +765,16 @@ export default function MarkingPdfViewer({
                                 console.error("PDF load error:", err);
                                 setPdfReady(false);
                             }}
+                            loading={
+                                <div className="flex items-center justify-center p-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-primary-600"></div>
+                                    <span className="ml-2">Loading PDF...</span>
+                                </div>
+                            }
                         >
                             {pdfReady && markingMode === 'question-by-question' && question && (
-                                <div className="relative" id={`page-${question.page_number}`}>
+                                <div className="flex justify-center py-4">
+                                    <div className="relative" id={`page-${question.page_number}`}>
                                     <Page
                                         key={`page-${question.page_number}-${containerWidth}-${pdfVersion}`}
                                         pageNumber={question.page_number}
@@ -750,6 +801,10 @@ export default function MarkingPdfViewer({
                                             tool={tool}
                                             containerRef={pageContainerRef}
                                             rendered={renderedPage === question.page_number}
+                                            onUndoRedoChange={(canUndoState, canRedoState) => {
+                                                setCanUndo(canUndoState);
+                                                setCanRedo(canRedoState);
+                                            }}
                                         />
                                     )}
                                     {/* Question highlight for question-by-question mode */}
@@ -807,6 +862,7 @@ export default function MarkingPdfViewer({
                                         );
                                     })()}
                                 </div>
+                                </div>
                             )}
 
                             {/* Student-by-student mode: Render all pages with question overlays */}
@@ -845,6 +901,10 @@ export default function MarkingPdfViewer({
                                                         tool={tool}
                                                         containerRef={pageContainerRef}
                                                         rendered={renderedPages.has(pageNumber)}
+                                                        onUndoRedoChange={(canUndoState, canRedoState) => {
+                                                            setCanUndo(canUndoState);
+                                                            setCanRedo(canRedoState);
+                                                        }}
                                                     />
                                                 )}
 

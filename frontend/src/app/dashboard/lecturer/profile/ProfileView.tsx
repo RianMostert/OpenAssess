@@ -1,6 +1,5 @@
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { useState, useEffect } from "react"
 import { jwtDecode } from 'jwt-decode'
 
@@ -14,8 +13,8 @@ interface UserInfo {
     email?: string;
     first_name?: string;
     last_name?: string;
-    primary_role_id?: number;  // Keep for backward compatibility
-    primary_role?: string;     // New enum value
+    primary_role_id?: number;
+    primary_role?: string;
 }
 
 export default function ProfileView({ isMobile = false, isTablet = false }: ProfileViewProps) {
@@ -121,12 +120,12 @@ export default function ProfileView({ isMobile = false, isTablet = false }: Prof
                             </p>
                         </div>
                         
-                        <div className="p-3 rounded-lg bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 border border-brand-accent-200">
+                        {/* <div className="p-3 rounded-lg bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 border border-brand-accent-200">
                             <label className="text-xs font-bold text-brand-primary-700 uppercase tracking-wider">User ID</label>
                             <p className="text-brand-primary-900 font-mono text-sm font-semibold mt-1 break-all">
                                 {userInfo?.sub || 'Not available'}
                             </p>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>

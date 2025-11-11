@@ -16,11 +16,11 @@ import {
 
 export interface LineElement {
     id: string;
-    tool: 'pencil' | 'eraser';
+    tool: 'pencil' | 'eraser' | 'fine-eraser';
     points: number[]; // Now stored as percentage coordinates
     stroke: string;
     strokeWidth: number;
-    compositeOperation?: string;
+    globalCompositeOperation?: 'source-over' | 'destination-out';
 }
 
 export interface TextElement {
@@ -47,7 +47,7 @@ export interface StickyNoteElement {
     height?: number; 
 }
 
-type Tool = 'pencil' | 'eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
+type Tool = 'pencil' | 'eraser' | 'fine-eraser' | 'text-note' | 'sticky-note' | 'undo' | 'redo';
 
 export interface AnnotationLayerProps {
     page: number;
@@ -61,6 +61,7 @@ export interface AnnotationLayerProps {
     tool: Tool | null;
     containerRef: React.RefObject<HTMLDivElement | null>;
     rendered: boolean;
+    onUndoRedoChange?: (canUndo: boolean, canRedo: boolean) => void;
 }
 
 const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
@@ -70,11 +71,16 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
     tool,
     containerRef,
     rendered,
+    onUndoRedoChange,
 }) => {
     const [isDrawing, setIsDrawing] = useState(false);
     const [currentPoints, setCurrentPoints] = useState<number[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+    // Undo/Redo state
+    const [history, setHistory] = useState<AnnotationLayerProps['annotations'][]>([annotations]);
+    const [historyIndex, setHistoryIndex] = useState(0);
 
     const stageRef = useRef<any>(null);
 
@@ -112,12 +118,13 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
             const isWindowsDelete = e.key === 'Delete';
             const isMacDelete = e.metaKey && e.key === 'Backspace';
             if ((isWindowsDelete || isMacDelete) && selectedId) {
-                setAnnotations({
+                const newAnnotations = {
                     ...annotations,
                     stickyNotes: annotations.stickyNotes.filter(note => note.id !== selectedId),
                     texts: annotations.texts.filter(text => text.id !== selectedId),
                     lines: annotations.lines,
-                });
+                };
+                addToHistory(newAnnotations);
                 setSelectedId(null);
             }
         };
@@ -125,6 +132,56 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedId, annotations, setAnnotations]);
+
+    // Notify parent about undo/redo state changes
+    useEffect(() => {
+        if (onUndoRedoChange) {
+            const canUndo = historyIndex > 0;
+            const canRedo = historyIndex < history.length - 1;
+            onUndoRedoChange(canUndo, canRedo);
+        }
+    }, [historyIndex, history.length, onUndoRedoChange]);
+
+    // Add new state to history and clear any "future" states
+    const addToHistory = (newAnnotations: AnnotationLayerProps['annotations']) => {
+        // Remove any states after current index (redo is no longer possible)
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newAnnotations);
+        
+        // Limit history to prevent memory issues (keep last 50 states)
+        const limitedHistory = newHistory.slice(-50);
+        
+        setHistory(limitedHistory);
+        setHistoryIndex(limitedHistory.length - 1);
+        setAnnotations(newAnnotations);
+    };
+
+    // Undo handler
+    const handleUndo = () => {
+        if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setAnnotations(history[newIndex]);
+        }
+    };
+
+    // Redo handler
+    const handleRedo = () => {
+        if (historyIndex < history.length - 1) {
+            const newIndex = historyIndex + 1;
+            setHistoryIndex(newIndex);
+            setAnnotations(history[newIndex]);
+        }
+    };
+
+    // Expose undo/redo to parent via tool prop
+    useEffect(() => {
+        if (tool === 'undo') {
+            handleUndo();
+        } else if (tool === 'redo') {
+            handleRedo();
+        }
+    }, [tool]);
 
     // Helper function to get coordinates from mouse or touch event
     const getEventCoordinates = (e: any): { x: number; y: number } => {
@@ -157,7 +214,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
 
         const pageSize = getPageSize();
 
-        if (tool === 'pencil' || tool === 'eraser') {
+        if (tool === 'pencil' || tool === 'eraser' || tool === 'fine-eraser') {
             setIsDrawing(true);
             // Convert to percentage immediately
             const percentagePos = positionToPercentage(pos, pageSize);
@@ -181,7 +238,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 fontSize: 20,
                 fill: '#000000',
             };
-            setAnnotations({
+            addToHistory({
                 ...annotations,
                 texts: [...annotations.texts, text],
             });
@@ -209,7 +266,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                 fontSize: 16,
                 fill: '#000000',
             };
-            setAnnotations({
+            addToHistory({
                 ...annotations,
                 stickyNotes: [...annotations.stickyNotes, note],
             });
@@ -217,7 +274,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
     };
 
     const handlePointerMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-        if (!isDrawing || !tool || !['pencil', 'eraser'].includes(tool)) return;
+        if (!isDrawing || !tool || !['pencil', 'eraser', 'fine-eraser'].includes(tool)) return;
         
         // Prevent default touch behavior to avoid scrolling
         if (e.evt && 'touches' in e.evt) {
@@ -241,24 +298,94 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         if (isDrawing && currentPoints.length > 2) {
             const pageSize = getPageSize();
             const scaleFactor = Math.min(pageSize.width / 595, pageSize.height / 842); // Scale based on A4 reference
-            const baseStrokeWidth = tool === 'eraser' ? 10 : 2;
+            const baseStrokeWidth = (tool === 'eraser' || tool === 'fine-eraser') ? 10 : 2;
             const scaledStrokeWidth = Math.max(1, baseStrokeWidth * scaleFactor); // Minimum 1px
 
-            const newLine: LineElement = {
-                id: `line_${Date.now()}`,
-                tool: tool as 'pencil' | 'eraser',
-                points: currentPoints, // Already in percentage
-                stroke: tool === 'eraser' ? '#ffffff' : '#ff0000',
-                strokeWidth: scaledStrokeWidth,
-                compositeOperation: tool === 'eraser' ? 'destination-out' : 'source-over',
-            };
-            setAnnotations({
-                ...annotations,
-                lines: [...annotations.lines, newLine],
-            });
+            if (tool === 'eraser') {
+                // Regular eraser: Remove entire lines that intersect with the eraser path
+                const eraserPath = currentPoints;
+                const eraserWidth = scaledStrokeWidth;
+                
+                // Filter out lines that intersect with the eraser (including fine-eraser strokes)
+                const remainingLines = annotations.lines.filter(line => {
+                    // Don't erase eraser strokes or fine-eraser strokes
+                    if (line.tool === 'eraser' || line.tool === 'fine-eraser') return true;
+                    
+                    return !doLinesIntersect(line.points, eraserPath, line.strokeWidth, eraserWidth, pageSize);
+                });
+                
+                addToHistory({
+                    ...annotations,
+                    lines: remainingLines,
+                });
+            } else if (tool === 'fine-eraser') {
+                // Fine eraser: Create a masking stroke that erases parts of drawings
+                // This uses destination-out but ONLY affects the Konva layer, not the PDF below
+                const newLine: LineElement = {
+                    id: `fine-eraser_${Date.now()}`,
+                    tool: 'fine-eraser',
+                    points: currentPoints,
+                    stroke: 'rgba(0,0,0,1)', // Color doesn't matter for destination-out
+                    strokeWidth: scaledStrokeWidth,
+                    globalCompositeOperation: 'destination-out',
+                };
+                addToHistory({
+                    ...annotations,
+                    lines: [...annotations.lines, newLine],
+                });
+            } else {
+                // Pencil: Add a new drawing line
+                const newLine: LineElement = {
+                    id: `line_${Date.now()}`,
+                    tool: 'pencil',
+                    points: currentPoints, // Already in percentage
+                    stroke: '#ff0000',
+                    strokeWidth: scaledStrokeWidth,
+                    globalCompositeOperation: 'source-over',
+                };
+                addToHistory({
+                    ...annotations,
+                    lines: [...annotations.lines, newLine],
+                });
+            }
         }
         setIsDrawing(false);
         setCurrentPoints([]);
+    };
+    
+    // Helper function to check if two line paths intersect
+    const doLinesIntersect = (
+        line1Points: number[], 
+        line2Points: number[], 
+        line1Width: number, 
+        line2Width: number,
+        pageSize: { width: number; height: number }
+    ): boolean => {
+        // Convert percentage points to pixels for accurate intersection detection
+        const line1Pixels = linePointsToPixels(line1Points, pageSize);
+        const line2Pixels = linePointsToPixels(line2Points, pageSize);
+        
+        // Check if any segment of line1 intersects with any segment of line2
+        // Using a simple distance-based approach with stroke width tolerance
+        const threshold = (line1Width + line2Width) / 2;
+        
+        for (let i = 0; i < line1Pixels.length - 2; i += 2) {
+            const x1 = line1Pixels[i];
+            const y1 = line1Pixels[i + 1];
+            
+            for (let j = 0; j < line2Pixels.length - 2; j += 2) {
+                const x2 = line2Pixels[j];
+                const y2 = line2Pixels[j + 1];
+                
+                const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+                
+                if (distance < threshold) {
+                    return true; // Lines intersect/overlap
+                }
+            }
+        }
+        
+        return false;
     };
 
     return (
@@ -294,24 +421,24 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 strokeWidth={line.strokeWidth}
                                 tension={0.5}
                                 lineCap="round"
-                                globalCompositeOperation={(line.compositeOperation || 'source-over') as GlobalCompositeOperation}
+                                globalCompositeOperation={line.globalCompositeOperation || 'source-over'}
                             />
                         );
                     })}
 
-                    {isDrawing && currentPoints.length > 0 && (
+                    {isDrawing && currentPoints.length > 0 && (tool === 'pencil' || tool === 'fine-eraser') && (
                         <Line
                             points={linePointsToPixels(currentPoints, getPageSize())}
-                            stroke={tool === 'eraser' ? '#ffffff' : '#ff0000'}
+                            stroke={tool === 'fine-eraser' ? 'rgba(100,100,100,0.5)' : '#ff0000'}
                             strokeWidth={(() => {
                                 const pageSize = getPageSize();
                                 const scaleFactor = Math.min(pageSize.width / 595, pageSize.height / 842);
-                                const baseStrokeWidth = tool === 'eraser' ? 10 : 2;
-                                return Math.max(1, baseStrokeWidth * scaleFactor);
+                                const baseWidth = (tool === 'fine-eraser') ? 10 : 2;
+                                return Math.max(1, baseWidth * scaleFactor);
                             })()}
                             tension={0.5}
                             lineCap="round"
-                            globalCompositeOperation={tool === 'eraser' ? 'destination-out' : 'source-over'}
+                            globalCompositeOperation={tool === 'fine-eraser' ? 'destination-out' : 'source-over'}
                         />
                     )}
 
@@ -353,6 +480,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
 
+                            // Track the final position to add to history
+                            let finalAnnotations = annotations;
+
                             const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
                                 const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
                                 const clientY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -377,7 +507,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
 
-                                setAnnotations({
+                                finalAnnotations = {
                                     ...annotations,
                                     texts: annotations.texts.map(t =>
                                         t.id === textNote.id ? { 
@@ -386,13 +516,18 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                             y: newY 
                                         } : t
                                     ),
-                                });
+                                };
+                                
+                                setAnnotations(finalAnnotations);
                             };
 
                             const handleEnd = () => {
                                 // Re-enable text selection
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
+                                
+                                // Add final position to history when drag ends
+                                addToHistory(finalAnnotations);
                                 
                                 document.removeEventListener('mousemove', handleMove as EventListener);
                                 document.removeEventListener('mouseup', handleEnd);
@@ -416,6 +551,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             // Prevent text selection during drag
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
+
+                            // Track the final position to add to history
+                            let finalAnnotations = annotations;
 
                             const handleMove = (moveEvent: TouchEvent) => {
                                 moveEvent.preventDefault(); // Prevent scrolling
@@ -442,7 +580,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
 
-                                setAnnotations({
+                                finalAnnotations = {
                                     ...annotations,
                                     texts: annotations.texts.map(t =>
                                         t.id === textNote.id ? { 
@@ -451,13 +589,18 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                             y: newY 
                                         } : t
                                     ),
-                                });
+                                };
+                                
+                                setAnnotations(finalAnnotations);
                             };
 
                             const handleEnd = () => {
                                 // Re-enable text selection
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
+                                
+                                // Add final position to history when drag ends
+                                addToHistory(finalAnnotations);
                                 
                                 document.removeEventListener('touchmove', handleMove);
                                 document.removeEventListener('touchend', handleEnd);
@@ -472,18 +615,20 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             width={pixelDimensions.width}
                             height={pixelDimensions.height}
                             onChange={(val) => {
-                                setAnnotations({
+                                const newAnnotations = {
                                     ...annotations,
                                     texts: annotations.texts.map(t =>
                                         t.id === textNote.id ? { ...t, text: val } : t
                                     ),
-                                });
+                                };
+                                // Use setAnnotations directly for real-time typing (will add to history on blur/unfocus)
+                                setAnnotations(newAnnotations);
                             }}
                             onResize={(w, h) => {
                                 // Convert pixel dimensions back to percentage for storage
                                 const pageSize = getPageSize();
                                 const percentageDimensions = dimensionsToPercentage({ width: w, height: h }, pageSize);
-                                setAnnotations({
+                                const newAnnotations = {
                                     ...annotations,
                                     texts: annotations.texts.map(t =>
                                         t.id === textNote.id ? { 
@@ -492,7 +637,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                             height: percentageDimensions.height 
                                         } : t
                                     ),
-                                });
+                                };
+                                // Add to history when resize completes
+                                addToHistory(newAnnotations);
                             }}
                             onClick={() => setSelectedId(textNote.id)}
                             isSelected={selectedId === textNote.id}
@@ -531,6 +678,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
 
+                            // Track the final position to add to history
+                            let finalAnnotations = annotations;
+
                             const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
                                 const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
                                 const clientY = 'touches' in moveEvent ? moveEvent.touches[0].clientY : moveEvent.clientY;
@@ -556,7 +706,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
 
-                                setAnnotations({
+                                finalAnnotations = {
                                     ...annotations,
                                     stickyNotes: annotations.stickyNotes.map((s) =>
                                         s.id === note.id
@@ -567,7 +717,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                             }
                                             : s
                                     ),
-                                });
+                                };
+                                
+                                setAnnotations(finalAnnotations);
 
                             };
 
@@ -575,6 +727,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 // Re-enable text selection
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
+                                
+                                // Add final position to history when drag ends
+                                addToHistory(finalAnnotations);
                                 
                                 document.removeEventListener('mousemove', handleMove as EventListener);
                                 document.removeEventListener('mouseup', handleEnd);
@@ -598,6 +753,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             // Prevent text selection during drag
                             document.body.style.userSelect = 'none';
                             document.body.style.webkitUserSelect = 'none';
+
+                            // Track the final position to add to history
+                            let finalAnnotations = annotations;
 
                             const handleMove = (moveEvent: TouchEvent) => {
                                 moveEvent.preventDefault(); // Prevent scrolling
@@ -625,7 +783,7 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 newX = Math.max(0, Math.min(newX, 100 - estimatedWidthPercent));
                                 newY = Math.max(0, Math.min(newY, 100 - estimatedHeightPercent));
 
-                                setAnnotations({
+                                finalAnnotations = {
                                     ...annotations,
                                     stickyNotes: annotations.stickyNotes.map((s) =>
                                         s.id === note.id
@@ -636,7 +794,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                             }
                                             : s
                                     ),
-                                });
+                                };
+                                
+                                setAnnotations(finalAnnotations);
 
                             };
 
@@ -644,6 +804,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                                 // Re-enable text selection
                                 document.body.style.userSelect = '';
                                 document.body.style.webkitUserSelect = '';
+                                
+                                // Add final position to history when drag ends
+                                addToHistory(finalAnnotations);
                                 
                                 document.removeEventListener('touchmove', handleMove);
                                 document.removeEventListener('touchend', handleEnd);
@@ -658,12 +821,14 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
                             scaleFactor={scaleFactor}
                             fontSize={scaledFontSize}
                             onChange={(val: any) => {
-                                setAnnotations({
+                                const newAnnotations = {
                                     ...annotations,
                                     stickyNotes: annotations.stickyNotes.map(s =>
                                         s.id === note.id ? { ...s, text: val } : s
                                     ),
-                                });
+                                };
+                                // Use setAnnotations directly for real-time typing
+                                setAnnotations(newAnnotations);
                             }}
                             onClick={() => setSelectedId(note.id)}
                             isSelected={selectedId === note.id}

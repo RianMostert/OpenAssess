@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { studentService } from '@/services';
 import QueryModal from './components/QueryModal';
 import QueryHistoryModal from './components/QueryHistoryModal';
 
@@ -105,17 +105,11 @@ export default function StudentDashboard({
 
     const fetchStudentCourses = async () => {
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/student-results/my-courses`);
-
-            if (response.ok) {
-                const coursesData = await response.json();
-                setCourses(coursesData);
-                
-                // Fetch assessments for all courses
-                await fetchAllAssessments(coursesData);
-            } else {
-                console.error('Failed to fetch courses');
-            }
+            const coursesData = await studentService.getMyCourses();
+            setCourses(coursesData);
+            
+            // Fetch assessments for all courses
+            await fetchAllAssessments(coursesData);
         } catch (error) {
             console.error('Error fetching courses:', error);
         }
@@ -128,39 +122,17 @@ export default function StudentDashboard({
             
             for (const course of coursesData) {
                 try {
-                    const response = await fetchWithAuth(
-                        `${process.env.NEXT_PUBLIC_API_URL}/student-results/courses/${course.id}/my-assessments`
-                    );
-                    
-                    if (response.ok) {
-                        const courseAssessments: Assessment[] = await response.json();
-                        const assessmentsWithCourse = courseAssessments.map(assessment => ({
-                            ...assessment,
-                            course_title: course.title,
-                            course_code: course.code
-                        }));
-                        allAssessments.push(...assessmentsWithCourse);
-                    }
+                    const courseAssessments = await studentService.getCourseAssessments(course.id);
+                    const assessmentsWithCourse = courseAssessments.map(assessment => ({
+                        ...assessment,
+                        course_title: course.title,
+                        course_code: course.code
+                    }));
+                    allAssessments.push(...assessmentsWithCourse);
                 } catch (error) {
                     console.error(`Error fetching assessments for course ${course.title}:`, error);
                 }
             }
-
-            // Add dummy data for display purposes
-            const dummyAssessments: AssessmentWithCourse[] = [
-                { assessment_id: 'dummy-1', title: 'Assignment 1: Introduction to React', upload_date: '2024-09-15', status: 'marked', total_marks: 85, total_possible_marks: 100, percentage: 85, uploaded_file_id: 'file-1', question_count: 5, has_annotated_pdf: true, course_title: 'Web Development', course_code: 'CS301' },
-                { assessment_id: 'dummy-2', title: 'Midterm Exam', upload_date: '2024-10-01', status: 'marked', total_marks: 78, total_possible_marks: 100, percentage: 78, uploaded_file_id: 'file-2', question_count: 8, has_annotated_pdf: true, course_title: 'Data Structures', course_code: 'CS202' },
-                { assessment_id: 'dummy-3', title: 'Lab Report 3', upload_date: '2024-10-10', status: 'partially_marked', total_marks: 42, total_possible_marks: 50, percentage: 84, uploaded_file_id: 'file-3', question_count: 4, has_annotated_pdf: false, course_title: 'Database Systems', course_code: 'CS305' },
-                { assessment_id: 'dummy-4', title: 'Project Proposal', upload_date: '2024-10-15', status: 'submitted_pending', total_marks: null, total_possible_marks: 50, percentage: null, uploaded_file_id: 'file-4', question_count: 3, has_annotated_pdf: false, course_title: 'Software Engineering', course_code: 'CS401' },
-                { assessment_id: 'dummy-5', title: 'Quiz 2', upload_date: '2024-10-20', status: 'marked', total_marks: 18, total_possible_marks: 20, percentage: 90, uploaded_file_id: 'file-5', question_count: 10, has_annotated_pdf: true, course_title: 'Algorithms', course_code: 'CS303' },
-                { assessment_id: 'dummy-6', title: 'Assignment 2: State Management', upload_date: '2024-10-25', status: 'marked', total_marks: 92, total_possible_marks: 100, percentage: 92, uploaded_file_id: 'file-6', question_count: 6, has_annotated_pdf: true, course_title: 'Web Development', course_code: 'CS301' },
-                { assessment_id: 'dummy-7', title: 'Final Project Draft', upload_date: '2024-10-28', status: 'not_submitted', total_marks: null, total_possible_marks: 100, percentage: null, uploaded_file_id: null, question_count: 0, has_annotated_pdf: false, course_title: 'Mobile Development', course_code: 'CS404' },
-                { assessment_id: 'dummy-8', title: 'Lab 5: SQL Queries', upload_date: '2024-10-30', status: 'marked', total_marks: 45, total_possible_marks: 50, percentage: 90, uploaded_file_id: 'file-8', question_count: 5, has_annotated_pdf: true, course_title: 'Database Systems', course_code: 'CS305' },
-                { assessment_id: 'dummy-9', title: 'Case Study Analysis', upload_date: '2024-11-01', status: 'submitted_pending', total_marks: null, total_possible_marks: 75, percentage: null, uploaded_file_id: 'file-9', question_count: 4, has_annotated_pdf: false, course_title: 'Software Engineering', course_code: 'CS401' },
-                { assessment_id: 'dummy-10', title: 'Homework 4', upload_date: '2024-11-03', status: 'marked', total_marks: 28, total_possible_marks: 30, percentage: 93.33, uploaded_file_id: 'file-10', question_count: 6, has_annotated_pdf: true, course_title: 'Algorithms', course_code: 'CS303' },
-            ];
-            
-            allAssessments.push(...dummyAssessments);
             
             setAssessments(allAssessments);
         } catch (error) {
@@ -204,14 +176,8 @@ export default function StudentDashboard({
 
     const fetchStudentQueries = async () => {
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/student-queries/my-queries-grouped`);
-            if (response.ok) {
-                const queriesData = await response.json();
-                setQueries(queriesData);
-            } else {
-                console.error('Failed to fetch queries, status:', response.status);
-                console.error('Response text:', await response.text());
-            }
+            const queriesData = await studentService.getMyQueriesGrouped();
+            setQueries(queriesData);
         } catch (error) {
             console.error('Error fetching queries:', error);
         }
@@ -272,37 +238,7 @@ export default function StudentDashboard({
 
     const handleDownloadPdf = async (assessmentId: string) => {
         try {
-            const response = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/student-results/assessments/${assessmentId}/download-annotated-pdf`
-            );
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const errorMessage = errorData.detail || 'Failed to download PDF';
-                alert(`Error: ${errorMessage}`);
-                return;
-            }
-
-            // Get filename from response headers or use default
-            const contentDisposition = response.headers.get('content-disposition');
-            let filename = 'annotated_assessment.pdf';
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-                if (filenameMatch) {
-                    filename = filenameMatch[1];
-                }
-            }
-
-            // Create blob and download
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+            await studentService.downloadAnnotatedPdf(assessmentId);
         } catch (error) {
             console.error('Error downloading PDF:', error);
             alert('Failed to download PDF. Please try again.');

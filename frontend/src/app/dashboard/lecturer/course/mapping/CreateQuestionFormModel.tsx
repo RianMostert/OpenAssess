@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useForm } from 'react-hook-form';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { questionService } from '@/services';
 import { DialogDescription } from '@radix-ui/react-dialog';
 import { useState } from 'react';
 
@@ -60,15 +60,7 @@ export default function CreateQuestionFormModal({
                 ...initialData,
             };
 
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/questions/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) throw new Error('Failed to create question');
+            await questionService.createQuestion(payload);
 
             reset();
             setOpen(false);
@@ -129,21 +121,21 @@ export default function CreateQuestionFormModal({
                         />
                     </div>
 
-                    <div>
+                    {/* <div>
                         <Textarea 
                             placeholder="Marking Note" 
                             className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                             {...register('marking_note')} 
                         />
-                    </div>
+                    </div> */}
 
-                    <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-200">
+                    {/* <div className="bg-gradient-to-r from-brand-primary-50 to-brand-accent-50 p-3 rounded-lg border-2 border-brand-accent-200">
                         <p className="text-sm font-semibold text-brand-primary-700">Page: {initialData.page_number}</p>
                         <p className="text-sm text-brand-primary-600">
                             Box: ({initialData.x.toFixed(1)}, {initialData.y.toFixed(1)}) •{' '}
                             {initialData.width.toFixed(1)} x {initialData.height.toFixed(1)}
                         </p>
-                    </div>
+                    </div> */}
 
                     <DialogFooter>
                         <Button 

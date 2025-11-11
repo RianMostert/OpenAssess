@@ -14,15 +14,15 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, ChevronLeft, ChevronRight, User, Users, Search, Eye, EyeOff } from 'lucide-react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
-import { Question, MarkingMode, UploadedAnswer, StudentAllResults } from '@/types/course';
+import { questionService, markingService, type MappingQuestion, type UploadedAnswer } from '@/services';
+import { MarkingMode, StudentAllResults } from '@/types/course';
 
 interface MarkingRightPanelProps {
     selectedAssessment: { id: string; title: string };
     currentPage?: number;
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
-    question: Question | null;
-    onQuestionSelect: (question: Question) => void;
+    question: MappingQuestion | null;
+    onQuestionSelect: (question: MappingQuestion) => void;
     markingMode: MarkingMode;
     onMarkingModeChange: (mode: MarkingMode) => void;
     currentStudentIndex?: number;
@@ -46,7 +46,7 @@ export default function MarkingRightPanel({
     onStudentAllResultsChange,
     width = 230,
 }: MarkingRightPanelProps) {
-    const [questions, setQuestions] = useState<Question[]>([]);
+    const [questions, setQuestions] = useState<MappingQuestion[]>([]);
     const [loading, setLoading] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
     
@@ -77,10 +77,7 @@ export default function MarkingRightPanel({
     const fetchQuestions = async () => {
         setLoading(true);
         try {
-            const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${selectedAssessment.id}/questions`
-            );
-            const data: Question[] = await res.json();
+            const data = await questionService.getAssessmentQuestions(selectedAssessment.id);
             setQuestions(data);
 
             if (!question && data.length > 0) {
@@ -97,10 +94,7 @@ export default function MarkingRightPanel({
     const fetchStudents = async () => {
         setLoading(true);
         try {
-            const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/${selectedAssessment.id}/answer-sheets`
-            );
-            const data: UploadedAnswer[] = await res.json();
+            const data = await markingService.getAnswerSheets(selectedAssessment.id);
             setStudents(data);
         } catch (err) {
             console.error('Failed to fetch students:', err);

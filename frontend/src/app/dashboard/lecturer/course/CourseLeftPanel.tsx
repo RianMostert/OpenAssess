@@ -11,7 +11,8 @@ import CreateCourseModel from '@/app/dashboard/lecturer/course/components/Create
 import EditCourseModel from '@dashboard/lecturer/course/components/EditCourseModel';
 import CreateAssessmentModel from '@/app/dashboard/lecturer/course/components/CreateAssessmentModel';
 import EditAssessmentModel from '@/app/dashboard/lecturer/course/components/EditAssessmentModel';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { courseService, assessmentService } from '@/services';
+import { useAuth } from '@/hooks/useAuth';
 import { Course, Assessment } from '@/types/course';
 
 type CourseWithAssessments = Course & { assessments: Assessment[] };
@@ -59,15 +60,14 @@ export default function CoursePanel({
     } | null>(null);
 
     const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
+    
+    // Use auth hook to check admin status
+    const { isAdmin } = useAuth();
 
     const deleteAssessment = async (assessmentId: string, courseId: string) => {
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessmentId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) throw new Error('Failed to delete assessment');
-
+            // Pass UUID string directly
+            await assessmentService.deleteAssessment(assessmentId);
             fetchCourses();
         } catch (error) {
             console.error('Error deleting assessment:', error);
@@ -76,36 +76,33 @@ export default function CoursePanel({
 
     const fetchCourses = async () => {
         try {
-            let coursesData: Course[] = [];
-
-            const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/me`);
-            const user = await userRes.json();
-
-            if (user.is_admin) {
-                const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses`);
-                coursesData = await res.json();
-            } else {
-                const idRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/my-course-ids`);
-                const courseIds: string[] = await idRes.json();
-
-                const courseResponses = await Promise.all(
-                    courseIds.map(async (id) => {
-                        const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${id}`);
-                        if (!res.ok) return null;
-                        return res.json();
-                    })
-                );
-
-                coursesData = courseResponses.filter(Boolean) as Course[];
-            }
+            // Use courseService - returns courses with UUID strings
+            const apiCourses = await courseService.getCourses();
+            
+            // Map API courses to local Course type - IDs are already strings (UUIDs)
+            const coursesData: Course[] = apiCourses.map(c => ({
+                id: c.id, // Already a UUID string, no conversion needed
+                title: c.title,
+                code: c.code || undefined,
+                teacher_id: c.teacher_id,
+            }));
 
             const coursesWithAssessments: CourseWithAssessments[] = await Promise.all(
                 coursesData.map(async (course) => {
                     try {
-                        const assessRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/assessments`);
-                        const assessments: Assessment[] = await assessRes.json();
+                        // Pass UUID string directly, no conversion
+                        const apiAssessments = await courseService.getAssessments(course.id);
+                        
+                        // Map API assessments to local Assessment type
+                        const assessments: Assessment[] = apiAssessments.map(a => ({
+                            id: a.id, // Already a UUID string
+                            title: a.title,
+                            published: false, // Not provided by API, default to false
+                        }));
+                        
                         return { ...course, assessments };
-                    } catch {
+                    } catch (error) {
+                        console.error(`Error fetching assessments for course ${course.id}:`, error);
                         return { ...course, assessments: [] };
                     }
                 })
@@ -122,12 +119,9 @@ export default function CoursePanel({
 
     const deleteCourse = async (courseId: string) => {
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${courseId}`, {
-                method: 'DELETE',
-            });
-
-            if (!response.ok) throw new Error('Failed to delete course');
-
+            // Pass UUID string directly
+            await courseService.deleteCourse(courseId);
+            
             // Refresh the course list after deletion
             fetchCourses();
             setSelectedAssessment?.(null);
@@ -220,7 +214,7 @@ export default function CoursePanel({
                                                 <MoreVertical className="w-3 h-3" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
+                                        <DropdownMenuContent align="end" className="bg-white">
                                             <DropdownMenuItem onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
@@ -268,7 +262,7 @@ export default function CoursePanel({
                                                             <MoreVertical className="w-3 h-3" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
+                                                    <DropdownMenuContent align="end" className="bg-white">
                                                         <DropdownMenuItem
                                                             onClick={() => {
                                                                 setEditingAssessment(assessment);
@@ -408,7 +402,7 @@ export default function CoursePanel({
                                                 <MoreVertical className={`${isTablet ? 'w-3 h-3' : 'w-4 h-4'}`} />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
+                                        <DropdownMenuContent align="end" className="bg-white">
                                             <DropdownMenuItem onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
@@ -458,7 +452,7 @@ export default function CoursePanel({
                                                             <MoreVertical className={`${isTablet ? 'w-3 h-3' : 'w-4 h-4'}`} />
                                                         </Button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
+                                                    <DropdownMenuContent align="end" className="bg-white">
                                                         <DropdownMenuItem
                                                             onClick={() => {
                                                                 setEditingAssessment(assessment);

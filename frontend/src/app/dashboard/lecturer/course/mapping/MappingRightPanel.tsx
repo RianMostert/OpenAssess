@@ -13,8 +13,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
-import { Question } from '@/types/course';
+import { questionService, type MappingQuestion } from '@/services';
 
 interface MappingPanelProps {
     selectedAssessment: { id: string; title: string } | null;
@@ -22,7 +21,7 @@ interface MappingPanelProps {
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
     width?: number;
     setCreatingQuestion: (val: boolean) => void;
-    setEditingQuestion: (question: Question | null) => void;
+    setEditingQuestion: (question: MappingQuestion | null) => void;
 }
 
 export default function MappingPanel({
@@ -33,7 +32,7 @@ export default function MappingPanel({
     setCreatingQuestion,
     setEditingQuestion,
 }: MappingPanelProps) {
-    const [questions, setQuestions] = useState<Question[]>([]);
+    const [questions, setQuestions] = useState<MappingQuestion[]>([]);
     const [loading, setLoading] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
 
@@ -41,8 +40,7 @@ export default function MappingPanel({
         if (!selectedAssessment) return;
         setLoading(true);
         try {
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/assessments/${selectedAssessment.id}/questions`);
-            const data = await res.json();
+            const data = await questionService.getAssessmentQuestions(selectedAssessment.id);
             setQuestions(data);
         } catch (err) {
             console.error('Failed to fetch questions:', err);
@@ -56,12 +54,7 @@ export default function MappingPanel({
         if (!selectedAssessment) return;
 
         try {
-            const res = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/questions/${questionId}`,
-                { method: 'DELETE' }
-            );
-            if (!res.ok) throw new Error('Delete failed');
-
+            await questionService.deleteQuestion(questionId);
             fetchQuestions();
             // Dispatch event to notify other components
             window.dispatchEvent(new Event('question-deleted'));

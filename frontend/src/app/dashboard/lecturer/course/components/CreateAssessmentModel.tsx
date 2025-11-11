@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { useEffect, useState } from 'react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { DialogDescription } from '@radix-ui/react-dialog';
+import { assessmentService } from '@/services';
+import { API_CONFIG } from '@/lib/constants';
 
 interface CreateAssessmentForm {
     title?: string;
@@ -44,57 +45,40 @@ export default function CreateAssessmentModal({
         try {
             setUploading(true);
 
-            const createRes = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/assessments/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        title: data.title,
-                        course_id: courseId,
-                        question_paper_file_path: null,
-                    }),
-                }
-            );
+            // Create assessment using service
+            const createdAssessment = await assessmentService.createAssessment({
+                course_id: courseId,
+                title: data.title || 'Untitled Assessment',
+                total_marks: 0, // Will be updated when questions are mapped
+            });
 
-            if (!createRes.ok) throw new Error('Assessment creation failed');
-
-            const createdAssessment = await createRes.json();
             assessmentId = createdAssessment.id;
             console.log('Created Assessment:', createdAssessment);
 
+            // Upload question paper if file is provided
             if (file && assessmentId) {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('course_id', courseId);
                 formData.append('assessment_id', assessmentId);
 
-                const uploadRes = await fetchWithAuth(
-                    `${process.env.NEXT_PUBLIC_API_URL}/assessments/upload/question-paper`,
-                    {
-                        method: 'POST',
-                        body: formData,
-                    }
-                );
+                const token = localStorage.getItem('authToken');
+                const uploadRes = await fetch(`${API_CONFIG.BASE_URL}/assessments/upload/question-paper`, {
+                    method: 'POST',
+                    headers: {
+                        ...(token && { Authorization: `Bearer ${token}` }),
+                    },
+                    body: formData,
+                });
 
                 if (!uploadRes.ok) throw new Error('File upload failed');
 
                 const { file_path } = await uploadRes.json();
 
-                await fetchWithAuth(
-                    `${process.env.NEXT_PUBLIC_API_URL}/assessments/${assessmentId}`,
-                    {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            question_paper_file_path: file_path,
-                        }),
-                    }
-                );
+                // Update assessment with file path
+                await assessmentService.updateAssessment(assessmentId, {
+                    question_paper_file_path: file_path,
+                });
             }
 
             reset();
@@ -108,6 +92,7 @@ export default function CreateAssessmentModal({
             }
         } catch (err) {
             console.error('Error:', err);
+            alert('Failed to create assessment: ' + (err instanceof Error ? err.message : 'Unknown error'));
         } finally {
             setUploading(false);
         }

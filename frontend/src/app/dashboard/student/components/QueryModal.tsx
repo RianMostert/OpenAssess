@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { studentQueryService } from '@/services';
+import { UI_MESSAGES, VALIDATION } from '@/lib/constants';
 
 interface QueryModalProps {
     isOpen: boolean;
@@ -51,9 +52,15 @@ export default function QueryModal({
 
     const loadQuestions = async () => {
         try {
-            // Get assessment results to show current marks per question
-            const response = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/student-results/assessments/${assessmentId}/my-results`
+            // TODO: This endpoint needs to be added to assessmentService
+            // For now, using direct fetch as it's a student-specific results endpoint
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/student-results/assessments/${assessmentId}/my-results`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+                    },
+                }
             );
             
             if (response.ok) {
@@ -138,11 +145,11 @@ export default function QueryModal({
         // Validate that all selected questions have form data
         const hasIncompleteQuestions = selectedQuestionIds.some(id => {
             const form = questionForms[id];
-            return !form || !form.requestedChange.trim() || form.requestedChange.length < 10;
+            return !form || !form.requestedChange.trim() || form.requestedChange.length < VALIDATION.MIN_QUERY_LENGTH;
         });
         
         if (hasIncompleteQuestions) {
-            alert('Please provide a detailed explanation for all selected questions (minimum 10 characters each)');
+            alert(`Please provide a detailed explanation for all selected questions (minimum ${VALIDATION.MIN_QUERY_LENGTH} characters each)`);
             return;
         }
 
@@ -166,12 +173,16 @@ export default function QueryModal({
                 assessment_level_note: assessmentLevelNote.trim() || undefined
             };
 
-            const response = await fetchWithAuth(
+            // TODO: Add batch query submission to studentQueryService
+            // For now, using direct API call as batch endpoint might be custom
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/student-queries/batch`,
                 {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...(token && { Authorization: `Bearer ${token}` }),
                     },
                     body: JSON.stringify(batchData),
                 }
@@ -179,7 +190,7 @@ export default function QueryModal({
 
             if (response.ok) {
                 const result = await response.json();
-                alert(`Query batch submitted successfully! Created ${result.created_count} queries.`);
+                alert(`${UI_MESSAGES.SUCCESS.QUERY_SUBMITTED}! Created ${result.created_count} queries.`);
                 
                 // Reset form
                 setSelectedQuestionIds([]);
@@ -194,7 +205,7 @@ export default function QueryModal({
             }
         } catch (error) {
             console.error('Error submitting query batch:', error);
-            alert('Network error. Please try again.');
+            alert(UI_MESSAGES.ERROR.NETWORK);
         } finally {
             setLoading(false);
         }

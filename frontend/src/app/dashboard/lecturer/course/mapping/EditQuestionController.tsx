@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Question } from '@/types/course';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { questionService, type MappingQuestion } from '@/services';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,7 +14,7 @@ import {
 } from '@/lib/coordinateUtils';
 
 interface EditQuestionControllerProps {
-    question: Question;
+    question: MappingQuestion;
     pageContainerRef: React.RefObject<HTMLDivElement | null>;
     onClose: () => void;
     onUpdated: () => void;
@@ -137,13 +136,7 @@ export default function EditQuestionController({
                 height: dataRect.height,
             };
 
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/questions/${question.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (!res.ok) throw new Error('Failed to update question');
+            await questionService.updateQuestion(question.id, payload);
             onUpdated();
             onClose();
             // Dispatch event to notify other components
@@ -160,11 +153,7 @@ export default function EditQuestionController({
         
         setLoading(true);
         try {
-            const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/questions/${question.id}`, {
-                method: 'DELETE',
-            });
-
-            if (!res.ok) throw new Error('Failed to delete question');
+            await questionService.deleteQuestion(question.id);
             onUpdated();
             onClose();
             // Dispatch event to notify other components
@@ -264,13 +253,13 @@ export default function EditQuestionController({
                     onChange={handleChange}
                     className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
                 />
-                <Textarea
+                {/* <Textarea
                     name="marking_note"
                     placeholder="Marking Note"
                     value={formData.marking_note}
                     onChange={handleChange}
                     className="border-2 border-brand-accent-400 focus:border-brand-primary-600 focus:ring-brand-primary-500"
-                />
+                /> */}
                 <div className="flex justify-between gap-2 pt-2">
                     <Button 
                         variant="destructive" 

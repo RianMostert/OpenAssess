@@ -114,7 +114,7 @@ def seed_users(db: Session) -> None:
             "first_name": "Alice",
             "last_name": "Brown",
             "email": "alice.brown@example.com",
-            "student_number": "12345678",
+            "student_number": "11223344",
             "primary_role_id": 3,  # Student
             "password": "student123", 
             "is_admin": False,
@@ -123,7 +123,7 @@ def seed_users(db: Session) -> None:
             "first_name": "Bob",
             "last_name": "Wilson",
             "email": "bob.wilson@example.com",
-            "student_number": "12345679",
+            "student_number": "22334455",
             "primary_role_id": 3,  # Student
             "password": "student123", 
             "is_admin": False,
@@ -132,7 +132,7 @@ def seed_users(db: Session) -> None:
             "first_name": "Carol",
             "last_name": "Davis",
             "email": "carol.davis@example.com",
-            "student_number": "12345680",
+            "student_number": "33445566",
             "primary_role_id": 3,  # Student
             "password": "student123", 
             "is_admin": False,

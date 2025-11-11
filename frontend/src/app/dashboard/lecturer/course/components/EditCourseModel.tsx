@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { useEffect } from 'react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { DialogDescription } from '@radix-ui/react-dialog';
+import { courseService } from '@/services';
 
 interface EditCourseForm {
     title: string;
@@ -44,27 +44,19 @@ export default function EditCourseModal({
     });
 
     const onSubmit = async (data: EditCourseForm) => {
-        // print data
         console.log('Submitting course update:', data);
         try {
-            const response = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/courses/${courseId}`,
-                {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                }
-            );
-
-            if (!response.ok) throw new Error('Failed to update course');
+            await courseService.updateCourse(courseId, {
+                title: data.title,
+                code: data.code,
+            });
 
             reset();
             setOpen(false);
             onCourseUpdated?.();
         } catch (error) {
             console.error('Error updating course:', error);
+            alert('Failed to update course: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
     };
 

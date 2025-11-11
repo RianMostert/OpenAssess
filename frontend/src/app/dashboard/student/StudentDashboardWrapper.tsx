@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import StudentDashboard from './StudentDashboard';
 import StudentNavBar from './StudentNavBar';
 import CourseView from '@dashboard/lecturer/course/CourseView';
 import LecturerProfileView from '@dashboard/lecturer/profile/ProfileView';
+import { studentService } from '@/services';
 
 interface StudentDashboardWrapperProps {
     isMobile?: boolean;
@@ -45,23 +44,17 @@ export default function StudentDashboardWrapper({
 
     const checkLecturerAccess = async () => {
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/student-results/my-courses`);
-            
-            if (response.ok) {
-                const courses: Course[] = await response.json();
-                const hasAccess = courses.some(course => 
-                    course.my_role === 'facilitator' || course.my_role === 'convener'
-                );
-                setHasLecturerAccess(hasAccess);
-            }
+            const courses = await studentService.getMyCourses();
+            const hasAccess = courses.some(course => 
+                course.my_role === 'facilitator' || course.my_role === 'convener'
+            );
+            setHasLecturerAccess(hasAccess);
         } catch (error) {
             console.error('Error checking lecturer access:', error);
         } finally {
             setLoading(false);
         }
-    };
-
-    if (loading) {
+    };    if (loading) {
         return (
             <div className="flex-1 bg-gray-50 p-6">
                 <div className="max-w-6xl mx-auto">

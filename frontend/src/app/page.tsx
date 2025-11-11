@@ -2,14 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { jwtDecode } from 'jwt-decode';
 import { useScreenSize } from '@/hooks/use-mobile';
-import { 
-  UserInfo, 
-  getRoleDisplayName, 
-  isStudent, 
-  canAccessLecturerDashboard 
-} from '@/types/auth';
+import { useAuth } from '@/hooks/useAuth';
 
 // Import Shared Components
 import TopBar from '@/app/components/TopBar';
@@ -25,9 +19,9 @@ import StudentDashboardWrapper from '@/app/dashboard/student/StudentDashboardWra
 export default function Home() {
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(false);
   const [activeNavItem, setActiveNavItem] = useState('courses');
-  const [userRole, setUserRole] = useState<number | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+
+  // Use the auth hook instead of manual JWT handling
+  const { user, isLoading, isAuthenticated, isStudent, isLecturer, isAdmin, logout } = useAuth();
 
   // Screen size detection
   const { isMobile, isTablet, isDesktop } = useScreenSize();
@@ -42,59 +36,19 @@ export default function Home() {
     }
   }, [isMobile, isTablet, isDesktop]);
 
-  // Auth and role detection
+  // Redirect to auth if not authenticated
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-
-    if (!token || isTokenExpired(token)) {
-      localStorage.removeItem('authToken');
-      router.push('/auth');
-      return;
-    }
-
-    try {
-      const decoded: UserInfo = jwtDecode(token);
-      setUserInfo(decoded);
-      setUserRole(decoded.primary_role_id);
-      setIsAuthenticated(true);
-
-      const exp = getTokenExpiration(token);
-      const timeout = exp ? (exp * 1000 - Date.now()) : 0;
-
-      const timer = setTimeout(() => {
-        localStorage.removeItem('authToken');
-        router.push('/auth');
-      }, timeout);
-
-      return () => clearTimeout(timer);
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      localStorage.removeItem('authToken');
+    if (!isLoading && !isAuthenticated) {
       router.push('/auth');
     }
-  }, [router]);
-
-  function getTokenExpiration(token: string): number | null {
-    try {
-      const decoded: UserInfo = jwtDecode(token);
-      return decoded.exp;
-    } catch {
-      return null;
-    }
-  }
-
-  function isTokenExpired(token: string): boolean {
-    const exp = getTokenExpiration(token);
-    if (!exp) return true;
-    return exp < Date.now() / 1000;
-  }
+  }, [isLoading, isAuthenticated, router]);
 
   const toggleLeftSidebar = () => {
     setIsLeftSidebarCollapsed(!isLeftSidebarCollapsed);
   };
 
   // Loading state
-  if (isAuthenticated === null) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-brand-primary-50 font-raleway">
         <div className="flex flex-col items-center">
@@ -105,12 +59,12 @@ export default function Home() {
     );
   }
 
-  // Student Dashboard (role: "student")
-  if (isStudent(userRole)) {
+  // Student Dashboard
+  if (isStudent()) {
     return (
       <div className="flex flex-col h-screen overflow-hidden bg-gray-50 font-raleway">
         <TopBar 
-          userEmail={userInfo?.email}
+          userEmail={user?.email}
           isMobile={isMobile}
           isTablet={isTablet}
         />
@@ -124,12 +78,12 @@ export default function Home() {
     );
   }
 
-  // Lecturer Dashboard (role: "staff" or "administrator")
-  if (canAccessLecturerDashboard(userRole)) {
+  // Lecturer Dashboard (lecturer or admin)
+  if (isLecturer() || isAdmin()) {
     return (
       <div className="flex flex-col h-screen overflow-hidden font-raleway">
         <TopBar 
-          userEmail={userInfo?.email}
+          userEmail={user?.email}
           isMobile={isMobile}
           isTablet={isTablet}
         />
@@ -180,7 +134,7 @@ export default function Home() {
     );
   }
 
-  // Unknown role or admin - show error
+  // Unknown role - show error
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-2xl shadow-lg w-full max-w-md text-center">
@@ -188,13 +142,12 @@ export default function Home() {
           Access Error
         </h2>
         <p className="text-gray-600 mb-6">
-          Your account role ({getRoleDisplayName(userRole)}) is not supported in this interface.
+          Your account role is not recognized.
           Please contact your administrator.
         </p>
         <button
           onClick={() => {
-            localStorage.removeItem('authToken');
-            router.push('/auth');
+            logout();
           }}
           className="w-full py-2 px-4 bg-blue-500 text-white rounded-xl hover:bg-blue-600"
         >

@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
 import { DialogDescription } from '@radix-ui/react-dialog';
+import { courseService } from '@/services';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AddCourseForm {
     title: string;
@@ -19,30 +20,26 @@ interface AddCourseModalProps {
 export default function AddCourseModal({ onCourseAdded }: AddCourseModalProps) {
     const [open, setOpen] = useState(false);
     const { register, handleSubmit, reset } = useForm<AddCourseForm>();
+    const { user } = useAuth();
 
     const onSubmit = async (data: AddCourseForm) => {
         try {
-            const userRes = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/me`)
-            const user = await userRes.json();
-            const teacherId = user.id;
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    ...data,
-                    teacher_id: teacherId,
-                }),
-            });
+            if (!user?.id) {
+                throw new Error('User not authenticated');
+            }
 
-            if (!response.ok) throw new Error('Failed to create course');
+            await courseService.createCourse({
+                title: data.title,
+                teacher_id: String(user.id), // Convert to string (UUID)
+                code: data.code,
+            });
 
             reset();
             setOpen(false);
             onCourseAdded?.();
         } catch (error) {
             console.error('Error adding course:', error);
+            alert('Failed to create course: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
     };
 

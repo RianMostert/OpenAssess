@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { fetchWithAuth } from '@/lib/fetchWithAuth';
+import { studentQueryService } from '@/services';
+import { QueryStatus } from '@/lib/constants';
 
 interface QueryHistoryModalProps {
     isOpen: boolean;
@@ -54,49 +55,77 @@ export default function QueryHistoryModal({
     const fetchQueryHistory = async () => {
         setLoading(true);
         try {
-            // Get all queries for the student
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/student-queries/my-queries`);
-            if (response.ok) {
-                const allQueries: QueryDetail[] = await response.json();
-                
-                // Filter queries for this assessment
-                const assessmentQueries = allQueries.filter(q => q.assessment_id === assessmentId);
-                
-                // Group by batch_id
-                const batchMap = new Map<string, QueryDetail[]>();
-                const individual: QueryDetail[] = [];
-                
-                assessmentQueries.forEach(query => {
-                    if (query.batch_id) {
-                        if (!batchMap.has(query.batch_id)) {
-                            batchMap.set(query.batch_id, []);
-                        }
-                        batchMap.get(query.batch_id)!.push(query);
-                    } else {
-                        individual.push(query);
+            // Get all queries for the student using the service
+            const allQueries = await studentQueryService.getStudentQueries();
+            
+            // Filter queries for this assessment
+            const assessmentQueries = allQueries.filter(q => q.assessment_id.toString() === assessmentId);
+            
+            // Group by batch_id (if your backend supports batch_id, otherwise skip batching)
+            const batchMap = new Map<string, QueryDetail[]>();
+            const individual: QueryDetail[] = [];
+            
+            assessmentQueries.forEach(query => {
+                // Map backend query to QueryDetail format
+                const mappedQuery: QueryDetail = {
+                    id: query.id.toString(),
+                    assessment_id: query.assessment_id.toString(),
+                    question_id: undefined, // Add if backend provides this
+                    batch_id: undefined, // Add if backend provides this
+                    requested_change: query.query_text,
+                    query_type: 'clarification', // Default or map from backend
+                    status: mapQueryStatus(query.status_id),
+                    reviewer_response: query.response_text,
+                    new_mark: undefined,
+                    current_mark: undefined,
+                    created_at: query.created_at,
+                    updated_at: query.updated_at,
+                    question_number: undefined,
+                };
+
+                if (mappedQuery.batch_id) {
+                    if (!batchMap.has(mappedQuery.batch_id)) {
+                        batchMap.set(mappedQuery.batch_id, []);
                     }
-                });
+                    batchMap.get(mappedQuery.batch_id)!.push(mappedQuery);
+                } else {
+                    individual.push(mappedQuery);
+                }
+            });
+            
+            // Convert batches to array and sort by creation date
+            const batchArray: QueryBatch[] = Array.from(batchMap.entries()).map(([batchId, queries]) => {
+                const sortedQueries = queries.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                const primaryStatus = getPrimaryStatus(queries.map(q => q.status));
                 
-                // Convert batches to array and sort by creation date
-                const batchArray: QueryBatch[] = Array.from(batchMap.entries()).map(([batchId, queries]) => {
-                    const sortedQueries = queries.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-                    const primaryStatus = getPrimaryStatus(queries.map(q => q.status));
-                    
-                    return {
-                        batch_id: batchId,
-                        queries: sortedQueries,
-                        created_at: sortedQueries[0].created_at,
-                        status: primaryStatus
-                    };
-                }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-                
-                setBatches(batchArray);
-                setIndividualQueries(individual.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-            }
+                return {
+                    batch_id: batchId,
+                    queries: sortedQueries,
+                    created_at: sortedQueries[0].created_at,
+                    status: primaryStatus
+                };
+            }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            
+            setBatches(batchArray);
+            setIndividualQueries(individual.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
         } catch (error) {
             console.error('Error fetching query history:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Map backend status ID to frontend status string
+    const mapQueryStatus = (statusId: number): 'pending' | 'under_review' | 'approved' | 'rejected' | 'resolved' => {
+        switch (statusId) {
+            case QueryStatus.PENDING:
+                return 'pending';
+            case QueryStatus.REJECTED:
+                return 'rejected';
+            case QueryStatus.APPROVED:
+                return 'approved';
+            default:
+                return 'pending';
         }
     };
 

@@ -52,8 +52,44 @@ async def export_annotated_pdfs(request: ExportRequest):
                                     page_number = 1
                             else:
                                 page_number = 1
-                        annotations.append({"page": page_number, "data": data})
-                except Exception as e:
+                        
+                        # Convert API format to PDF service format
+                        # API uses: {color, width} -> PDF service expects: {stroke, strokeWidth}
+                        # Keep fine-eraser strokes - they're needed for the erasing process
+                        converted_data = data.copy()
+                        if "lines" in converted_data:
+                            converted_data["lines"] = [
+                                {
+                                    "points": line.get("points", []),
+                                    "stroke": line.get("color", "#ff0000"),  # API: color -> stroke
+                                    "strokeWidth": line.get("width", 2),      # API: width -> strokeWidth
+                                    "tool": line.get("tool", "pencil"),       # Preserve tool type
+                                }
+                                for line in converted_data["lines"]
+                            ]
+                        
+                        # Add fontSize to texts (API doesn't send it, but PDF service needs it)
+                        if "texts" in converted_data:
+                            converted_data["texts"] = [
+                                {
+                                    **text,
+                                    "fontSize": text.get("fontSize", 16),  # Default to 16 if not present
+                                }
+                                for text in converted_data["texts"]
+                            ]
+                        
+                        # Add fontSize to stickyNotes (API doesn't send it, but PDF service needs it)
+                        if "stickyNotes" in converted_data:
+                            converted_data["stickyNotes"] = [
+                                {
+                                    **sticky,
+                                    "fontSize": sticky.get("fontSize", 14),  # Default to 14 if not present
+                                }
+                                for sticky in converted_data["stickyNotes"]
+                            ]
+                        
+                        annotations.append({"page": page_number, "data": converted_data})
+                except Exception:
                     # Skip invalid annotation files
                     continue
 

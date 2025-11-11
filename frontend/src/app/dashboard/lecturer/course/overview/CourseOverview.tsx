@@ -1,6 +1,7 @@
-import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { Course, Assessment } from "@/types/course";
 import { useState, useEffect } from "react";
+import { courseService } from '@/services';
+import { API_CONFIG } from '@/lib/constants';
 
 interface CourseStats {
     totalStudents: number;
@@ -46,39 +47,12 @@ export default function CourseOverview({
     const fetchCourseStats = async () => {
         try {
             setLoading(true);
-            const response = await fetchWithAuth(
-                `${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/stats`
-            );
+            const stats = await courseService.getCourseStats(course.id);
             
-            if (response.ok) {
-                const stats = await response.json();
-                
-                // Add dummy data for display
-                // const dummyAssessments: AssessmentStats[] = [
-                //     { id: 'dummy-1', title: 'Midterm Exam', published: true, totalQuestions: 8, totalStudents: 45, questionsMarked: 320, questionsCompletelyMarked: 38, averageScore: 72.5, submissionCount: 45, queryCount: 3 },
-                //     { id: 'dummy-2', title: 'Assignment 1: React Basics', published: true, totalQuestions: 5, totalStudents: 42, questionsMarked: 195, questionsCompletelyMarked: 40, averageScore: 81.2, submissionCount: 42, queryCount: 1 },
-                //     { id: 'dummy-3', title: 'Quiz 1', published: true, totalQuestions: 10, totalStudents: 43, questionsMarked: 430, questionsCompletelyMarked: 43, averageScore: 88.3, submissionCount: 43, queryCount: 0 },
-                //     { id: 'dummy-4', title: 'Lab Report 1', published: false, totalQuestions: 4, totalStudents: 38, questionsMarked: 85, questionsCompletelyMarked: 15, averageScore: 0, submissionCount: 38, queryCount: 2 },
-                //     { id: 'dummy-5', title: 'Project Proposal', published: true, totalQuestions: 6, totalStudents: 44, questionsMarked: 264, questionsCompletelyMarked: 44, averageScore: 76.8, submissionCount: 44, queryCount: 5 },
-                //     { id: 'dummy-6', title: 'Quiz 2', published: true, totalQuestions: 12, totalStudents: 41, questionsMarked: 410, questionsCompletelyMarked: 35, averageScore: 79.4, submissionCount: 41, queryCount: 1 },
-                //     { id: 'dummy-7', title: 'Assignment 2: State Management', published: false, totalQuestions: 7, totalStudents: 40, questionsMarked: 140, questionsCompletelyMarked: 20, averageScore: 0, submissionCount: 40, queryCount: 4 },
-                //     { id: 'dummy-8', title: 'Final Exam', published: false, totalQuestions: 15, totalStudents: 12, questionsMarked: 45, questionsCompletelyMarked: 3, averageScore: 0, submissionCount: 12, queryCount: 0 },
-                //     { id: 'dummy-9', title: 'Lab Report 2', published: true, totalQuestions: 5, totalStudents: 39, questionsMarked: 195, questionsCompletelyMarked: 39, averageScore: 85.6, submissionCount: 39, queryCount: 2 },
-                //     { id: 'dummy-10', title: 'Assignment 3: API Integration', published: true, totalQuestions: 8, totalStudents: 37, questionsMarked: 250, questionsCompletelyMarked: 32, averageScore: 74.1, submissionCount: 37, queryCount: 6 },
-                // ];
-                
-                setCourseStats({
-                    ...stats,
-                    assessments: [...(stats.assessments || [])]
-                });
-            } else {
-                console.error('Failed to fetch course stats');
-                setCourseStats({
-                    totalStudents: 0,
-                    averagePerformance: 0,
-                    assessments: []
-                });
-            }
+            setCourseStats({
+                ...stats,
+                assessments: [...(stats.assessments || [])]
+            });
         } catch (error) {
             console.error('Error fetching course stats:', error);
             setCourseStats({
@@ -93,11 +67,8 @@ export default function CourseOverview({
 
     const fetchUserRole = async () => {
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/my-role`);
-            if (response.ok) {
-                const roleData = await response.json();
-                setActualUserRole(roleData.role === 'convener' ? 'convener' : roleData.role === 'facilitator' ? 'facilitator' : 'student');
-            }
+            const roleData = await courseService.getMyCourseRole(course.id);
+            setActualUserRole(roleData.role === 'convener' ? 'convener' : roleData.role === 'facilitator' ? 'facilitator' : 'student');
         } catch (error) {
             console.error('Error fetching user role:', error);
             // Keep default role if fetch fails
@@ -118,23 +89,8 @@ export default function CourseOverview({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("course_id", course.id);
-        formData.append("role_id", "3");
-
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/bulk-upload`, {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Upload failed");
-            }
-
-            const result = await response.json();
+            const result = await courseService.bulkUploadStudents(course.id, file, "3");
             console.log("Created users:", result);
             alert(`Successfully created ${result.length} users`);
             
@@ -161,23 +117,8 @@ export default function CourseOverview({
             return;
         }
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("course_id", course.id);
-        formData.append("role_id", "3");
-
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/bulk-remove`, {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Remove operation failed");
-            }
-
-            const result = await response.json();
+            const result = await courseService.bulkRemoveStudents(course.id, file, "3");
             console.log("Remove result:", result);
             alert(result.message);
             
@@ -196,22 +137,8 @@ export default function CourseOverview({
         const file = e.target.files?.[0];
         if (!file) return;
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("role_name", "facilitator"); // Default to facilitator role
-
         try {
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/facilitators/bulk-upload`, {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Facilitator upload failed");
-            }
-
-            const result = await response.json();
+            const result = await courseService.bulkUploadFacilitators(course.id, file, 'facilitator');
             console.log("Facilitator upload result:", result);
             
             let message = result.message;
@@ -252,20 +179,7 @@ export default function CourseOverview({
         }
 
         try {
-            const formData = new FormData();
-            formData.append("file", file);
-
-            const response = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/courses/${course.id}/facilitators/bulk-remove`, {
-                method: "POST",
-                body: formData,
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || "Facilitator removal failed");
-            }
-
-            const result = await response.json();
+            const result = await courseService.bulkRemoveFacilitators(course.id, file);
             console.log("Facilitator removal result:", result);
             
             let message = result.message;
@@ -327,7 +241,7 @@ export default function CourseOverview({
                                                     className="hidden"
                                                 />
                                             </label>
-                                            <label className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 cursor-pointer transition-colors">
+                                            <label className="px-2 py-1 bg-brand-accent-600 text-white rounded text-xs hover:bg-brand-accent-700 cursor-pointer transition-colors">
                                                 - Remove
                                                 <input
                                                     type="file"
@@ -360,7 +274,7 @@ export default function CourseOverview({
                                                     className="hidden"
                                                 />
                                             </label>
-                                            <label className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 cursor-pointer transition-colors">
+                                            <label className="px-2 py-1 bg-brand-accent-600 text-white rounded text-xs hover:bg-brand-accent-700 cursor-pointer transition-colors">
                                                 - Remove
                                                 <input
                                                     type="file"

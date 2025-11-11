@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import MarkingPdfViewer from '@dashboard/lecturer/course/marking/MarkingPdfViewer';
 import MarkingRightPanel from '@dashboard/lecturer/course/marking/MarkingRightPanel';
-import { Assessment, Question, MarkingMode, StudentAllResults } from '@/types/course';
+import { Assessment, MarkingMode, StudentAllResults } from '@/types/course';
+import { type MappingQuestion } from '@/services';
 
 interface MarkingLayoutProps {
     assessment: Assessment;
@@ -11,7 +12,7 @@ interface MarkingLayoutProps {
 
 export default function MarkingLayout({ assessment, isMobile = false, isTablet = false }: MarkingLayoutProps) {
     const pageContainerRef = useRef<HTMLDivElement>(null);
-    const [question, setQuestion] = useState<Question | null>(null);
+    const [question, setQuestion] = useState<MappingQuestion | null>(null);
     const [markingMode, setMarkingMode] = useState<MarkingMode>('question-by-question');
     const [currentStudentIndex, setCurrentStudentIndex] = useState<number>(0);
     

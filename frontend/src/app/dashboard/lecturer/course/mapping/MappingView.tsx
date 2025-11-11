@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import MappingPdfViewer from '@dashboard/lecturer/course/mapping/MappingPdfViewer';
 import MappingRightPanel from '@dashboard/lecturer/course/mapping/MappingRightPanel';
-import { Assessment, Question } from '@/types/course';
+import { Assessment } from '@/types/course';
+import { type MappingQuestion } from '@/services';
 
 interface MappingLayoutProps {
     assessment: Assessment;
@@ -13,7 +14,7 @@ export default function MappingLayout({ assessment, isMobile = false, isTablet =
     const pageContainerRef = useRef<HTMLDivElement>(null);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [creating, setCreating] = useState(false);
-    const [editing, setEditing] = useState<Question | null>(null);
+    const [editing, setEditing] = useState<MappingQuestion | null>(null);
 
     return (
         <div className={`flex h-full w-full ${isMobile ? 'flex-col' : 'flex-row'}`}>

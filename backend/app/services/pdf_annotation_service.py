@@ -502,10 +502,11 @@ class PdfAnnotationService:
             
             self._debug_print(f"Page dimensions: {page_width}x{page_height}")
             
-            # Separate erasers from other lines
+            # Separate fine-erasers from other lines
+            # Note: Regular "eraser" tool removes lines immediately in frontend, so only fine-eraser strokes are saved
             lines = data.get("lines", [])
-            erasers = [line for line in lines if line.get("tool") == "eraser"]
-            non_eraser_lines = [line for line in lines if line.get("tool") != "eraser"]
+            erasers = [line for line in lines if line.get("tool") == "fine-eraser"]
+            non_eraser_lines = [line for line in lines if line.get("tool") != "fine-eraser"]
             
             # Compute eraser width and build capsules
             if erasers:

@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { API_CONFIG, PrimaryRole, UI_MESSAGES } from "@/lib/constants";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AuthPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -11,32 +13,34 @@ export default function AuthPage() {
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [studentNumber, setStudentNumber] = useState("");
-    const [role, setRole] = useState("student");
+    const [role, setRole] = useState<"student" | "staff">("student");
     const [loading, setLoading] = useState(false);
 
     const router = useRouter();
+    const { login: loginUser } = useAuth();
 
-    // Helper function to get the appropriate API URL
+    // Helper function to get the appropriate API URL based on network
     const getApiUrl = () => {
-        // Default to localhost for development
-        const defaultUrl = 'http://localhost:8000/api/v1';
+        const defaultUrl = API_CONFIG.BASE_URL;
         
         if (typeof window !== 'undefined') {
             const hostname = window.location.hostname;
+            
+            // For localhost/127.0.0.1
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return process.env.NEXT_PUBLIC_API_URL_LOCAL || process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+                return process.env.NEXT_PUBLIC_API_URL_LOCAL || defaultUrl;
             }
-            // For network access
+            // For network access (10.x.x.x or 192.168.x.x)
             if (hostname.startsWith('10.') || hostname.startsWith('192.168.')) {
-                return process.env.NEXT_PUBLIC_API_URL_NETWORK || process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+                return process.env.NEXT_PUBLIC_API_URL_NETWORK || defaultUrl;
             }
-            // For Tailscale
+            // For Tailscale (100.x.x.x)
             if (hostname.startsWith('100.')) {
-                return process.env.NEXT_PUBLIC_API_URL_TAILSCALE || process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+                return process.env.NEXT_PUBLIC_API_URL_TAILSCALE || defaultUrl;
             }
-            return process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+            return defaultUrl;
         }
-        return process.env.NEXT_PUBLIC_API_URL || defaultUrl;
+        return defaultUrl;
     };
 
     const toggleMode = () => {
@@ -75,10 +79,24 @@ export default function AuthPage() {
                     body: body.toString(),
                 });
 
-                if (!res.ok) throw new Error("Login failed");
+                if (!res.ok) throw new Error(UI_MESSAGES.ERROR.UNAUTHORIZED);
 
                 const data = await res.json();
-                localStorage.setItem("authToken", data.access_token);
+                
+                // Fetch user data
+                const userRes = await fetch(`${apiUrl}/users/me`, {
+                    headers: {
+                        Authorization: `Bearer ${data.access_token}`,
+                    },
+                });
+
+                if (!userRes.ok) throw new Error("Failed to fetch user data");
+                
+                const userData = await userRes.json();
+                
+                // Use the useAuth login function
+                loginUser(userData, data.access_token);
+                
                 setTimeout(() => router.push("/"), 100);
             } else {
                 const apiUrl = getApiUrl();
@@ -94,7 +112,7 @@ export default function AuthPage() {
                         student_number: studentNumber || undefined,
                         password,
                         is_admin: false,
-                        primary_role_id: role === "staff" ? 2 : 3,
+                        primary_role_id: role === "staff" ? PrimaryRole.LECTURER : PrimaryRole.STUDENT,
                     }),
                 });
 
@@ -121,7 +139,7 @@ export default function AuthPage() {
             }
         } catch (err) {
             console.error(err);
-            alert("Authentication error. Please try again.");
+            alert(err instanceof Error ? err.message : UI_MESSAGES.ERROR.GENERIC);
         } finally {
             setLoading(false);
         }
