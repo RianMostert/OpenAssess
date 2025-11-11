@@ -5,7 +5,7 @@ import StudentDashboard from './StudentDashboard';
 import StudentNavBar from './StudentNavBar';
 import CourseView from '@dashboard/lecturer/course/CourseView';
 import LecturerProfileView from '@dashboard/lecturer/profile/ProfileView';
-import { studentService } from '@/services';
+import { studentService, courseService } from '@/services';
 
 interface StudentDashboardWrapperProps {
     isMobile?: boolean;
@@ -44,9 +44,11 @@ export default function StudentDashboardWrapper({
 
     const checkLecturerAccess = async () => {
         try {
-            const courses = await studentService.getMyCourses();
-            const hasAccess = courses.some(course => 
-                course.my_role === 'facilitator' || course.my_role === 'convener'
+            // Use courseService to get ALL courses with roles (not filtered)
+            // This will show if user has facilitator/convener role in any course
+            const allCoursesWithRoles = await courseService.getCourses();
+            const hasAccess = allCoursesWithRoles.some(course => 
+                course.role_name === 'facilitator' || course.role_name === 'convener'
             );
             setHasLecturerAccess(hasAccess);
         } catch (error) {

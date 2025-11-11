@@ -23,7 +23,6 @@ export default function QuestionOverlay({
     const [showMarkInput, setShowMarkInput] = useState(false);
     const [tempMark, setTempMark] = useState(question.mark?.toString() || '');
 
-    // Calculate absolute position based on page dimensions and question percentages
     const left = (question.x / 100) * pageWidth;
     const top = (question.y / 100) * pageHeight;
     const width = (question.width / 100) * pageWidth;
@@ -49,10 +48,8 @@ export default function QuestionOverlay({
     const currentMark = question.mark ?? 0;
     const maxMark = question.max_marks ?? 0;
 
-    // Use consistent blue styling like question-by-question mode
     const colors = {
         border: 'border-blue-500',
-        bg: 'bg-blue-500/10', 
         tag: 'bg-blue-500',
         text: 'text-white'
     };
@@ -61,14 +58,15 @@ export default function QuestionOverlay({
         <div
             className={`absolute cursor-pointer transition-all duration-200 ${
                 isSelected 
-                    ? `border-4 ${colors.border} ${colors.bg} shadow-lg` 
-                    : `border-2 ${colors.border} ${colors.bg} hover:shadow-md`
+                    ? `border-4 ${colors.border} shadow-lg` 
+                    : `border-2 ${colors.border} hover:shadow-md`
             }`}
             style={{
                 left: `${left}px`,
                 top: `${top}px`,
                 width: `${width}px`,
                 height: `${height}px`,
+                backgroundColor: 'transparent'
             }}
             onClick={onSelect}
         >
@@ -77,7 +75,7 @@ export default function QuestionOverlay({
                 className={`absolute -top-8 left-0 px-2 py-1 rounded text-xs font-medium ${colors.tag} ${colors.text} shadow-sm`}
                 style={{ minWidth: '60px' }}
             >
-                Q{question.question_number}
+                {question.question_number}
             </div>
 
             {/* Mark Display/Input */}
@@ -109,38 +107,32 @@ export default function QuestionOverlay({
                 )}
             </div>
 
-            {/* Quick Mark Buttons (only show when selected) */}
+            {/* Quick Mark Buttons (vertical on right side) */}
             {isSelected && (
-                <div className="absolute bottom-2 left-2 flex gap-1">
+                <div className="absolute top-2 -right-10 flex flex-col gap-1">
                     {(() => {
                         const increment = question.increment || 0.5;
                         const fractions = [0, 0.25, 0.5, 0.75, 1];
-                        
-                        // Calculate unique mark values
                         const markValues = fractions.map(fraction => {
                             const markValue = maxMark * fraction;
                             const roundedValue = Math.round(markValue / increment) * increment;
                             return Math.min(roundedValue, maxMark);
                         });
-                        
-                        // Remove duplicates while preserving order
                         const uniqueMarkValues = markValues.filter((value, index, array) => 
                             array.findIndex(v => Math.abs(v - value) < 0.01) === index
                         );
-                        
-                        return uniqueMarkValues.map((finalValue, index) => (
+                        return uniqueMarkValues.map((finalValue) => (
                             <button
                                 key={`mark-${finalValue}`}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     onMarkChange(question.id, finalValue);
                                 }}
-                                className={`px-1 py-0.5 text-xs rounded transition-colors ${
+                                className={`px-2 py-1 text-sm rounded transition-colors ${
                                     Math.abs((question.mark ?? 0) - finalValue) < 0.01
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-white text-gray-700 hover:bg-gray-100 border'
                                 }`}
-                                style={{ fontSize: '10px' }}
                             >
                                 {finalValue}
                             </button>

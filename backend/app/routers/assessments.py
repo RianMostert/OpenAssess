@@ -128,12 +128,16 @@ def list_student_answer_sheets(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
-    if not assessment:
-        raise HTTPException(status_code=404, detail="Assessment not found")
-
-    if not (current_user.is_admin or assessment.course.teacher_id == current_user.id):
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Validate assessment exists and user has access
+    assessment = EntityValidator.get_assessment_or_404(db, assessment_id)
+    
+    # Allow admins, conveners, and facilitators to view answer sheets
+    from app.core.security import can_grade_assessments
+    if not can_grade_assessments(current_user, assessment.course_id):
+        raise HTTPException(
+            status_code=403, 
+            detail="Not authorized to view answer sheets"
+        )
 
     files = (
         db.query(UploadedFile, User)

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List
 
-from app.schemas.course import CourseCreate, CourseUpdate, CourseOut
+from app.schemas.course import CourseCreate, CourseUpdate, CourseOut, CourseWithRoleOut
 from app.models.course import Course
 from app.schemas.assessment import AssessmentOut
 from app.models.assessment import Assessment
@@ -65,7 +65,7 @@ def get_my_course_ids(
     return enrolled_ids
 
 
-@router.get("/", response_model=List[CourseOut])
+@router.get("/", response_model=List[CourseWithRoleOut])
 def get_courses(
     skip: int = 0,
     limit: int = 100,
@@ -73,16 +73,31 @@ def get_courses(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.is_admin:
-        return db.query(Course).offset(skip).limit(limit).all()
+        courses = db.query(Course).offset(skip).limit(limit).all()
+        # For admin, return all courses with a default "admin" role
+        return [
+            {
+                **course.__dict__,
+                "role_id": 0,
+                "role_name": "admin"
+            }
+            for course in courses
+        ]
 
-    enrolled_ids = [r.course_id for r in current_user.course_roles]
-    return (
-        db.query(Course)
-        .filter(Course.id.in_(enrolled_ids))
-        .offset(skip)
-        .limit(limit)
-        .all()
-    )
+    # Get courses with user's role information
+    enrolled_course_roles = current_user.course_roles
+    courses_with_roles = []
+    
+    for user_course_role in enrolled_course_roles:
+        course = db.query(Course).filter(Course.id == user_course_role.course_id).first()
+        if course:
+            courses_with_roles.append({
+                **course.__dict__,
+                "role_id": user_course_role.course_role_id,
+                "role_name": user_course_role.course_role.name
+            })
+    
+    return courses_with_roles[skip:skip+limit]
 
 
 @router.get("/{course_id}", response_model=CourseOut)

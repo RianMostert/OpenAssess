@@ -322,7 +322,7 @@ export default function CourseOverview({
                                             <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">Status</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">Questions Marked</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">Submissions Marked</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">Average Grade</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">Average Mark</th>
                                             <th className="px-6 py-4 text-left text-xs font-bold text-brand-primary uppercase tracking-wider">Queries</th>
                                         </tr>
                                     </thead>

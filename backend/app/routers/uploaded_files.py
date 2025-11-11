@@ -148,10 +148,12 @@ def download_answer_sheet(
     if not file or not file.answer_sheet_file_path:
         raise HTTPException(status_code=404, detail="Answer sheet not found")
 
+    # Allow admins, the student themselves, conveners, and facilitators
+    from app.core.security import can_grade_assessments
     if not (
         current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR
         or file.student_id == current_user.id
-        or can_manage_assessments(current_user, file.assessment.course_id)
+        or can_grade_assessments(current_user, file.assessment.course_id)
     ):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -174,10 +176,12 @@ def get_uploaded_file(
     if not file:
         raise HTTPException(status_code=404, detail="Uploaded file not found")
 
+    # Allow admins, the student themselves, conveners, and facilitators
+    from app.core.security import can_grade_assessments
     if not (
         current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR
         or file.student_id == current_user.id
-        or can_manage_assessments(current_user, file.assessment.course_id)
+        or can_grade_assessments(current_user, file.assessment.course_id)
     ):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -213,7 +217,9 @@ def update_uploaded_file(
     # Validate assessment exists
     assessment = EntityValidator.get_assessment_or_404(db, file.assessment_id)
 
-    is_course_staff = can_manage_assessments(current_user, assessment.course_id)
+    # Allow admins, the student themselves, conveners, and facilitators
+    from app.core.security import can_grade_assessments
+    is_course_staff = can_grade_assessments(current_user, assessment.course_id)
     is_target_student = file.student_id == current_user.id
 
     if not (current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR or is_course_staff or is_target_student):

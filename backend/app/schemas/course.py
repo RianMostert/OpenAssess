@@ -24,3 +24,15 @@ class CourseOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CourseWithRoleOut(BaseModel):
+    id: UUID
+    title: str
+    teacher_id: UUID
+    code: Optional[str]
+    created_at: datetime
+    role_id: int
+    role_name: str
+
+    model_config = ConfigDict(from_attributes=True)

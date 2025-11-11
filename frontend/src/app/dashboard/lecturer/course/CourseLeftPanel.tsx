@@ -79,8 +79,13 @@ export default function CoursePanel({
             // Use courseService - returns courses with UUID strings
             const apiCourses = await courseService.getCourses();
             
+            // Filter to only show courses where user has facilitator or convener role
+            const teachingCourses = apiCourses.filter(c => 
+                c.role_name === 'facilitator' || c.role_name === 'convener'
+            );
+            
             // Map API courses to local Course type - IDs are already strings (UUIDs)
-            const coursesData: Course[] = apiCourses.map(c => ({
+            const coursesData: Course[] = teachingCourses.map(c => ({
                 id: c.id, // Already a UUID string, no conversion needed
                 title: c.title,
                 code: c.code || undefined,

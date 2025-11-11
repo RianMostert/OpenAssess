@@ -27,19 +27,30 @@ def get_my_courses(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get all courses the current student is enrolled in"""
+    """Get all courses where the current user has a STUDENT role"""
+    from app.core.constants import CourseRoles
+    
     if current_user.primary_role_id == PrimaryRoles.ADMINISTRATOR:
+        # Admins can see all courses
         courses_with_teachers = (
             db.query(Course, User)
             .join(User, Course.teacher_id == User.id)
             .all()
         )
     else:
-        course_ids = [r.course_id for r in current_user.course_roles]
+        # Only get courses where user has STUDENT role
+        student_course_ids = [
+            r.course_id for r in current_user.course_roles 
+            if r.course_role_id == CourseRoles.STUDENT
+        ]
+        
+        if not student_course_ids:
+            return []
+        
         courses_with_teachers = (
             db.query(Course, User)
             .join(User, Course.teacher_id == User.id)
-            .filter(Course.id.in_(course_ids))
+            .filter(Course.id.in_(student_course_ids))
             .all()
         )
     

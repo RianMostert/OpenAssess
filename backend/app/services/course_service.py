@@ -117,16 +117,6 @@ class CourseStatsService:
             )
             students_completely_marked = students_with_all_marks
         
-        # Calculate average score
-        avg_score_result = (
-            db.query(func.avg(QuestionResult.mark))
-            .filter(QuestionResult.assessment_id == assessment.id)
-            .filter(QuestionResult.mark.isnot(None))
-            .scalar()
-        )
-        
-        avg_score = float(avg_score_result) if avg_score_result else 0.0
-        
         # Calculate total possible marks
         total_possible = (
             db.query(func.sum(Question.max_marks))
@@ -134,8 +124,28 @@ class CourseStatsService:
             .scalar()
         ) or 0
         
-        # Convert to percentage
-        avg_percentage = (avg_score / total_possible * 100) if total_possible > 0 else 0
+        # Calculate average score by student totals
+        # Get sum of marks per student, then average those sums
+        if total_possible > 0 and submission_count > 0:
+            student_totals = (
+                db.query(
+                    QuestionResult.student_id,
+                    func.sum(QuestionResult.mark).label('total_marks')
+                )
+                .filter(QuestionResult.assessment_id == assessment.id)
+                .filter(QuestionResult.mark.isnot(None))
+                .group_by(QuestionResult.student_id)
+                .subquery()
+            )
+            
+            avg_student_total = (
+                db.query(func.avg(student_totals.c.total_marks))
+                .scalar()
+            )
+            
+            avg_percentage = (float(avg_student_total) / total_possible * 100) if avg_student_total else 0.0
+        else:
+            avg_percentage = 0.0
         
         # Get pending query count
         query_count = (
