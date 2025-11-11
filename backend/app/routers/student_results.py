@@ -381,23 +381,62 @@ def download_annotated_pdf(
                             else:
                                 page_number = 1
                         
-                        annotations.append({"page": page_number, "data": data})
+                        # Convert API format to PDF service format (same as export endpoint)
+                        # API uses: {color, width} -> PDF service expects: {stroke, strokeWidth}
+                        converted_data = data.copy()
+                        if "lines" in converted_data:
+                            converted_data["lines"] = [
+                                {
+                                    "points": line.get("points", []),
+                                    "stroke": line.get("color", "#ff0000"),
+                                    "strokeWidth": line.get("width", 2),
+                                    "tool": line.get("tool", "pencil"),
+                                }
+                                for line in converted_data["lines"]
+                            ]
+                        
+                        # Add fontSize to texts (API doesn't send it, but PDF service needs it)
+                        if "texts" in converted_data:
+                            converted_data["texts"] = [
+                                {
+                                    **text,
+                                    "fontSize": text.get("fontSize", 16),
+                                }
+                                for text in converted_data["texts"]
+                            ]
+                        
+                        # Add fontSize to stickyNotes (API doesn't send it, but PDF service needs it)
+                        if "stickyNotes" in converted_data:
+                            converted_data["stickyNotes"] = [
+                                {
+                                    **sticky,
+                                    "fontSize": sticky.get("fontSize", 14),
+                                }
+                                for sticky in converted_data["stickyNotes"]
+                            ]
+                        
+                        annotations.append({"page": page_number, "data": converted_data})
                 except Exception as e:
                     print(f"Skipping annotation file {annotation_file}: {e}")
                     continue
         
+        # If no annotations, return the original PDF instead of raising an error
         if not annotations:
-            raise HTTPException(status_code=404, detail="No valid annotations found")
+            return FileResponse(
+                original_pdf_path,
+                filename=f"{assessment.title}.pdf",
+                media_type="application/pdf"
+            )
         
         # Create temporary file for the annotated PDF
         temp_dir = Path(tempfile.mkdtemp())
         output_pdf_path = temp_dir / f"annotated_{assessment.title}_{current_user.student_number or current_user.id}.pdf"
         
-        # Import the burn_annotations_to_pdf function from export router
-        from app.routers.export import burn_annotations_to_pdf
+        # Import the PDF annotation service
+        from app.services.pdf_annotation_service import pdf_annotation_service
         
         # Generate the annotated PDF
-        burn_annotations_to_pdf(str(original_pdf_path), str(output_pdf_path), annotations)
+        pdf_annotation_service.burn_annotations_to_pdf(str(original_pdf_path), str(output_pdf_path), annotations)
         
         # Return the file
         return FileResponse(

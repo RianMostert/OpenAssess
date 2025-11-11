@@ -238,7 +238,22 @@ export default function StudentDashboard({
 
     const handleDownloadPdf = async (assessmentId: string) => {
         try {
-            await studentService.downloadAnnotatedPdf(assessmentId);
+            const blob = await studentService.downloadAnnotatedPdf(assessmentId);
+            
+            // Create a download link and trigger it
+            const url = URL.createObjectURL(blob);
+            const assessment = assessments.find(a => a.assessment_id === assessmentId);
+            const filename = assessment 
+                ? `${assessment.course_code}_${assessment.title}_annotated.pdf`.replace(/\s+/g, '_')
+                : `assessment_${assessmentId}_annotated.pdf`;
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Error downloading PDF:', error);
             alert('Failed to download PDF. Please try again.');
