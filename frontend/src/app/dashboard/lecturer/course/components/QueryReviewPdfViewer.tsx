@@ -381,8 +381,9 @@ export default function QueryReviewPdfViewer({
                             // Convert percentage position to pixel position for display
                             const pageSize = getPageSize();
                             const pixelPos = positionToPixels({ x: note.x, y: note.y }, pageSize);
-                            const scaleFactor = Math.min(pageSize.width / 595, pageSize.height / 842); // Scale based on A4 reference
-                            const scaledFontSize = getScaledFontSize(note.fontSize, pageSize);
+                            const baseScaleFactor = Math.min(pageSize.width / 595, pageSize.height / 842); // Scale based on A4 reference
+                            const scaleFactor = baseScaleFactor * 0.7; // Make sticky notes 30% smaller
+                            const scaledFontSize = getScaledFontSize(note.fontSize, pageSize) * 0.9; // Also slightly reduce font size
                             
                             return (
                                 <div
@@ -392,14 +393,14 @@ export default function QueryReviewPdfViewer({
                                         top: pixelPos.y,
                                         left: pixelPos.x,
                                         zIndex: 50,
-                                        pointerEvents: 'none',
+                                        pointerEvents: 'auto', // Enable interactions so sticky notes can be clicked
                                     }}
                                 >
                                     <StickyNote
                                         content={note.text}
                                         scaleFactor={scaleFactor}
                                         fontSize={scaledFontSize}
-                                        onChange={() => {}}
+                                        onChange={() => {}} // Read-only in review mode
                                         onClick={() => {}}
                                         isSelected={false}
                                     />

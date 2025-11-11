@@ -46,6 +46,8 @@ interface Question {
     y: number;
     width: number;
     height: number;
+    max_marks?: number;
+    increment?: number;
 }
 
 interface QueryReviewModalProps {
@@ -106,11 +108,11 @@ export default function QueryReviewModal({
             console.log('Fetched queries data:', queriesData);
             setQueries(queriesData);
 
-            // Initialize responses state
+            // Initialize responses state - default to 'resolved'
             const initialResponses: typeof responses = {};
             queriesData.forEach((query: MarkQuery) => {
                 initialResponses[query.id] = {
-                    status: 'approved',
+                    status: 'resolved',
                     response: '',
                     newMark: query.current_mark?.toString() || ''
                 };
@@ -152,9 +154,9 @@ export default function QueryReviewModal({
                 const response = responses[query.id];
 
                 const responseData = {
-                    status: response.status,
+                    status: 'resolved', // Always resolved
                     reviewer_response: response.response.trim() || null,
-                    new_marks: response.status === 'approved' && query.question_id && response.newMark ? 
+                    new_marks: query.question_id && response.newMark ? 
                         { [query.question_id]: parseFloat(response.newMark) } : null
                 };
 
@@ -256,78 +258,68 @@ export default function QueryReviewModal({
                             </div>
                             
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-brand-primary-50 to-white">
-                                {queries.map((query, index) => (
-                                    <div key={query.id} className="bg-white p-3 rounded-lg border-2 border-brand-accent-400 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="mb-3">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h4 className="font-bold text-brand-primary-800 text-sm">
-                                                    {query.question_number ? `Question ${query.question_number}` : 'Assessment-wide'}
-                                                </h4>
-                                                <span className="text-xs text-brand-primary-700 bg-brand-accent-100 px-2 py-1 rounded font-semibold border border-brand-accent-300">
-                                                    {query.query_type}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-brand-primary-700 bg-brand-primary-50 p-2 rounded-lg text-wrap break-words border border-brand-accent-200">
-                                                {query.requested_change}
-                                            </p>
-                                            {query.current_mark !== undefined && (
-                                                <p className="text-xs text-brand-primary-600 mt-2 font-medium">
-                                                    Current mark: <span className="font-bold text-brand-primary-800">{query.current_mark}</span>
-                                                </p>
-                                            )}
-                                        </div>
-
-                                        {/* Response Type */}
-                                        <div className="mb-3">
-                                            <label className="block text-sm font-bold text-brand-primary-700 mb-2 uppercase tracking-wider text-xs">Response</label>
-                                            <div className="space-y-2">
-                                                {(['approved', 'rejected', 'resolved'] as const).map(status => (
-                                                    <label key={status} className="flex items-center cursor-pointer hover:bg-brand-primary-50 p-2 rounded-lg transition-colors">
-                                                        <input
-                                                            type="radio"
-                                                            value={status}
-                                                            checked={responses[query.id]?.status === status}
-                                                            onChange={(e) => updateResponse(query.id, 'status', e.target.value)}
-                                                            className="mr-3 w-4 h-4 text-brand-primary-600 focus:ring-brand-primary-500"
-                                                        />
-                                                        <span className="text-sm capitalize font-medium text-brand-primary-700">{status}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* New Mark (if applicable) */}
-                                        {responses[query.id]?.status === 'approved' && query.question_id && (
+                                {queries.map((query, index) => {
+                                    // Find the corresponding question for this query to get max_marks and increment
+                                    const question = questions.find(q => q.id === query.question_id);
+                                    const maxMarks = question?.max_marks;
+                                    const increment = question?.increment || 0.5;
+                                    
+                                    return (
+                                        <div key={query.id} className="bg-white p-3 rounded-lg border-2 border-brand-accent-400 shadow-sm hover:shadow-md transition-shadow">
                                             <div className="mb-3">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="font-bold text-brand-primary-800 text-sm">
+                                                        {query.question_number ? `${query.question_number}` : 'Assessment-wide'}
+                                                    </h4>
+                                                    {/* <span className="text-xs text-brand-primary-700 bg-brand-accent-100 px-2 py-1 rounded font-semibold border border-brand-accent-300">
+                                                        {query.query_type}
+                                                    </span> */}
+                                                </div>
+                                                <p className="text-xs text-brand-primary-700 bg-brand-primary-50 p-2 rounded-lg text-wrap break-words border border-brand-accent-200">
+                                                    {query.requested_change}
+                                                </p>
+                                                {query.current_mark !== undefined && query.current_mark !== null && maxMarks !== undefined && (
+                                                    <p className="text-xs text-brand-primary-600 mt-2 font-medium">
+                                                        Current mark: <span className="font-bold text-brand-primary-800">{query.current_mark} / {maxMarks}</span>
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* New Mark (if applicable) */}
+                                            {query.question_id && (
+                                                <div className="mb-3">
+                                                    <label className="block text-sm font-bold text-brand-primary-700 mb-1 uppercase tracking-wider text-xs">
+                                                        New Mark
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        step={increment}
+                                                        min={0}
+                                                        max={maxMarks}
+                                                        value={responses[query.id]?.newMark || ''}
+                                                        onChange={(e) => updateResponse(query.id, 'newMark', e.target.value)}
+                                                        className="w-full px-3 py-2 border-2 border-brand-accent-400 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-600 font-medium text-brand-primary-800"
+                                                        placeholder={maxMarks !== undefined ? `Max: ${maxMarks}` : "Enter new mark"}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Response Text */}
+                                            <div>
                                                 <label className="block text-sm font-bold text-brand-primary-700 mb-1 uppercase tracking-wider text-xs">
-                                                    New Mark (Optional)
+                                                    Your Response (Optional)
                                                 </label>
-                                                <input
-                                                    type="number"
-                                                    step="0.5"
-                                                    value={responses[query.id]?.newMark || ''}
-                                                    onChange={(e) => updateResponse(query.id, 'newMark', e.target.value)}
-                                                    className="w-full px-3 py-2 border-2 border-brand-accent-400 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-600 font-medium text-brand-primary-800"
-                                                    placeholder="Enter new mark"
+                                                <textarea
+                                                    value={responses[query.id]?.response || ''}
+                                                    onChange={(e) => updateResponse(query.id, 'response', e.target.value)}
+                                                    rows={3}
+                                                    className="w-full px-3 py-2 border-2 border-brand-accent-400 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-600 resize-none font-medium text-brand-primary-800"
+                                                    placeholder="Explain your decision..."
                                                 />
                                             </div>
-                                        )}
-
-                                        {/* Response Text */}
-                                        <div>
-                                            <label className="block text-sm font-bold text-brand-primary-700 mb-1 uppercase tracking-wider text-xs">
-                                                Your Response (Optional)
-                                            </label>
-                                            <textarea
-                                                value={responses[query.id]?.response || ''}
-                                                onChange={(e) => updateResponse(query.id, 'response', e.target.value)}
-                                                rows={3}
-                                                className="w-full px-3 py-2 border-2 border-brand-accent-400 rounded-lg text-sm focus:ring-2 focus:ring-brand-primary-500 focus:border-brand-primary-600 resize-none font-medium text-brand-primary-800"
-                                                placeholder="Explain your decision..."
-                                            />
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             {/* Submit Button */}

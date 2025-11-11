@@ -407,9 +407,9 @@ export default function AssessmentOverview({
                                             className="px-3 py-1.5 border-2 border-brand-accent-400 rounded-lg text-sm bg-white text-brand-primary-800 font-medium focus:outline-none focus:ring-2 focus:ring-brand-accent-500"
                                         >
                                             <option value="pending">Pending</option>
-                                            <option value="under_review">Under Review</option>
+                                            {/* <option value="under_review">Under Review</option>
                                             <option value="approved">Approved</option>
-                                            <option value="rejected">Rejected</option>
+                                            <option value="rejected">Rejected</option> */}
                                             <option value="resolved">Resolved</option>
                                             <option value="all">All</option>
                                         </select>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { studentQueryService } from '@/services';
+import { studentService } from '@/services';
 import { QueryStatus } from '@/lib/constants';
 
 interface QueryHistoryModalProps {
@@ -33,6 +33,9 @@ interface QueryBatch {
     queries: QueryDetail[];
     created_at: string;
     status: string;
+    question_count?: number;
+    combined_requests?: string;
+    query_types?: string[];
 }
 
 export default function QueryHistoryModal({
@@ -55,58 +58,83 @@ export default function QueryHistoryModal({
     const fetchQueryHistory = async () => {
         setLoading(true);
         try {
-            // Get all queries for the student using the service
-            const allQueries = await studentQueryService.getStudentQueries();
+            // Get grouped queries for the student
+            const allGroupedQueries = await studentService.getMyQueriesGrouped();
             
             // Filter queries for this assessment
-            const assessmentQueries = allQueries.filter(q => q.assessment_id.toString() === assessmentId);
+            const assessmentQueries = allGroupedQueries.filter(q => q.assessment_id === assessmentId);
             
-            // Group by batch_id (if your backend supports batch_id, otherwise skip batching)
-            const batchMap = new Map<string, QueryDetail[]>();
+            // Separate into batches and individual queries
+            const batchArray: QueryBatch[] = [];
             const individual: QueryDetail[] = [];
             
-            assessmentQueries.forEach(query => {
-                // Map backend query to QueryDetail format
-                const mappedQuery: QueryDetail = {
-                    id: query.id.toString(),
-                    assessment_id: query.assessment_id.toString(),
-                    question_id: undefined, // Add if backend provides this
-                    batch_id: undefined, // Add if backend provides this
-                    requested_change: query.query_text,
-                    query_type: 'clarification', // Default or map from backend
-                    status: mapQueryStatus(query.status_id),
-                    reviewer_response: query.response_text,
-                    new_mark: undefined,
-                    current_mark: undefined,
-                    created_at: query.created_at,
-                    updated_at: query.updated_at,
-                    question_number: undefined,
-                };
-
-                if (mappedQuery.batch_id) {
-                    if (!batchMap.has(mappedQuery.batch_id)) {
-                        batchMap.set(mappedQuery.batch_id, []);
+            // Process each grouped query
+            for (const groupedQuery of assessmentQueries) {
+                if (groupedQuery.is_batch && groupedQuery.batch_id) {
+                    // Fetch the detailed queries for this batch
+                    try {
+                        const batchQueries = await studentService.getBatchQueries(groupedQuery.batch_id);
+                        
+                        // Map batch queries to QueryDetail format
+                        const mappedQueries: QueryDetail[] = batchQueries.map(q => ({
+                            id: q.id,
+                            assessment_id: q.assessment_id,
+                            question_id: q.question_id,
+                            batch_id: q.batch_id,
+                            requested_change: q.requested_change,
+                            query_type: q.query_type,
+                            status: q.status,
+                            reviewer_response: q.reviewer_response,
+                            new_mark: q.new_mark,
+                            current_mark: q.current_mark,
+                            created_at: q.created_at,
+                            updated_at: q.updated_at,
+                            question_number: q.question_number,
+                        }));
+                        
+                        batchArray.push({
+                            batch_id: groupedQuery.batch_id,
+                            queries: mappedQueries,
+                            created_at: groupedQuery.created_at,
+                            status: groupedQuery.status,
+                            question_count: groupedQuery.question_count,
+                            combined_requests: groupedQuery.combined_requests,
+                            query_types: groupedQuery.query_types
+                        });
+                    } catch (error) {
+                        console.error(`Error fetching batch ${groupedQuery.batch_id}:`, error);
+                        // Fall back to summary info only
+                        batchArray.push({
+                            batch_id: groupedQuery.batch_id,
+                            queries: [],
+                            created_at: groupedQuery.created_at,
+                            status: groupedQuery.status,
+                            question_count: groupedQuery.question_count,
+                            combined_requests: groupedQuery.combined_requests,
+                            query_types: groupedQuery.query_types
+                        });
                     }
-                    batchMap.get(mappedQuery.batch_id)!.push(mappedQuery);
                 } else {
-                    individual.push(mappedQuery);
+                    // Individual query - map to QueryDetail
+                    individual.push({
+                        id: groupedQuery.id,
+                        assessment_id: groupedQuery.assessment_id,
+                        question_id: undefined,
+                        batch_id: groupedQuery.batch_id,
+                        requested_change: groupedQuery.combined_requests,
+                        query_type: groupedQuery.query_types[0] || 'clarification',
+                        status: groupedQuery.status,
+                        reviewer_response: undefined,
+                        new_mark: undefined,
+                        current_mark: undefined,
+                        created_at: groupedQuery.created_at,
+                        updated_at: groupedQuery.created_at,
+                        question_number: groupedQuery.question_number,
+                    });
                 }
-            });
+            }
             
-            // Convert batches to array and sort by creation date
-            const batchArray: QueryBatch[] = Array.from(batchMap.entries()).map(([batchId, queries]) => {
-                const sortedQueries = queries.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-                const primaryStatus = getPrimaryStatus(queries.map(q => q.status));
-                
-                return {
-                    batch_id: batchId,
-                    queries: sortedQueries,
-                    created_at: sortedQueries[0].created_at,
-                    status: primaryStatus
-                };
-            }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-            
-            setBatches(batchArray);
+            setBatches(batchArray.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
             setIndividualQueries(individual.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
         } catch (error) {
             console.error('Error fetching query history:', error);
@@ -142,7 +170,7 @@ export default function QueryHistoryModal({
             under_review: { label: 'Under Review', className: 'bg-brand-accent-100 text-brand-accent-800 border border-brand-accent-200' },
             approved: { label: 'Approved', className: 'bg-green-100 text-green-800 border border-green-200' },
             rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 border border-red-200' },
-            resolved: { label: 'Resolved', className: 'bg-gray-100 text-gray-800 border border-gray-200' }
+            resolved: { label: 'Resolved', className: 'bg-green-100 text-gray-800 border border-green-200' }
         };
 
         const config = statusConfig[status as keyof typeof statusConfig];
@@ -210,22 +238,23 @@ export default function QueryHistoryModal({
                                                     </span>
                                                 </div>
                                                 
-                                                <div className="space-y-3">
+                                                {/* Show individual queries in the batch */}
+                                                <div className="space-y-3 mt-3">
                                                     {batch.queries.map((query, queryIndex) => (
                                                         <div key={query.id} className="bg-white rounded-lg p-3 border border-brand-accent-200">
                                                             <div className="flex justify-between items-start mb-2">
                                                                 <div className="flex items-center space-x-2">
                                                                     <span className="font-semibold text-sm text-brand-primary">
                                                                         {query.question_id ? 
-                                                                            `Question ${query.question_number || queryIndex + 1}` : 
+                                                                            `${query.question_number || queryIndex + 1}` : 
                                                                             'Assessment-wide Query'
                                                                         }
                                                                     </span>
-                                                                    {getStatusBadge(query.status)}
+                                                                    {/* {getStatusBadge(query.status)} */}
                                                                 </div>
-                                                                <span className="text-xs text-gray-600 font-medium">
+                                                                {/* <span className="text-xs text-gray-600 font-medium">
                                                                     {getQueryTypeLabel(query.query_type)}
-                                                                </span>
+                                                                </span> */}
                                                             </div>
                                                             
                                                             {query.current_mark !== null && (

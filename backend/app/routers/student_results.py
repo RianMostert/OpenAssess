@@ -133,9 +133,9 @@ def get_my_course_assessments(
         elif not has_results:
             status = "submitted_pending"
         elif all_questions_marked:
-            status = "graded"
+            status = "marked"
         else:
-            status = "partially_graded"
+            status = "partially_marked"
         
         result.append({
             "assessment_id": str(assessment.id),
@@ -229,9 +229,9 @@ def get_my_assessment_results(
     elif len(question_results) == 0:
         status = "submitted_pending"
     elif len(question_results) == len(questions):
-        status = "fully_graded"
+        status = "marked"
     else:
-        status = "partially_graded"
+        status = "partially_marked"
     
     return {
         "assessment": {

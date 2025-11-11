@@ -155,7 +155,7 @@ export const studentService = {
   },
 
   /**
-   * Submit batch queries
+   * Submit a batch of queries
    */
   async submitBatchQueries(queries: Array<{
     assessment_id: string;
@@ -166,6 +166,13 @@ export const studentService = {
       method: 'POST',
       body: JSON.stringify({ queries }),
     });
+  },
+
+  /**
+   * Get batch query details
+   */
+  async getBatchQueries(batchId: string): Promise<any[]> {
+    return apiCall<any[]>(`/student-queries/batch/${batchId}`);
   },
 
   /**
