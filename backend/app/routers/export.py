@@ -68,7 +68,7 @@ async def export_annotated_pdfs(request: ExportRequest):
                                 for line in converted_data["lines"]
                             ]
                         
-                        # Add fontSize to texts (API doesn't send it, but PDF service needs it)
+                        # Add fontSize to texts
                         if "texts" in converted_data:
                             converted_data["texts"] = [
                                 {
@@ -78,7 +78,7 @@ async def export_annotated_pdfs(request: ExportRequest):
                                 for text in converted_data["texts"]
                             ]
                         
-                        # Add fontSize to stickyNotes (API doesn't send it, but PDF service needs it)
+                        # Add fontSize to stickyNotes
                         if "stickyNotes" in converted_data:
                             converted_data["stickyNotes"] = [
                                 {

@@ -502,13 +502,11 @@ class PdfAnnotationService:
             
             self._debug_print(f"Page dimensions: {page_width}x{page_height}")
             
-            # Separate fine-erasers from other lines
-            # Note: Regular "eraser" tool removes lines immediately in frontend, so only fine-eraser strokes are saved
+            # Process lines in order, applying erasers only to previous lines
             lines = data.get("lines", [])
-            erasers = [line for line in lines if line.get("tool") == "fine-eraser"]
-            non_eraser_lines = [line for line in lines if line.get("tool") != "fine-eraser"]
             
-            # Compute eraser width and build capsules
+            # Calculate default eraser width
+            erasers = [line for line in lines if line.get("tool") == "fine-eraser"]
             if erasers:
                 avg_eraser_stroke = sum(e.get("strokeWidth", 10) for e in erasers) / len(erasers)
                 eraser_width_percent = max(
@@ -522,39 +520,57 @@ class PdfAnnotationService:
             r_px = (eraser_width_percent / 100.0) * page_width * 0.5
             self._debug_print(f"  Eraser width: {eraser_width_percent:.2f}% (r={r_px:.2f}px)")
             
-            # Build eraser capsules
-            all_capsules: List[self.Capsule] = []
-            for er in erasers:
-                pts = er["points"]
+            # Store processed lines as polyline segments
+            # Each entry: (stroke_color, stroke_width, segments_px)
+            # where segments_px is a list of line segments that survived erasure
+            processed_lines: List[Tuple[Tuple[float, float, float], float, List[List[float]]]] = []
+            
+            # Process each line/eraser in order
+            for line_item in lines:
+                tool = line_item.get("tool", "pencil")
+                pts = line_item["points"]
+                
+                # Convert points to page coordinates
                 pts_px: List[float] = []
                 for i in range(0, len(pts), 2):
                     x, y = self.percentage_to_pdf_coords(pts[i], pts[i + 1], page_width, page_height)
                     pts_px.extend([x, y])
-                all_capsules.extend(self.build_capsules(pts_px, r_px))
+                
+                if tool == "fine-eraser":
+                    # Build capsules for this eraser stroke
+                    eraser_capsules = self.build_capsules(pts_px, r_px)
+                    
+                    # Build spatial index for this eraser
+                    cell = max(8.0, r_px)
+                    grid = self.UniformGrid(0.0, 0.0, page_width, page_height, cell)
+                    for idx, cap in enumerate(eraser_capsules):
+                        grid.insert_capsule(idx, cap.aabb)
+                    
+                    # Apply eraser to all previously processed lines
+                    updated_processed_lines: List[Tuple[Tuple[float, float, float], float, List[List[float]]]] = []
+                    for stroke_color, stroke_width, existing_segments in processed_lines:
+                        new_segments = []
+                        for segment in existing_segments:
+                            # Apply eraser to this segment
+                            erased_segments = self.filter_line_by_eraser_px(segment, eraser_capsules, grid)
+                            new_segments.extend(erased_segments)
+                        
+                        # Only keep the line if it still has segments after erasure
+                        if new_segments:
+                            updated_processed_lines.append((stroke_color, stroke_width, new_segments))
+                    
+                    processed_lines = updated_processed_lines
+                    self._debug_print(f"  Applied eraser, {len(processed_lines)} lines remaining")
+                    
+                else:
+                    # Regular line - add it to processed lines
+                    stroke_color = self.hex_to_rgb(line_item["stroke"])
+                    stroke_width = line_item["strokeWidth"]
+                    processed_lines.append((stroke_color, stroke_width, [pts_px]))
             
-            # Build spatial index
-            cell = max(8.0, r_px)
-            grid = self.UniformGrid(0.0, 0.0, page_width, page_height, cell)
-            for idx, cap in enumerate(all_capsules):
-                grid.insert_capsule(idx, cap.aabb)
-            
-            # Process and draw lines
-            for line in non_eraser_lines:
-                # Convert to page coordinates
-                pts = line["points"]
-                line_px: List[float] = []
-                for i in range(0, len(pts), 2):
-                    x, y = self.percentage_to_pdf_coords(pts[i], pts[i + 1], page_width, page_height)
-                    line_px.extend([x, y])
-                
-                # Filter against erasers
-                line_segments_px = self.filter_line_by_eraser_px(line_px, all_capsules, grid)
-                
-                stroke = self.hex_to_rgb(line["stroke"])
-                stroke_width = line["strokeWidth"]
-                
-                # Draw each segment
-                for segment_points in line_segments_px:
+            # Draw all surviving line segments
+            for stroke_color, stroke_width, segments in processed_lines:
+                for segment_points in segments:
                     if len(segment_points) < 4:
                         continue
                     # Draw polyline
@@ -563,11 +579,11 @@ class PdfAnnotationService:
                         x2, y2 = segment_points[i + 2], segment_points[i + 3]
                         p1 = fitz.Point(x1, y1)
                         p2 = fitz.Point(x2, y2)
-                        page.draw_line(p1, p2, color=stroke, width=stroke_width)
+                        page.draw_line(p1, p2, color=stroke_color, width=stroke_width)
                     # Draw round joints for smooth appearance
                     for i in range(0, len(segment_points), 2):
                         p = fitz.Point(segment_points[i], segment_points[i + 1])
-                        page.draw_circle(p, stroke_width * 0.25, color=stroke)
+                        page.draw_circle(p, stroke_width * 0.25, color=stroke_color)
             
             # Draw text annotations
             texts = data.get("texts", [])
