@@ -1,0 +1,27 @@
+# ============================================================================
+# OpenAssess - Development Docker Compose Configuration
+# ============================================================================
+# This extends docker-compose.yml with development-specific overrides
+# Use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  openassess:
+    build:
+      dockerfile: Dockerfile.dev
+      context: .
+    entrypoint: ["/entrypoint.dev.sh"]
+    environment:
+      # Override for development
+      ENV: dev
+    volumes:
+      # Mount source code for hot reloading
+      - ./backend:/app/backend:delegated
+      - ./frontend:/app/frontend:delegated
+      # Exclude build artifacts and dependencies
+      - /app/frontend/node_modules
+      - /app/frontend/.next
+      - /app/backend/__pycache__
+      - /app/backend/.pytest_cache
+      - /app/backend/.venv
+      # Still persist storage
+      - openassess_storage:/app/backend/storage

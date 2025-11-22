@@ -99,6 +99,68 @@ The database is automatically seeded with test users for demonstration purposes:
 - PDF.js for PDF rendering
 - Vitest & Playwright for testing
 
+## Development
+
+### Development Mode with Hot Reloading
+
+The application has separate configurations for development and production:
+
+**Development Mode:**
+- Uses `Dockerfile.dev` and `docker-compose.dev.yml`
+- Mounts local code as volumes for instant hot reloading
+- Backend: `uvicorn --reload` for automatic Python restarts
+- Frontend: `next dev` for instant Hot Module Replacement (HMR)
+
+**Production Mode:**
+- Uses standard `Dockerfile` and `docker-compose.yml`
+- Optimized builds with no volume mounts
+- Backend: Standard uvicorn server
+- Frontend: Standalone Next.js build
+
+**Quick Start:**
+1. Copy the development environment file:
+   ```bash
+   cp .env.dev .env
+   ```
+
+2. Start in development mode:
+   ```bash
+   ./manage.py dev
+   ```
+
+3. Make changes to your code:
+   - **Backend**: Edit files in `backend/app/` - server auto-restarts
+   - **Frontend**: Edit files in `frontend/src/` - browser hot-reloads instantly
+
+**Switching between modes:**
+```bash
+# Development with hot reloading
+./manage.py dev
+
+# Production mode
+./manage.py start
+
+# Rebuild when switching
+./manage.py dev --build
+```
+
+### Running Tests
+
+**Backend tests:**
+```bash
+cd backend
+pytest                           # Run all tests
+pytest --cov=app                 # With coverage
+```
+
+**Frontend tests:**
+```bash
+cd frontend
+pnpm run test                    # Unit tests (Vitest)
+pnpm run test:e2e                # E2E tests (Playwright)
+pnpm run test:a11y               # Accessibility tests
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

@@ -198,6 +198,97 @@ def restart_services(with_traefik: bool = True, build: bool = False) -> None:
     start_services(with_traefik=with_traefik, build=build)
 
 
+def start_dev_services(with_traefik: bool = True, build: bool = False) -> None:
+    """Start OpenAssess in development mode with hot reloading"""
+    print_header("Starting OpenAssess (Development Mode)")
+
+    # Check for .env file
+    if not check_env_file():
+        print_error("Cannot start without .env file")
+        sys.exit(1)
+
+    if with_traefik:
+        # Ensure network exists
+        ensure_traefik_network()
+
+        # Start Traefik
+        print_info("Starting Traefik proxy...")
+        run_command(
+            [
+                "docker",
+                "compose",
+                "-f",
+                "docker-compose.traefik.yml",
+                "up",
+                "-d",
+            ]
+        )
+        print_success("Traefik started")
+        time.sleep(2)  # Give Traefik time to initialize
+
+    # Start main application in dev mode
+    print_info("Starting OpenAssess in development mode...")
+    print_warning("This will mount your local code as volumes for hot reloading")
+    cmd = [
+        "docker",
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "-f",
+        "docker-compose.dev.yml",
+        "up",
+        "-d",
+    ]
+    if build:
+        cmd.append("--build")
+    run_command(cmd)
+    print_success("OpenAssess started in development mode")
+
+    # Show access information
+    print_header("OpenAssess is running in DEVELOPMENT mode!")
+    print(f"  {Color.GREEN}Hot reloading enabled{Color.END}")
+    if with_traefik:
+        print(f"  {Color.BOLD}App:{Color.END}       http://open-assess.localhost")
+        print(f"  {Color.BOLD}API:{Color.END}       http://open-assess.localhost/api")
+        print(f"  {Color.BOLD}Dashboard:{Color.END} http://traefik.localhost")
+    else:
+        print(f"  {Color.BOLD}App:{Color.END}       http://localhost:3000")
+        print(f"  {Color.BOLD}API:{Color.END}       http://localhost:8000")
+    print()
+    print_info("Edit files in backend/ or frontend/ to see changes live!")
+    print()
+
+
+def stop_dev_services(with_traefik: bool = True, remove_volumes: bool = False) -> None:
+    """Stop development services"""
+    print_header("Stopping OpenAssess (Development Mode)")
+
+    # Stop main application
+    print_info("Stopping OpenAssess development containers...")
+    cmd = [
+        "docker",
+        "compose",
+        "-f",
+        "docker-compose.yml",
+        "-f",
+        "docker-compose.dev.yml",
+        "down",
+    ]
+    if remove_volumes:
+        cmd.append("-v")
+        print_warning("This will remove all data volumes!")
+    run_command(cmd)
+    print_success("OpenAssess development containers stopped")
+
+    if with_traefik:
+        # Stop Traefik
+        print_info("Stopping Traefik proxy...")
+        run_command(["docker", "compose", "-f", "docker-compose.traefik.yml", "down"])
+        print_success("Traefik stopped")
+
+    print_header("✅ All services stopped")
+
+
 def show_logs(follow: bool = True, service: Optional[str] = None) -> None:
     """Show logs from containers"""
     print_header("Container Logs")
@@ -303,9 +394,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s start              Start all services with Traefik
+  %(prog)s start              Start all services with Traefik (production)
   %(prog)s start --no-traefik Start without Traefik
   %(prog)s start --build      Rebuild and start services
+  %(prog)s dev                Start in development mode with hot reloading
+  %(prog)s dev --build        Build and start in development mode
   %(prog)s stop               Stop all services
   %(prog)s stop --volumes     Stop and remove data volumes
   %(prog)s restart            Restart all services
@@ -321,12 +414,25 @@ Examples:
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
-    # Start command
-    start_parser = subparsers.add_parser("start", help="Start all services")
+    # Start command (production)
+    start_parser = subparsers.add_parser(
+        "start", help="Start all services (production)"
+    )
     start_parser.add_argument(
         "--no-traefik", action="store_true", help="Start without Traefik"
     )
     start_parser.add_argument(
+        "--build", action="store_true", help="Rebuild images before starting"
+    )
+
+    # Dev command (development mode)
+    dev_parser = subparsers.add_parser(
+        "dev", help="Start in development mode with hot reloading"
+    )
+    dev_parser.add_argument(
+        "--no-traefik", action="store_true", help="Start without Traefik"
+    )
+    dev_parser.add_argument(
         "--build", action="store_true", help="Rebuild images before starting"
     )
 
@@ -391,8 +497,22 @@ Examples:
     # Handle commands
     if args.command == "start":
         start_services(with_traefik=not args.no_traefik, build=args.build)
+    elif args.command == "dev":
+        start_dev_services(with_traefik=not args.no_traefik, build=args.build)
     elif args.command == "stop":
-        stop_services(with_traefik=not args.no_traefik, remove_volumes=args.volumes)
+        # Check if dev containers are running
+        result = run_command(
+            ["docker", "ps", "--filter", "name=openassess", "--format", "{{.Names}}"],
+            capture_output=True,
+            check=False,
+        )
+        # If any containers running, try stopping both dev and prod
+        if result and result.stdout:
+            stop_dev_services(
+                with_traefik=not args.no_traefik, remove_volumes=args.volumes
+            )
+        else:
+            stop_services(with_traefik=not args.no_traefik, remove_volumes=args.volumes)
     elif args.command == "restart":
         restart_services(with_traefik=not args.no_traefik, build=args.build)
     elif args.command == "logs":
