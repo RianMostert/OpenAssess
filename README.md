@@ -132,6 +132,11 @@ The application has separate configurations for development and production:
    - **Backend**: Edit files in `backend/app/` - server auto-restarts
    - **Frontend**: Edit files in `frontend/src/` - browser hot-reloads instantly
 
+**Important Notes:**
+- **Adding Python dependencies**: Add to `backend/requirements.txt` and rebuild with `./manage.py dev --build`
+- **Adding Node dependencies**: Update `frontend/package.json` and rebuild with `./manage.py dev --build`
+- The rebuild is necessary because dependencies are installed during the Docker image build
+
 **Switching between modes:**
 ```bash
 # Development with hot reloading
@@ -140,7 +145,7 @@ The application has separate configurations for development and production:
 # Production mode
 ./manage.py start
 
-# Rebuild when switching
+# Rebuild when switching or after dependency changes
 ./manage.py dev --build
 ```
 

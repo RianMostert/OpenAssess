@@ -41,10 +41,13 @@ sleep 2
 cd /app/frontend
 export HOSTNAME=0.0.0.0
 
-# Install/update dependencies if needed
+# Check if dependencies need updating (compare package.json timestamps)
 if [ ! -d "node_modules" ]; then
     echo "Installing frontend dependencies..."
-    pnpm install
+    pnpm install --frozen-lockfile
+elif [ "package.json" -nt "node_modules" ]; then
+    echo "Package.json updated, reinstalling dependencies..."
+    pnpm install --frozen-lockfile
 else
     echo "Frontend dependencies already installed"
 fi

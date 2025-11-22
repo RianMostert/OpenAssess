@@ -45,6 +45,15 @@ RUN mkdir -p /app/backend /app/frontend && \
              /app/backend/storage/jsons/annotations \
              /app/backend/storage/jsons/submissions
 
+# Copy frontend package files and install dependencies
+# These will be in the anonymous volume /app/frontend/node_modules
+COPY frontend/package.json frontend/pnpm-lock.yaml /app/frontend/
+RUN cd /app/frontend && pnpm install --frozen-lockfile
+
+# Create .next directory with proper ownership for development hot reloading
+RUN mkdir -p /app/frontend/.next && \
+    chown -R appuser:appuser /app/frontend/.next
+
 # Copy entrypoint script
 COPY docker/entrypoint.dev.sh /entrypoint.dev.sh
 RUN chmod +x /entrypoint.dev.sh

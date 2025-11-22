@@ -13,15 +13,26 @@ services:
     environment:
       # Override for development
       ENV: dev
+      # Frontend environment variables for Next.js
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://open-assess.localhost/api/v1}
+      NEXT_PUBLIC_BACKEND_HOST: ${NEXT_PUBLIC_BACKEND_HOST:-localhost}
+      NEXT_PUBLIC_BACKEND_PORT: ${NEXT_PUBLIC_BACKEND_PORT:-8000}
+      NEXT_PUBLIC_ALLOWED_ORIGINS: ${NEXT_PUBLIC_ALLOWED_ORIGINS:-localhost:3000,127.0.0.1:3000,*.local:3000,open-assess.localhost}
     volumes:
       # Mount source code for hot reloading
       - ./backend:/app/backend:delegated
       - ./frontend:/app/frontend:delegated
-      # Exclude build artifacts and dependencies
-      - /app/frontend/node_modules
-      - /app/frontend/.next
+      # Exclude build artifacts and dependencies (anonymous volumes)
+      - openassess_dev_node_modules:/app/frontend/node_modules
+      - openassess_dev_next:/app/frontend/.next
       - /app/backend/__pycache__
       - /app/backend/.pytest_cache
       - /app/backend/.venv
       # Still persist storage
       - openassess_storage:/app/backend/storage
+
+volumes:
+  openassess_dev_node_modules:
+    driver: local
+  openassess_dev_next:
+    driver: local
