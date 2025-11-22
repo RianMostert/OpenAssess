@@ -1,79 +1,93 @@
+# ============================================================================
+# OpenAssess - Unified Docker Compose Configuration
+# ============================================================================
+# Works for both development and production
+# Configure via .env file (copy from .env.dev or .env.production)
+
 services:
   postgres:
-    image: postgres:13
-    container_name: OpenAssess-DB
+    image: postgres:15-alpine
+    container_name: openassess-db
     environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: dbuser
-      POSTGRES_PASSWORD: changeme
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${POSTGRES_DB:-openassess}
+      POSTGRES_USER: ${POSTGRES_USER:-openassess}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dbuser -d mydb"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-openassess}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
-      - internal
+      - openassess-internal
 
-  backend:
-    build: ./backend
-    container_name: OpenAssess-API
-    volumes:
-      - ./backend:/app
+  openassess:
+    image: ${DOCKER_IMAGE:-openassess:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - ENV=${ENV:-production}
+        # Pass frontend build args from environment
+        - NEXT_PUBLIC_BACKEND_HOST=${NEXT_PUBLIC_BACKEND_HOST:-localhost}
+        - NEXT_PUBLIC_BACKEND_PORT=${NEXT_PUBLIC_BACKEND_PORT:-8000}
+        - NEXT_PUBLIC_ALLOWED_ORIGINS=${NEXT_PUBLIC_ALLOWED_ORIGINS:-localhost:3000,127.0.0.1:3000,*.local:3000}
+      tags:
+        - openassess:local
+    container_name: openassess
     environment:
-      - DATABASE_URL=postgresql://dbuser:changeme@postgres:5432/mydb
-      - FRONTEND_URL=http://open-assess.localhost
-      - ENV=dev
-      - SECRET_KEY=dev-only-change-in-production
-      - JSON_STORAGE_PATH=storage/json/
-      - QUESTION_PAPER_STORAGE_FOLDER=storage/pdfs/question_papers/
-      - ANSWER_SHEET_STORAGE_FOLDER=storage/pdfs/answer_sheets/
-      - ANNOTATION_STORAGE_FOLDER=storage/jsons/annotations/
+      # Database
+      DATABASE_URL: ${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be set in .env}
+      
+      # Security
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      
+      # Application
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      ENV: ${ENV:-production}
+      SEED_DB: ${SEED_DB:-false}
+      
+      # Storage paths
+      JSON_STORAGE_PATH: ${JSON_STORAGE_PATH:-storage/json/}
+      QUESTION_PAPER_STORAGE_FOLDER: ${QUESTION_PAPER_STORAGE_FOLDER:-storage/pdfs/question_papers/}
+      ANSWER_SHEET_STORAGE_FOLDER: ${ANSWER_SHEET_STORAGE_FOLDER:-storage/pdfs/answer_sheets/}
+      ANNOTATION_STORAGE_FOLDER: ${ANNOTATION_STORAGE_FOLDER:-storage/jsons/annotations/}
+    volumes:
+      # Persist uploaded files
+      - openassess_storage:/app/backend/storage
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - openassess-internal
+      - traefik-network
     labels:
       traefik.enable: true
-      traefik.docker.network: traefik
-      traefik.http.routers.backend.rule: "Host(`open-assess.localhost`) && PathPrefix(`/api`)"
-      traefik.http.routers.backend.entrypoints: web
-      traefik.http.routers.backend.priority: 100
-      traefik.http.services.backend.loadbalancer.server.port: 8000
-    networks:
-      - internal
-      - traefik
-
-  frontend:
-    build: ./frontend
-    container_name: OpenAssess-Web
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
-    environment:
-      - NEXT_PUBLIC_API_URL=http://open-assess.localhost/api/v1
-    depends_on:
-      - backend
-    labels:
-      traefik.enable: true
-      traefik.docker.network: traefik
-      traefik.http.routers.frontend.rule: "Host(`open-assess.localhost`)"
-      traefik.http.routers.frontend.entrypoints: web
-      traefik.http.routers.frontend.priority: 1
-      traefik.http.services.frontend.loadbalancer.server.port: 3000
-    networks:
-      - internal
-      - traefik
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
+      traefik.http.routers.openassess.rule: Host(`${DOMAIN:-open-assess.localhost}`)
+      traefik.http.routers.openassess.entrypoints: web
+      traefik.http.services.openassess.loadbalancer.server.port: 3000
 
 volumes:
   postgres_data:
+    driver: local
+  openassess_storage:
+    driver: local
 
 networks:
-  traefik:
-    name: traefik
-    external: true
-  internal:
+  openassess-internal:
     driver: bridge
+  traefik-network:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}

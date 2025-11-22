@@ -23,7 +23,7 @@ from app.routers import mark_queries
 
 # Import your DB stuff
 from app.db.session import engine
-from app.db.base import Base   # adjust if Base is declared elsewhere
+from app.db.base import Base  # adjust if Base is declared elsewhere
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -58,7 +58,9 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     # HSTS - Force HTTPS (only enable if deployed behind HTTPS)
     if settings.ENV == "production":
-        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=63072000; includeSubDomains; preload"
+        )
     # Prevent MIME sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
     # Prevent clickjacking
@@ -66,7 +68,9 @@ async def add_security_headers(request: Request, call_next):
     # Control referrer information
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     # Basic CSP - adjust based on your needs
-    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; frame-ancestors 'none'"
+    )
     # Prevent XSS in older browsers
     response.headers["X-XSS-Protection"] = "1; mode=block"
     return response
@@ -94,10 +98,22 @@ app.include_router(questions.router, prefix=api_prefix)
 app.include_router(question_results.router, prefix=api_prefix)
 app.include_router(student_results.router, prefix=api_prefix)
 app.include_router(export.router, prefix=api_prefix)
-app.include_router(student_queries.router, prefix=f"{api_prefix}/student-queries", tags=["student-queries"])
-app.include_router(mark_queries.router, prefix=f"{api_prefix}/mark-queries", tags=["mark-queries"])
+app.include_router(
+    student_queries.router,
+    prefix=f"{api_prefix}/student-queries",
+    tags=["student-queries"],
+)
+app.include_router(
+    mark_queries.router, prefix=f"{api_prefix}/mark-queries", tags=["mark-queries"]
+)
 
 
 @app.get("/")
 def root():
     return {"message": "Welcome to the Assesment Management System API"}
+
+
+@app.get("/api/health")
+def health_check():
+    """Health check endpoint for container orchestration"""
+    return {"status": "healthy", "service": "openassess-api"}

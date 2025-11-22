@@ -8,11 +8,7 @@ Manually grading and managing question papers can be tedious and time-consuming.
 
 ## Installation
 
-### Prerequisites
-- Docker and Docker Compose installed on your system
-- Git
-
-### Setup Steps
+### Quick Start (Development)
 
 1. **Clone the repository:**
    ```bash
@@ -20,47 +16,58 @@ Manually grading and managing question papers can be tedious and time-consuming.
    cd <repo-directory>
    ```
 
-2. **Configure environment variables:**
+2. **Set up development environment:**
    ```bash
-   cp backend/.env.example backend/.env
-   cp frontend/.env.example frontend/.env.local
+   cp .env.dev .env
    ```
-   
-   See `SETUP.md` for detailed configuration instructions.
 
 3. **Start the application:**
    ```bash
-   docker-compose build --no-cache
-   docker-compose up
+   ./manage.py start
    ```
 
 The application will be available at:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
+- Frontend: http://open-assess.localhost
+- Backend API: http://open-assess.localhost/api
+- API Documentation: http://open-assess.localhost/api/docs
+- Traefik Dashboard: http://traefik.localhost
+
+
+### Quick Commands
+
+```bash
+./manage.py start              # Start all services with Traefik
+./manage.py stop               # Stop all services
+./manage.py restart            # Restart services
+./manage.py logs               # View logs
+./manage.py status             # Check container status
+./manage.py env                # Show environment config
+```
+
+For full command reference: `./manage.py --help`
 
 To shut down the application:
 
 ```bash
 # Stop containers but keep data
-docker-compose down
+./manage.py stop
 
 # Stop containers and remove all data (fresh start)
-docker-compose down -v
+./manage.py stop --volumes
 ```
 
 ## Demo Users
 
 The database is automatically seeded with test users for demonstration purposes:
 
-| Email | Password | Role | Description |
-|-------|----------|------|-------------|
-| admin@example.com | admin123 | Administrator | Full system access |
-| john.smith@example.com | staff123 | Staff | Staff member account |
-| sarah.johnson@example.com | staff123 | Staff | Staff member account |
-| alice.brown@example.com | student123 | Student | Student account |
-| bob.wilson@example.com | student123 | Student | Student account |
-| carol.davis@example.com | student123 | Student | Student account |
+| Email                     | Password   | Role          | Description          |
+| ------------------------- | ---------- | ------------- | -------------------- |
+| admin@example.com         | admin123   | Administrator | Full system access   |
+| john.smith@example.com    | staff123   | Staff         | Staff member account |
+| sarah.johnson@example.com | staff123   | Staff         | Staff member account |
+| alice.brown@example.com   | student123 | Student       | Student account      |
+| bob.wilson@example.com    | student123 | Student       | Student account      |
+| carol.davis@example.com   | student123 | Student       | Student account      |
 
 ## Features
 
@@ -73,10 +80,8 @@ The database is automatically seeded with test users for demonstration purposes:
 
 ## Documentation
 
-- See `SETUP.md` for detailed setup and configuration
-- API documentation available at http://localhost:8000/docs when running
+- API documentation available at http://open-assess.localhost/api/docs when running
 - Frontend accessibility testing details in `frontend/A11Y.md`
-- PDF annotation system documentation in `frontend/PDF_ANNOTATION_SYSTEM.md`
 
 ## Tech Stack
 
@@ -100,4 +105,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
