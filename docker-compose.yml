@@ -4,14 +4,14 @@ services:
     container_name: postgres-db
     environment:
       POSTGRES_DB: mydb
-      POSTGRES_USER: rianmostert
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: changeme
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rianmostert -d mydb"]
+      test: ["CMD-SHELL", "pg_isready -U dbuser -d mydb"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,9 +24,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://rianmostert:password@postgres:5432/mydb
-      - FRONTEND_URL=*
+      - DATABASE_URL=postgresql://dbuser:changeme@postgres:5432/mydb
+      - FRONTEND_URL=http://localhost:3000
       - ENV=dev
+      - SECRET_KEY=dev-only-change-in-production
       - JSON_STORAGE_PATH=storage/json/
       - QUESTION_PAPER_STORAGE_FOLDER=storage/pdfs/question_papers/
       - ANSWER_SHEET_STORAGE_FOLDER=storage/pdfs/answer_sheets/
@@ -46,10 +47,6 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-      - NEXT_PUBLIC_API_URL_LOCAL=http://localhost:8000/api/v1
-      - NEXT_PUBLIC_API_URL_NETWORK=http://10.65.244.99:8000/api/v1
-      - NEXT_PUBLIC_API_URL_TAILSCALE=http://100.105.155.99:8000/api/v1
-      - CI=true
     depends_on:
       - backend
 
