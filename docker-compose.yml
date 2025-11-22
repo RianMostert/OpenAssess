@@ -1,7 +1,7 @@
 services:
   postgres:
     image: postgres:13
-    container_name: postgres-db
+    container_name: OpenAssess-DB
     environment:
       POSTGRES_DB: mydb
       POSTGRES_USER: dbuser
@@ -15,17 +15,17 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - internal
 
   backend:
     build: ./backend
-    container_name: fastapi-backend
+    container_name: OpenAssess-API
     volumes:
       - ./backend:/app
-    ports:
-      - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://dbuser:changeme@postgres:5432/mydb
-      - FRONTEND_URL=http://localhost:3000
+      - FRONTEND_URL=http://open-assess.localhost
       - ENV=dev
       - SECRET_KEY=dev-only-change-in-production
       - JSON_STORAGE_PATH=storage/json/
@@ -35,20 +35,45 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    labels:
+      traefik.enable: true
+      traefik.docker.network: traefik
+      traefik.http.routers.backend.rule: "Host(`open-assess.localhost`) && PathPrefix(`/api`)"
+      traefik.http.routers.backend.entrypoints: web
+      traefik.http.routers.backend.priority: 100
+      traefik.http.services.backend.loadbalancer.server.port: 8000
+    networks:
+      - internal
+      - traefik
 
   frontend:
     build: ./frontend
-    container_name: nextjs-frontend
+    container_name: OpenAssess-Web
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
-    ports:
-      - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_PUBLIC_API_URL=http://open-assess.localhost/api/v1
     depends_on:
       - backend
+    labels:
+      traefik.enable: true
+      traefik.docker.network: traefik
+      traefik.http.routers.frontend.rule: "Host(`open-assess.localhost`)"
+      traefik.http.routers.frontend.entrypoints: web
+      traefik.http.routers.frontend.priority: 1
+      traefik.http.services.frontend.loadbalancer.server.port: 3000
+    networks:
+      - internal
+      - traefik
 
 volumes:
   postgres_data:
+
+networks:
+  traefik:
+    name: traefik
+    external: true
+  internal:
+    driver: bridge

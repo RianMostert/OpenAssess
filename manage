@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+
+set -e
+
+show_help() {
+    echo "OpenAssess Management Script"
+    echo ""
+    echo "Usage: ./manage [command]"
+    echo ""
+    echo "Commands:"
+    echo "  start    Start all services (Traefik + OpenAssess)"
+    echo "  stop     Stop all services"
+    echo "  restart  Restart all services"
+    echo "  logs     Show logs from all services"
+    echo "  status   Show status of all containers"
+    echo ""
+}
+
+start_services() {
+    echo "Starting OpenAssess..."
+    echo ""
+    
+    echo "> Ensuring traefik network exists..."
+    docker network create traefik 2>/dev/null || echo "   ✓ Network already exists"
+    
+    echo "> Starting Traefik proxy..."
+    docker compose -f docker-compose.traefik.yml up -d
+
+    echo "> Starting application services..."
+    docker compose up -d
+    
+    echo ""
+    echo "✅ OpenAssess is running!"
+    echo ""
+    echo "Access your application at:"
+    echo "   App:       http://open-assess.localhost"
+    echo "   API:       http://open-assess.localhost/api"
+    echo "   Dashboard: http://traefik.localhost"
+    echo ""
+}
+
+stop_services() {
+    echo "Stopping OpenAssess..."
+    echo ""
+    
+    echo "> Stopping application services..."
+    docker compose down
+    
+    echo "> Stopping Traefik proxy..."
+    docker compose -f docker-compose.traefik.yml down
+    
+    echo ""
+    echo "✅ All services stopped"
+    echo ""
+}
+
+restart_services() {
+    stop_services
+    echo ""
+    start_services
+}
+
+show_logs() {
+    echo "Showing logs (Ctrl+C to exit)..."
+    echo ""
+    docker compose logs -f &
+    PID1=$!
+    docker compose -f docker-compose.traefik.yml logs -f &
+    PID2=$!
+    
+    trap "kill $PID1 $PID2 2>/dev/null" EXIT
+    wait
+}
+
+show_status() {
+    echo "Container Status:"
+    echo ""
+    docker ps -a --filter "name=openassess-traefik" --filter "name=fastapi-backend" --filter "name=nextjs-frontend" --filter "name=postgres-db" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+    echo ""
+}
+
+# Main script logic
+case "${1:-}" in
+    start)
+        start_services
+        ;;
+    stop)
+        stop_services
+        ;;
+    restart)
+        restart_services
+        ;;
+    logs)
+        show_logs
+        ;;
+    status)
+        show_status
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    "")
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
