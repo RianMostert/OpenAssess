@@ -1,2 +1,0 @@
-# Spire.Pdf==10.12.1
-PyMuPDF==1.25.5
